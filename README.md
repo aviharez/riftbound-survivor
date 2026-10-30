@@ -2,7 +2,10 @@
 
 Prototype combat run ala Megabonk: map procedural, spawn player dan portal boss acak,
 chest berbayar, shrine, tome dan 6 weapon (slot mulai 2 + 2, dibuka sampai 4 + 4 lewat bangunan akademi),
-elite, Rift Surge, Final Swarm, boss, minimap + peta fog-of-war, dan layar akademi sederhana di antara run.
+elite, Rift Surge, Final Swarm, boss, minimap + peta fog-of-war, layar akademi sederhana di antara run,
+4 karakter dengan stat dan pasif masing-masing, serta VFX berat (bloom HDR, partikel, shader distorsi).
+
+APK terbaru: https://github.com/aviharez/riftbound-survivor/releases/tag/latest-build
 Semua grafik masih placeholder (bentuk dasar), belum ada sprite atau suara.
 
 Diuji dengan **Godot 4.7.2** (headless + render via OpenGL). Kode tidak memakai fitur khusus 4.7,

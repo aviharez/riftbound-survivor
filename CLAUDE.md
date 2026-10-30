@@ -11,6 +11,16 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 ## Rules
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
 - Weapon behaviour lives in `scripts/actors/weapons.gd`; its numbers in `GameData.WEAPONS`.
+- Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
+- VFX: particles/lights in `scripts/vfx/vfx.gd` (one additive node; colours > 1.0 bloom via HDR 2D glow),
+  screen effects (shockwave/chroma/vignette shader, shake, hit-stop) in `scripts/vfx/screen_fx.gd`,
+  shaders in `shaders/`. Quality switches: `GameData.VFX_*`.
+- Art: character sprites in `assets/characters/<id>/<direction>.png` (see its README); enemies/props are
+  hand-authored grids in `scripts/meta/pixel_sprites.gd`. The cloud workspace cannot download from
+  PixelLab; Syifa uploads the PNGs and Claude commits them. Do not route downloads through CI.
+- Android APK: `.github/workflows/android.yml` builds on every push and publishes the `latest-build`
+  pre-release. CI logs are not readable from the workspace; failures show up as a `ci-log-tail`
+  annotation (GitHub API: check-runs/<job id>/annotations).
 - Meta progression (resources, academy buildings) is saved by `scripts/meta/save_data.gd` to `user://riftbound_save.json`. Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
@@ -25,12 +35,14 @@ godot --headless --path . -s tests/test_academy.gd
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=565590 --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77
+godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77 --char=kael
 godot --headless --path . --fixed-fps 60 -- --autotest-late --seed=99 --slots=4
 ```
 The main scene is the academy; any `--autotest*` flag makes it jump straight into a run.
 Autotests never read or write the player's save (`SaveData`); without `--slots` they use the base 2 + 2 slots.
 Academy screenshot: `xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1280x720 -- --academy-shot=/tmp/academy.png`
-Run screenshots (needs Xvfb): `xvfb-run -a godot --path . --rendering-driver opengl3 --fixed-fps 60 --resolution 1280x720 -- --autotest --shot=/tmp/run.png`
+Run screenshots (needs Xvfb): `xvfb-run -a godot --path . --rendering-driver opengl3 --fixed-fps 60 --resolution 1280x720 -- --autotest --char=lyra --shot=/tmp/run.png --shot-times=30,60`
+(software GL is slow with heavy VFX: keep shot times early; OpenGL also shows much weaker bloom than the Mobile renderer on phones).
 
 Note: in the cloud workspace the Godot binary is not preinstalled; download the official
 `Godot_v4.7.2-stable_linux.x86_64.zip` from the godotengine/godot GitHub releases.

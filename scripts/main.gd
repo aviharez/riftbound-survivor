@@ -16,6 +16,8 @@ var enemies: Enemies
 var player: Player
 var projectiles: Projectiles
 var effects: Effects
+var vfx: Vfx
+var screen_fx: ScreenFx
 var weapons: Weapons
 var camera: Camera2D
 var hud: Hud
@@ -43,6 +45,7 @@ var victory := false
 var tome_slots := GameData.BASE_TOME_SLOTS
 var weapon_slots := GameData.BASE_WEAPON_SLOTS
 var _forced_slots := 0
+var character_id := ""
 
 var _spawn_accum := 0.0
 var _next_elite := GameData.ELITE_START
@@ -61,6 +64,7 @@ var _auto_die := false
 var _auto_t := 0.0
 var _shot_path := ""
 var _shots_taken := 0
+var _shot_times: Array = [3.0, 160.0]
 var _finishing := false
 var _choice_shot_done := false
 var _auto_portal_at := 240.0
@@ -78,6 +82,10 @@ func _ready() -> void:
 		var save := SaveData.load_data()
 		tome_slots = SaveData.slots_for(save, "tome")
 		weapon_slots = SaveData.slots_for(save, "weapon")
+		if character_id == "":
+			character_id = String(save.get("character", "astra"))
+	if character_id == "":
+		character_id = "astra"
 
 	var t0 := Time.get_ticks_msec()
 	var map := MapGenerator.new().generate(seed_value)
@@ -92,10 +100,12 @@ func _ready() -> void:
 	pickups = _add(Pickups.new())
 	enemies = _add(Enemies.new())
 	player = _add(Player.new())
+	player.setup_character(GameData.character_by_id(character_id))
 	player.position = world.cell_center(map["spawn"])
 	projectiles = _add(Projectiles.new())
 	weapons = _add(Weapons.new())
 	effects = _add(Effects.new())
+	vfx = _add(Vfx.new())
 
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
@@ -108,6 +118,7 @@ func _ready() -> void:
 	add_child(camera)
 	camera.make_current()
 
+	screen_fx = _add(ScreenFx.new())
 	hud = Hud.new()
 	hud.game = self
 	add_child(hud)
@@ -139,8 +150,14 @@ func _parse_args() -> void:
 		elif a == "--autotest-late":
 			_auto = true
 			_auto_portal_at = 640.0
+		elif a.begins_with("--char="):
+			character_id = a.get_slice("=", 1)
 		elif a.begins_with("--slots="):
 			_forced_slots = int(a.get_slice("=", 1))
+		elif a.begins_with("--shot-times="):
+			_shot_times.clear()
+			for t in a.get_slice("=", 1).split(","):
+				_shot_times.append(float(t))
 		elif a.begins_with("--shot="):
 			_shot_path = a.get_slice("=", 1)
 
@@ -298,6 +315,12 @@ func spawn_damage_number(pos: Vector2, amount: float, crit: bool) -> void:
 
 func on_enemy_killed(e) -> void:
 	kills += 1
+	if e.pos.distance_to(player.position) < 420.0:
+		vfx.death(e.pos, e.color, e.radius, e.elite)
+	if e.elite:
+		screen_fx.hitstop(0.05)
+		screen_fx.shake(0.3)
+		screen_fx.shockwave(e.pos, 90.0, 1.0, 0.5)
 	if e.boss:
 		_on_boss_killed(e.pos)
 		return
@@ -326,6 +349,8 @@ func on_pickup(kind: int, value: float) -> void:
 				level += 1
 				xp_next = GameData.xp_to_next(level)
 				pending_levelups += 1
+				player.on_level_up()
+				_level_up_vfx()
 		Pickups.Kind.GOLD:
 			var g: float = value * (1.0 + player.stats["gold_pct"])
 			gold += g
@@ -334,7 +359,18 @@ func on_pickup(kind: int, value: float) -> void:
 			player.heal(value)
 
 
+func _level_up_vfx() -> void:
+	var p := player.position
+	var gold_c := Color(2.4, 1.9, 0.7)
+	vfx.ring(p, gold_c, 46.0, 0.5, 3.0)
+	vfx.flash(p, Color(1.6, 1.3, 0.5), 40.0, 0.3)
+	for i in 14:
+		vfx.motes(p + Vector2(randf_range(-10, 10), randf_range(-4, 8)), gold_c, 1, 10.0, 0.9, 3.0, -90.0)
+	screen_fx.shockwave(p, 70.0, 0.6, 0.4)
+
+
 func on_pot_broken(pos: Vector2) -> void:
+	vfx.sparks(pos, Color(0.9, 0.6, 0.35), 6, 60.0, 0.25, 1.2)
 	var r := rng.randf()
 	if r < 0.5:
 		pickups.drop(pos, Pickups.Kind.GOLD, rng.randi_range(1, 3))
@@ -379,6 +415,16 @@ func open_chest(c: Dictionary) -> void:
 	var it: Dictionary = pool[rng.randi_range(0, pool.size() - 1)]
 	player.apply_mods(it["mods"])
 	items_owned[it["id"]] = int(items_owned.get(it["id"], 0)) + 1
+	# rarity beam: brighter and taller for rarer items
+	var rc: Color = GameData.RARITY_COLORS[rarity]
+	var hdr := Color(rc.r, rc.g, rc.b) * (1.4 + rarity * 0.6)
+	vfx.flash(c["pos"], hdr, 26.0 + rarity * 10.0, 0.4)
+	vfx.ring(c["pos"], hdr, 30.0 + rarity * 12.0, 0.45, 2.5)
+	for i in 8 + rarity * 6:
+		vfx.motes(c["pos"] + Vector2(randf_range(-6, 6), 0), hdr, 1, 8.0, 0.9 + rarity * 0.2, 2.5, -120.0)
+	if rarity >= 2:
+		screen_fx.shockwave(c["pos"], 80.0, 0.8, 0.45)
+		screen_fx.hitstop(0.04)
 	hud.toast("%s (%s): %s" % [it["name"], GameData.RARITY_NAMES[rarity], it["desc"]], GameData.RARITY_COLORS[rarity])
 
 
@@ -465,6 +511,11 @@ func _apply_offer(opt: Dictionary) -> void:
 
 func on_shrine_activated(s: Dictionary) -> void:
 	shrines_used += 1
+	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
+	vfx.ring(s["pos"], sc * 2.2, 40.0, 0.5, 3.0)
+	vfx.flash(s["pos"], sc * 1.6, 30.0, 0.35)
+	vfx.motes(s["pos"], sc * 2.0, 16, 40.0, 1.0, 3.0, -60.0)
+	screen_fx.shockwave(s["pos"], 60.0, 0.6, 0.4)
 	match s["type"]:
 		"ley":
 			var boons: Array = GameData.BOONS.duplicate()
@@ -531,17 +582,31 @@ func on_portal_discovered() -> void:
 
 
 func on_portal_activated() -> void:
+	screen_fx.shockwave(interactables.portal["pos"], 120.0, 1.0, 0.6)
+	screen_fx.shake(0.3)
 	hud.banner("The Rift Portal is opening...", Color(1, 0.3, 0.4), 2.0)
 
 
 func summon_boss(pos: Vector2) -> void:
 	boss_spawned = true
+	vfx.explosion(pos, Color(2.4, 0.3, 0.8), 40.0)
+	screen_fx.shockwave(pos, 200.0, 1.6, 0.8)
+	screen_fx.shake(0.6)
+	screen_fx.chroma(0.8)
+	screen_fx.hitstop(0.12)
 	enemies.spawn_boss(pos, 1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0)
 	hud.banner("%s has emerged!" % GameData.BOSS["name"], Color(1, 0.3, 0.35), 3.0)
 
 
 func _on_boss_killed(pos: Vector2) -> void:
 	boss_killed = true
+	vfx.explosion(pos, Color(2.6, 0.5, 1.2), 60.0)
+	vfx.explosion(pos, Color(2.6, 2.0, 0.8), 30.0)
+	vfx.shards(pos, Color(2.0, 0.6, 1.4), 30, 240.0, 0.7)
+	screen_fx.shockwave(pos, 260.0, 2.0, 0.9)
+	screen_fx.shake(0.8)
+	screen_fx.chroma(1.0)
+	screen_fx.hitstop(0.18)
 	interactables.portal["state"] = "done"
 	interactables.add_golden_chest(_walkable_near(pos + Vector2(-22, 0)))
 	for i in 3:
@@ -665,8 +730,8 @@ func _autotest_step(delta: float) -> void:
 func _maybe_shot(_final: bool) -> void:
 	if _shot_path == "":
 		return
-	var times := [3.0, 160.0]
-	if _shots_taken < times.size() and elapsed >= times[_shots_taken]:
+	var times := _shot_times
+	if _shots_taken < times.size() and elapsed >= float(times[_shots_taken]):
 		var path := _shot_path.replace(".png", "_%d.png" % _shots_taken)
 		_shots_taken += 1
 		await RenderingServer.frame_post_draw

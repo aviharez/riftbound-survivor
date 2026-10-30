@@ -19,7 +19,20 @@ var _flow_origin := Vector2i.ZERO
 var _flow_size := FLOW_R * 2 + 1
 
 
+var _ground_mat: ShaderMaterial
+var _time := 0.0
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	if _ground_mat != null:
+		_ground_mat.set_shader_parameter("time", _time)
+
+
 func setup(m: Dictionary) -> void:
+	_ground_mat = ShaderMaterial.new()
+	_ground_mat.shader = load("res://shaders/rift_ground.gdshader")
+	material = _ground_mat
 	map = m
 	grid = m["grid"]
 	w = m["w"]

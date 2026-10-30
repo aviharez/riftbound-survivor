@@ -19,6 +19,7 @@ static func defaults() -> Dictionary:
 		"buildings": buildings,
 		"runs": 0, "victories": 0, "best_kills": 0,
 		"last_run": {},
+		"character": "astra",
 	}
 
 

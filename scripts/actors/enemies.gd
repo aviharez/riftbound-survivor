@@ -307,27 +307,63 @@ func _draw() -> void:
 		if e.boss:
 			_draw_boss(e, col)
 			continue
-		draw_circle(e.pos, e.radius, col)
-		draw_circle(e.pos + Vector2(-e.radius * 0.35, -e.radius * 0.2), max(1.0, e.radius * 0.18), Color(1, 0.9, 0.3))
-		draw_circle(e.pos + Vector2(e.radius * 0.35, -e.radius * 0.2), max(1.0, e.radius * 0.18), Color(1, 0.9, 0.3))
+		_draw_sprite(e, cam)
 		if e.elite:
-			draw_arc(e.pos, e.radius + 1.5, 0, TAU, 20, Color(1, 0.2, 0.2), 1.5)
+			var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.008)
+			draw_texture_rect(game.vfx.glow_tex, Rect2(e.pos - Vector2(e.radius, e.radius) * 2.2, Vector2(e.radius, e.radius) * 4.4), false, Color(1.6, 0.25, 0.2, 0.45 * pulse))
+			draw_arc(e.pos, e.radius + 1.5, 0, TAU, 20, Color(2.0, 0.4, 0.3), 1.5)
 			if e.shield > 0:
 				draw_arc(e.pos, e.radius + 4.0, 0, TAU, 20, Color(0.5, 0.8, 1.0, 0.8), 1.0)
 			var w: float = e.radius * 2.2
 			draw_rect(Rect2(e.pos.x - w / 2, e.pos.y - e.radius - 6, w, 2), Color(0.2, 0, 0))
 			draw_rect(Rect2(e.pos.x - w / 2, e.pos.y - e.radius - 6, w * e.hp / e.max_hp, 2), Color(1, 0.3, 0.3))
+	var tex: Texture2D = game.vfx.glow_tex
 	for b in bullets:
-		draw_circle(b["pos"], 3.0, Color(1, 0.3, 0.5))
-		draw_circle(b["pos"], 1.5, Color(1, 0.9, 0.95))
+		draw_texture_rect(tex, Rect2(b["pos"] - Vector2(9, 9), Vector2(18, 18)), false, Color(2.0, 0.3, 0.8, 0.8))
+		draw_circle(b["pos"], 2.6, Color(2.2, 0.5, 1.0))
+		draw_circle(b["pos"], 1.2, Color(2.6, 2.2, 2.4))
+
+
+func _draw_sprite(e: Enemy, cam: Vector2) -> void:
+	var name := e.type
+	if name == "bat" and int(Time.get_ticks_msec() / 120 + e.max_hp) % 2 == 0:
+		name = "bat_up"
+	var tex := PixelSprites.texture(name, "bat" if name == "bat_up" else "")
+	var tw := float(tex.get_width())
+	var scale := (e.radius * 2.6) / tw
+	var flip := -1.0 if cam.x < e.pos.x else 1.0
+	# idle squash for slimes, hover bob for bats
+	var sy := 1.0
+	var lift := 0.0
+	var t := Time.get_ticks_msec() * 0.001 + e.max_hp
+	if e.type == "slime":
+		sy = 1.0 + sin(t * 9.0) * 0.08
+	elif e.type == "bat":
+		lift = -3.0 + sin(t * 7.0) * 1.5
+	var mod := Color.WHITE
+	if e.flash > 0.0:
+		mod = Color(3.0, 3.0, 3.0)
+	elif e.elite:
+		mod = Color(1.35, 0.85, 0.85)
+	var size := Vector2(tw, tex.get_height()) * scale
+	draw_set_transform(e.pos + Vector2(0, lift + size.y * (1.0 - sy) * 0.5), 0.0, Vector2(flip, sy))
+	draw_texture_rect(tex, Rect2(-size * 0.5, size), false, mod)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
 func _draw_boss(b: Enemy, col: Color) -> void:
 	if b.state == "telegraph":
-		draw_line(b.pos, b.pos + b.dash_dir * float(GameData.BOSS["dash_speed"]) * float(GameData.BOSS["dash_time"]), Color(1, 0.1, 0.1, 0.6), 4.0)
+		draw_line(b.pos, b.pos + b.dash_dir * float(GameData.BOSS["dash_speed"]) * float(GameData.BOSS["dash_time"]), Color(2.0, 0.15, 0.2, 0.7), 4.0)
+	var tex := CharacterArt.texture("boss", CharacterArt.dir_for(game.player.position - b.pos))
+	if tex != null:
+		draw_texture_rect(game.vfx.glow_tex, Rect2(b.pos - Vector2(40, 40), Vector2(80, 80)), false, Color(1.2, 0.1, 0.6, 0.35))
+		var sz := Vector2(tex.get_width(), tex.get_height())
+		draw_texture_rect(tex, Rect2(b.pos + Vector2(-sz.x * 0.5, b.radius - sz.y * 0.85), sz), false, Color(2.2, 1.6, 1.6) if b.flash > 0.0 else Color.WHITE)
+		return
 	draw_circle(b.pos, b.radius, col)
 	draw_arc(b.pos, b.radius, 0, TAU, 32, Color(0.9, 0.2, 0.3), 2.0)
 	draw_colored_polygon(PackedVector2Array([b.pos + Vector2(-12, -14), b.pos + Vector2(-6, -26), b.pos + Vector2(-2, -15)]), Color(0.8, 0.75, 0.65))
 	draw_colored_polygon(PackedVector2Array([b.pos + Vector2(12, -14), b.pos + Vector2(6, -26), b.pos + Vector2(2, -15)]), Color(0.8, 0.75, 0.65))
-	draw_circle(b.pos + Vector2(0, -3), 5.0, Color(1, 0.15, 0.15))
-	draw_circle(b.pos + Vector2(0, -3), 2.0, Color(1, 0.9, 0.5))
+	draw_texture_rect(game.vfx.glow_tex, Rect2(b.pos - Vector2(40, 40), Vector2(80, 80)), false, Color(1.2, 0.1, 0.6, 0.35))
+	draw_circle(b.pos + Vector2(0, -3), 5.0, Color(2.6, 0.3, 0.3))
+	draw_circle(b.pos + Vector2(0, -3), 2.0, Color(3.0, 2.4, 1.2))

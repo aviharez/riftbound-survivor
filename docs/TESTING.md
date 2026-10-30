@@ -10,20 +10,34 @@ Buat GitHub Issue atau tulis di chat dengan format:
 - Yang seharusnya:
 - Menit ke berapa:
 
+## Cara memasang build terbaru di HP
+Buka https://github.com/aviharez/riftbound-survivor/releases/tag/latest-build dari browser HP,
+unduh `riftbound-debug.apk`, lalu pasang (izinkan "install unknown apps" untuk browser).
+Build baru terpasang di atas build lama dan save akademi tetap ada.
+
 ## Yang baru di build ini (fokus tes)
 
-Game sekarang dibuka di **layar akademi**. Alurnya: akademi > Enter the Rift > run > layar hasil > Return to Academy.
+**Karakter** (pilih di akademi, baris atas):
 
-- [ ] Reward run (Gold, Materials, Aether, EXP) bertambah di akademi setelah run, termasuk run yang kalah (50%)
-- [ ] Upgrade **Library** menambah slot tome (2 > 3 > 4); **Training Ground** menambah slot weapon (2 > 3 > 4)
-- [ ] Slot yang terkunci terlihat sebagai "lock" di HUD kiri atas (baris atas weapon, baris bawah tome)
-- [ ] Biaya upgrade terasa wajar: berapa run yang kamu butuhkan untuk Lv 1 dan Lv 2?
-- [ ] Progres tetap ada setelah game ditutup dan dibuka lagi
-- [ ] Coba keenam weapon: Arcane Bolt (bawaan), Frost Nova, Flame Orb, Mana Burst, Storm Chain, Spirit Blade. Ada yang terlalu kuat/lemah atau efeknya tidak terbaca?
-- [ ] Setelah slot weapon penuh, level-up hanya menawarkan level weapon yang sudah dimiliki
-- [ ] "Reset save" (tekan 2x) mengembalikan semuanya ke awal
+| Karakter | Stat khusus | Weapon awal | Pasif per level |
+| --- | --- | --- | --- |
+| Astra (Mage) | HP 100, crit 5% | Arcane Bolt | +1% crit |
+| Lyra (Fire Mage) | HP 85, damage 12, area +10%, cepat | Flame Orb | +2% damage |
+| Kael (Knight) | HP 150, armor 10%, lambat | Spirit Blade | +1% armor (maks 50%) |
+| Nym (Healer) | HP 95, regen 0.6/dtk, luck 10, heal +50% | Frost Nova | +0.12 HP/dtk regen |
 
-Dari build sebelumnya, masih perlu dicek: kepadatan chest/shrine, Aether Well (penarik gem), dan tome.
+- [ ] Tiap karakter terasa berbeda cara mainnya
+- [ ] Ada karakter yang jelas terlalu kuat atau terlalu lemah?
+
+**VFX** (di HP, bukan PC, karena glow paling terlihat di renderer Mobile):
+- [ ] Glow/bloom pada proyektil, Flame Orb, petir, ledakan
+- [ ] Gelombang distorsi layar saat Frost Nova, Mana Burst, elite mati, boss muncul/mati
+- [ ] Getaran layar dan jeda singkat (hit-stop) saat elite/boss mati tidak mengganggu
+- [ ] Layar merah berdenyut saat HP rendah, efek kena hit terasa
+- [ ] Retakan Rift ungu di tanah berpendar
+- [ ] Performa: tetap lancar saat Rift Surge dan Final Swarm? Kalau patah-patah, sebutkan model HP-mu
+
+**Grafik**: musuh dan chest sekarang pixel art (slime, kelelawar, golem, penyihir bertudung). Sprite karakter dari PixelLab menyusul setelah file-nya masuk repo.
 
 ## Yang perlu dicek di build sekarang
 

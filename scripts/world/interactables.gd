@@ -77,6 +77,7 @@ func _process(delta: float) -> void:
 			game.on_pot_broken(p["pos"])
 
 	_update_portal(ppos, delta)
+	_ambient(ppos)
 
 	if exit_portal["active"] and ppos.distance_to(exit_portal["pos"]) < EXIT_RADIUS:
 		exit_portal["active"] = false
@@ -112,6 +113,27 @@ func _update_shrine(s: Dictionary, ppos: Vector2, delta: float) -> void:
 func complete_trial(s: Dictionary) -> void:
 	s["used"] = true
 	s["state"] = "done"
+
+
+var _ambient_t := 0.0
+
+
+## Idle particles on nearby magical objects (portal swirl, shrine sparkle).
+func _ambient(ppos: Vector2) -> void:
+	_ambient_t += get_process_delta_time()
+	if _ambient_t < 0.06:
+		return
+	_ambient_t = 0.0
+	var pp: Vector2 = portal["pos"]
+	if portal["state"] != "done" and pp.distance_to(ppos) < 300.0:
+		var a := randf() * TAU
+		game.vfx.motes(pp + Vector2.from_angle(a) * 22.0, Color(2.2, 0.3, 0.7), 1, 8.0, 0.8, 2.5, -30.0)
+	for s in shrines:
+		if not s["used"] and s["pos"].distance_to(ppos) < 220.0 and randf() < 0.3:
+			var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
+			game.vfx.motes(s["pos"] + Vector2(randf_range(-6, 6), -10), sc * 1.8, 1, 6.0, 0.9, 1.8, -25.0)
+	if exit_portal["active"]:
+		game.vfx.motes(exit_portal["pos"] + Vector2.from_angle(randf() * TAU) * 12.0, Color(0.6, 2.0, 2.4), 1, 10.0, 0.7, 2.5, -40.0)
 
 
 func _update_portal(ppos: Vector2, delta: float) -> void:
@@ -165,12 +187,11 @@ func _draw() -> void:
 
 func _draw_chest(c: Dictionary) -> void:
 	var p: Vector2 = c["pos"]
-	var body := Color(0.95, 0.75, 0.2) if c["golden"] else Color(0.45, 0.3, 0.6)
-	var trim := Color(1.0, 0.95, 0.6) if c["golden"] else Color(0.85, 0.7, 0.3)
-	draw_rect(Rect2(p.x - 7, p.y - 4, 14, 9), body)
-	draw_rect(Rect2(p.x - 7, p.y - 7, 14, 4), body.lightened(0.15))
-	draw_rect(Rect2(p.x - 7, p.y - 3, 14, 1), trim)
-	draw_rect(Rect2(p.x - 1, p.y - 3, 2, 3), trim)
+	var tex := PixelSprites.texture("chest", "chest_gold" if c["golden"] else "chest")
+	if c["golden"]:
+		var pulse := 0.6 + 0.4 * sin(_time * 3.0)
+		draw_texture_rect(game.vfx.glow_tex, Rect2(p - Vector2(18, 18), Vector2(36, 36)), false, Color(1.6, 1.1, 0.3, 0.5 * pulse))
+	draw_texture_rect(tex, Rect2(p - Vector2(8, 6), Vector2(16, 9)), false)
 	if c["hold"] > 0.0:
 		draw_arc(p, 11, -PI / 2, -PI / 2 + TAU * c["hold"] / CHEST_HOLD, 24, Color.WHITE, 1.5)
 	if c["golden"]:

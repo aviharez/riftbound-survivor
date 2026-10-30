@@ -15,11 +15,12 @@ var stats := {
 	"max_hp": 100.0, "speed": 90.0, "damage": 10.0, "damage_pct": 0.0,
 	"attack_speed_pct": 0.0, "projectiles": 0.0, "bounce": 0.0, "crit": 0.0,
 	"area_pct": 0.0, "pickup": 40.0, "pickup_pct": 0.0, "luck": 0.0, "regen": 0.0,
-	"gold_pct": 0.0, "xp_pct": 0.0, "speed_pct": 0.0,
+	"gold_pct": 0.0, "xp_pct": 0.0, "speed_pct": 0.0, "armor": 0.0, "heal_pct": 0.0,
 }
 var hp := 100.0
 var tomes := {}          # tome id -> level (insertion order = slot order)
 var weapon_levels := {"bolt": 1}  # weapon id -> level (insertion order = slot order)
+var character: Dictionary = GameData.CHARACTERS[0]
 var facing := Vector2.RIGHT
 var move_dir := Vector2.ZERO
 var dash_t := 0.0
@@ -28,6 +29,19 @@ var iframes := 0.0
 var hurt_flash := 0.0
 var damage_dealt := 0.0
 var god_mode := false   # autotest only
+
+
+## Applies a character's base stats and starter weapon. Call before the run starts.
+func setup_character(c: Dictionary) -> void:
+	character = c
+	for k in c["base"]:
+		stats[k] = float(c["base"][k])
+	hp = stats["max_hp"]
+	weapon_levels = {c["starter"]: 1}
+
+
+func on_level_up() -> void:
+	apply_mods(character["per_level"])
 
 
 func apply_mods(mods: Array) -> void:
@@ -56,16 +70,18 @@ func try_dash() -> void:
 func take_damage(amount: float) -> void:
 	if iframes > 0.0 or is_dashing() or god_mode or hp <= 0.0:
 		return
-	hp -= amount
+	hp -= amount * (1.0 - min(GameData.ARMOR_CAP, stats["armor"]))
 	iframes = HURT_IFRAMES
 	hurt_flash = 0.15
+	game.screen_fx.hurt()
+	game.vfx.sparks(position, Color(2.4, 0.4, 0.5), 8, 90.0, 0.25)
 	if hp <= 0.0:
 		hp = 0.0
 		game.on_player_died()
 
 
 func heal(amount: float) -> void:
-	hp = min(stats["max_hp"], hp + amount)
+	hp = min(stats["max_hp"], hp + amount * (1.0 + stats["heal_pct"]))
 
 
 func _process(delta: float) -> void:
@@ -82,27 +98,43 @@ func _process(delta: float) -> void:
 	var spd := move_speed() * (DASH_MULT if is_dashing() else 1.0)
 	var dir := facing if is_dashing() else move_dir
 	position = game.world.move(position, dir * spd * delta, RADIUS)
+	if is_dashing():
+		game.vfx.trail(position + Vector2(0, -4), Color(character["colors"]["accent"]) * 1.8, 6.0, 0.25)
 	queue_redraw()
+
+
+var _walk_t := 0.0
 
 
 func _draw() -> void:
 	var blink := iframes > 0.0 and int(iframes * 20.0) % 2 == 0
 	if blink:
 		return
-	# shadow
-	draw_circle(Vector2(0, 6), 5, Color(0, 0, 0, 0.3))
-	var robe := Color(0.12, 0.18, 0.4) if hurt_flash <= 0.0 else Color(1, 0.4, 0.4)
-	# robe (trapezoid)
-	draw_colored_polygon(PackedVector2Array([Vector2(-5, 7), Vector2(5, 7), Vector2(3, -1), Vector2(-3, -1)]), robe)
-	draw_rect(Rect2(-3, 0, 6, 1), Color(0.85, 0.7, 0.3)) # gold trim
-	# head + silver hair
-	draw_circle(Vector2(0, -4), 3.5, Color(0.98, 0.86, 0.78))
-	draw_rect(Rect2(-4, -8, 8, 3), Color(0.85, 0.88, 0.95))
-	draw_rect(Rect2(-4, -6, 2, 5), Color(0.85, 0.88, 0.95))
-	draw_rect(Rect2(2, -6, 2, 5), Color(0.85, 0.88, 0.95))
-	# staff on facing side
+	_walk_t += get_process_delta_time() * (1.0 if move_dir.length() > 0.1 else 0.0)
+	var bob := -absf(sin(_walk_t * 11.0)) * 1.5
+	draw_circle(Vector2(0, 6), 6, Color(0, 0, 0, 0.32))  # shadow
+	var tint := Color(2.2, 0.8, 0.8) if hurt_flash > 0.0 else Color.WHITE
+	var tex := CharacterArt.texture(character["id"], CharacterArt.dir_for(facing))
+	if tex != null:
+		# 48 px sprite, feet at the shadow; slight squash on each step
+		var sz := Vector2(tex.get_width(), tex.get_height())
+		var squash := 1.0 + bob * 0.02
+		var rect := Rect2(Vector2(-sz.x * 0.5, 8.0 - sz.y * 0.82 + bob), Vector2(sz.x, sz.y * squash))
+		draw_texture_rect(tex, rect, false, tint)
+		return
+	_draw_placeholder(bob, tint)
+
+
+func _draw_placeholder(bob: float, tint: Color) -> void:
+	var col: Dictionary = character["colors"]
+	var o := Vector2(0, bob)
+	draw_colored_polygon(PackedVector2Array([Vector2(-5, 7) + o, Vector2(5, 7) + o, Vector2(3, -1) + o, Vector2(-3, -1) + o]), Color(col["robe"]) * tint)
+	draw_rect(Rect2(Vector2(-3, 0) + o, Vector2(6, 1)), Color(0.85, 0.7, 0.3))
+	draw_circle(Vector2(0, -4) + o, 3.5, Color(0.98, 0.86, 0.78) * tint)
+	var hair: Color = col["hair"]
+	draw_rect(Rect2(Vector2(-4, -8) + o, Vector2(8, 3)), hair)
+	draw_rect(Rect2(Vector2(-4, -6) + o, Vector2(2, 5)), hair)
+	draw_rect(Rect2(Vector2(2, -6) + o, Vector2(2, 5)), hair)
 	var sx := 6.0 if facing.x >= 0.0 else -6.0
-	draw_line(Vector2(sx, 7), Vector2(sx, -8), Color(0.55, 0.4, 0.25), 1.0)
-	draw_circle(Vector2(sx, -9), 1.8, Color(0.4, 1.0, 1.0))
-	if is_dashing():
-		draw_line(-facing * 4.0, -facing * 14.0, Color(0.5, 0.9, 1.0, 0.6), 3.0)
+	draw_line(Vector2(sx, 7) + o, Vector2(sx, -8) + o, Color(0.55, 0.4, 0.25), 1.0)
+	draw_circle(Vector2(sx, -9) + o, 1.8, Color(col["accent"]) * 1.8)

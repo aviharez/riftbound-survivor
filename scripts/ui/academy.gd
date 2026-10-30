@@ -15,6 +15,8 @@ var save: Dictionary
 var _res_label: Label
 var _info_label: Label
 var _cards := {}   # building id -> {state, effect, cost, button}
+var _char_buttons := {}  # character id -> Button
+var _char_detail: Label
 var _reset_armed := false
 var _reset_btn: Button
 
@@ -61,7 +63,23 @@ func _build() -> void:
 	_res_label = _label("", 10, IVORY)
 	top.add_child(_res_label)
 
-	root.add_child(_label("Restore the academy with what you bring back from the Rift. Each building unlocks a slot for your next runs.", 8, Color(IVORY, 0.7)))
+	# character select
+	var chars := HBoxContainer.new()
+	chars.alignment = BoxContainer.ALIGNMENT_CENTER
+	chars.add_theme_constant_override("separation", 8)
+	root.add_child(chars)
+	for c in GameData.CHARACTERS:
+		var b := _button("%s\n%s" % [c["name"], c["role"]], Vector2(132, 56), _on_pick_character.bind(c["id"]))
+		b.add_theme_font_size_override("font_size", 10)
+		b.expand_icon = false
+		var tex := CharacterArt.portrait(c["id"])
+		if tex != null:
+			b.icon = tex
+		chars.add_child(b)
+		_char_buttons[c["id"]] = b
+	_char_detail = _label("", 8, IVORY)
+	_char_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	root.add_child(_char_detail)
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -95,11 +113,12 @@ func _build() -> void:
 func _building_card(b: Dictionary) -> Control:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _style(GOLD))
-	panel.custom_minimum_size = Vector2(250, 0)
+	panel.custom_minimum_size = Vector2(270, 0)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
-	box.add_child(_label(b["name"], 13, GOLD))
+	box.add_theme_constant_override("separation", 2)
+	box.add_child(_label(b["name"], 12, GOLD))
 	var state := _label("", 9, CYAN)
 	box.add_child(state)
 	var desc := _label(b["desc"], 8, Color(IVORY, 0.75))
@@ -109,13 +128,32 @@ func _building_card(b: Dictionary) -> Control:
 	box.add_child(effect)
 	var cost := _label("", 9, IVORY)
 	box.add_child(cost)
-	var btn := _button("Upgrade", Vector2(0, 30), _on_upgrade.bind(b["id"]))
+	var btn := _button("Upgrade", Vector2(0, 24), _on_upgrade.bind(b["id"]))
 	box.add_child(btn)
 	_cards[b["id"]] = {"state": state, "effect": effect, "cost": cost, "button": btn}
 	return panel
 
 
+func _stat_line(c: Dictionary) -> String:
+	var b: Dictionary = c["base"]
+	var parts: Array = ["HP %d" % int(b["max_hp"]), "Speed %d" % int(b["speed"]), "Damage %d" % int(b["damage"])]
+	if b.has("crit"): parts.append("Crit %d%%" % int(b["crit"] * 100))
+	if b.has("area_pct"): parts.append("Area +%d%%" % int(b["area_pct"] * 100))
+	if b.has("armor"): parts.append("Armor %d%%" % int(b["armor"] * 100))
+	if b.has("regen"): parts.append("Regen %.1f/s" % b["regen"])
+	if b.has("luck"): parts.append("Luck %d" % int(b["luck"]))
+	return "  ·  ".join(parts)
+
+
 func _refresh() -> void:
+	var sel: String = String(save.get("character", "astra"))
+	for id in _char_buttons:
+		var btn: Button = _char_buttons[id]
+		var on: bool = id == sel
+		btn.add_theme_stylebox_override("normal", _style(CYAN if on else Color(0.4, 0.4, 0.55)))
+		btn.add_theme_color_override("font_color", CYAN if on else IVORY)
+	var cdef := GameData.character_by_id(sel)
+	_char_detail.text = "%s\nStarter weapon: %s   ·   Passive %s: %s" % [_stat_line(cdef), GameData.weapon_by_id(cdef["starter"])["name"], cdef["passive"], cdef["passive_desc"]]
 	_res_label.text = "Gold %d   Materials %d   Aether %d   EXP %d" % [save["gold"], save["materials"], save["aether"], save["exp"]]
 	for b in GameData.BUILDINGS:
 		var id: String = b["id"]
@@ -153,6 +191,12 @@ func _refresh() -> void:
 
 
 # ------------------------------------------------------------------ actions
+
+func _on_pick_character(id: String) -> void:
+	save["character"] = id
+	SaveData.save_data(save)
+	_refresh()
+
 
 func _on_upgrade(id: String) -> void:
 	if SaveData.upgrade(save, id):

@@ -8,6 +8,11 @@ const MAP_W := 160
 const MAP_H := 160
 const RUN_TIME := 600.0            # 10:00 countdown
 const MAX_ENEMIES := 220
+
+# --- VFX quality (lower these if a phone struggles) ---
+const VFX_GLOW := true              # HDR bloom
+const VFX_PARTICLE_SCALE := 1.0     # 0.5 halves particle counts
+const VFX_SHAKE := 1.0              # camera shake multiplier (0 = off)
 const FOG_REVEAL_TILES := 11.0
 
 # Tile ids
@@ -152,6 +157,38 @@ static func weapon_count(w: Dictionary, lv: int, extra_projectiles: int) -> int:
 	if w.get("uses_projectiles", false):
 		n += extra_projectiles
 	return n
+
+
+# --- Playable characters ---
+# base: stat overrides on top of Player.stats defaults. starter: weapon that takes slot 1.
+# per_level: passive mods applied on every level-up (the character's growth identity).
+# colors: placeholder palette used until the character's sprite files exist.
+const CHARACTERS := [
+	{"id": "astra", "name": "Astra", "role": "Mage", "starter": "bolt",
+		"base": {"max_hp": 100.0, "speed": 90.0, "damage": 10.0, "crit": 0.05},
+		"passive": "Arcane Focus", "passive_desc": "+1% crit chance per level", "per_level": [["crit", 0.01]],
+		"colors": {"robe": Color(0.12, 0.18, 0.4), "hair": Color(0.85, 0.88, 0.95), "accent": Color(0.4, 1.0, 1.0)}},
+	{"id": "lyra", "name": "Lyra", "role": "Fire Mage", "starter": "orb",
+		"base": {"max_hp": 85.0, "speed": 96.0, "damage": 12.0, "area_pct": 0.10},
+		"passive": "Kindling", "passive_desc": "+2% damage per level", "per_level": [["damage_pct", 0.02]],
+		"colors": {"robe": Color(0.55, 0.08, 0.12), "hair": Color(1.0, 0.55, 0.7), "accent": Color(1.0, 0.6, 0.2)}},
+	{"id": "kael", "name": "Kael", "role": "Knight", "starter": "blade",
+		"base": {"max_hp": 150.0, "speed": 82.0, "damage": 10.0, "armor": 0.10},
+		"passive": "Bulwark", "passive_desc": "+1% damage reduction per level (max 50%)", "per_level": [["armor", 0.01]],
+		"colors": {"robe": Color(0.16, 0.2, 0.42), "hair": Color(0.15, 0.2, 0.45), "accent": Color(0.85, 0.88, 0.95)}},
+	{"id": "nym", "name": "Nym", "role": "Healer", "starter": "nova",
+		"base": {"max_hp": 95.0, "speed": 92.0, "damage": 9.0, "regen": 0.6, "luck": 10.0, "heal_pct": 0.5},
+		"passive": "Verdant Grace", "passive_desc": "+0.12 HP/s regen per level; all healing +50%", "per_level": [["regen", 0.12]],
+		"colors": {"robe": Color(0.9, 0.95, 0.9), "hair": Color(0.55, 1.0, 0.8), "accent": Color(0.3, 0.9, 0.45)}},
+]
+const ARMOR_CAP := 0.5
+
+
+static func character_by_id(id: String) -> Dictionary:
+	for c in CHARACTERS:
+		if c["id"] == id:
+			return c
+	return CHARACTERS[0]
 
 
 # --- Academy (meta progression, saved between runs) ---
