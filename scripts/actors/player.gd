@@ -22,6 +22,8 @@ var stats := {
 	"gold_pct": 0.0, "xp_pct": 0.0, "speed_pct": 0.0, "nova": 0.0, "nova_power": 0.0,
 }
 var hp := 100.0
+var tomes := {}          # tome id -> level (insertion order = slot order)
+var weapon_levels := {}  # extra weapon id -> level (Arcane Bolt is the base weapon)
 var facing := Vector2.RIGHT
 var move_dir := Vector2.ZERO
 var dash_t := 0.0

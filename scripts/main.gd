@@ -58,6 +58,7 @@ var _auto_t := 0.0
 var _shot_path := ""
 var _shots_taken := 0
 var _finishing := false
+var _choice_shot_done := false
 var _auto_portal_at := 240.0
 
 
@@ -155,7 +156,7 @@ func _process(delta: float) -> void:
 
 	if pending_levelups > 0 and not hud.choices_open():
 		pending_levelups -= 1
-		hud.show_choices("LEVEL UP — choose one", _roll_upgrades(), func(opt): player.apply_mods(opt["mods"]))
+		hud.show_choices("LEVEL UP — choose one", _roll_levelup_offers(), _apply_offer)
 
 
 func get_move_input() -> Vector2:
@@ -374,23 +375,75 @@ func item_by_id(id: String) -> Dictionary:
 	return {}
 
 
-func _roll_upgrades() -> Array:
+## Builds 3 level-up cards from tomes (new while a slot is free, or +1 level on an
+## owned one) and weapons. Each card rolls a rarity; Luck raises the odds.
+func _roll_levelup_offers() -> Array:
 	var pool: Array = []
 	var weights: Array = []
-	for u in GameData.UPGRADES:
-		if u.get("unique", false) and player.stats.get(u["id"], 0.0) >= 1.0:
+	var slots_free: bool = player.tomes.size() < GameData.TOME_SLOTS
+	for t in GameData.TOMES:
+		var lv: int = int(player.tomes.get(t["id"], 0))
+		if lv == 0 and not slots_free:
 			continue
-		if u.has("requires") and player.stats.get(u["requires"], 0.0) < 1.0:
+		if lv >= int(t["max"]):
 			continue
-		pool.append(u)
-		weights.append(float(u["weight"]))
+		pool.append({"kind": "tome", "def": t, "level": lv})
+		weights.append(float(t["weight"]) * (1.5 if lv > 0 else 1.0))  # owned tomes show up a bit more
+	for w in GameData.WEAPONS:
+		var lv: int = int(player.weapon_levels.get(w["id"], 0))
+		if lv >= int(w["max"]):
+			continue
+		pool.append({"kind": "weapon", "def": w, "level": lv})
+		weights.append(float(w["weight"]))
 	var out: Array = []
 	while out.size() < 3 and not pool.is_empty():
 		var i := GameData.weighted_index(rng, weights)
-		out.append(pool[i])
+		out.append(_make_offer(pool[i]))
 		pool.remove_at(i)
 		weights.remove_at(i)
+	if out.is_empty():
+		for f in GameData.LEVELUP_FALLBACK:
+			out.append({"kind": "fallback", "def": f, "name": f["name"], "desc": f["desc"]})
 	return out
+
+
+func _make_offer(entry: Dictionary) -> Dictionary:
+	var d: Dictionary = entry["def"]
+	var lv: int = entry["level"]
+	if entry["kind"] == "weapon":
+		var unlocking := lv == 0
+		return {"kind": "weapon", "def": d, "rarity": 0,
+			"name": ("%s (NEW)" % d["name"]) if unlocking else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1]),
+			"desc": d["unlock_desc"] if unlocking else d["level_desc"],
+			"color": Color(0.6, 0.9, 1.0)}
+	var rarity := GameData.roll_rarity(rng, player.stats["luck"])
+	var gain := GameData.tome_gain(d, rarity)
+	var title: String = ("%s (NEW)" % d["name"]) if lv == 0 else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1])
+	return {"kind": "tome", "def": d, "rarity": rarity, "gain": gain,
+		"name": title,
+		"desc": "%s  ·  %s" % [GameData.RARITY_NAMES[rarity], GameData.format_gain(d, gain)],
+		"color": GameData.RARITY_COLORS[rarity]}
+
+
+func _apply_offer(opt: Dictionary) -> void:
+	var d: Dictionary = opt["def"]
+	match opt["kind"]:
+		"tome":
+			player.tomes[d["id"]] = int(player.tomes.get(d["id"], 0)) + 1
+			if d["stat"] == "curse":
+				difficulty += float(opt["gain"])
+			else:
+				player.apply_mods([[d["stat"], float(opt["gain"])]])
+		"weapon":
+			var lv: int = int(player.weapon_levels.get(d["id"], 0))
+			player.apply_mods(d["unlock_mods"] if lv == 0 else d["level_mods"])
+			player.weapon_levels[d["id"]] = lv + 1
+		"fallback":
+			if d["kind"] == "heal":
+				player.heal(player.stats["max_hp"] * float(d["value"]))
+			else:
+				gold += float(d["value"])
+				gold_collected += float(d["value"])
 
 
 # ------------------------------------------------------------------ shrines
@@ -500,9 +553,12 @@ func _end_run(won: bool) -> void:
 	var aether := int((25 if boss_killed else 0) + final_swarm_t / 10.0)
 	var exp_gain := int((level * 20 + kills * 0.2) * share)
 	var t := int(elapsed)
-	var text := "%s\n\nKills: %d\nTime: %02d:%02d\nLevel: %d\nChests opened: %d   Shrines used: %d\nExplored: %d%%\nDamage dealt: %d\nFinal Swarm survived: %ds\n\nRewards%s:\nGold +%d   Materials +%d   Aether +%d   EXP +%d\n\nSeed %d" % [
+	var tome_list: Array = []
+	for id in player.tomes:
+		tome_list.append("%s %d" % [GameData.tome_by_id(id)["name"].replace("Tome of ", "").replace(" Tome", ""), player.tomes[id]])
+	var text := "%s\n\nKills: %d\nTime: %02d:%02d\nLevel: %d\nChests opened: %d   Shrines used: %d\nExplored: %d%%\nTomes: %s\nDamage dealt: %d\nFinal Swarm survived: %ds\n\nRewards%s:\nGold +%d   Materials +%d   Aether +%d   EXP +%d\n\nSeed %d" % [
 		"VICTORY" if won else "DEFEAT", kills, t / 60, t % 60, level, chests_opened, shrines_used,
-		int(fog.explored_ratio() * 100), int(player.damage_dealt), int(final_swarm_t),
+		int(fog.explored_ratio() * 100), ", ".join(tome_list) if not tome_list.is_empty() else "-", int(player.damage_dealt), int(final_swarm_t),
 		"" if won else " (50% on defeat)", academy_gold, materials, aether, exp_gain, seed_value]
 	print("[run] END ", text.replace("\n", " | "))
 	hud.show_result(text)
@@ -520,6 +576,10 @@ func restart() -> void:
 ## activates the portal, kills the boss, exits. Prints a summary and quits.
 func _autotest_step(delta: float) -> void:
 	if hud.choices_open():
+		if _shot_path != "" and not _choice_shot_done and elapsed > 20.0 and hud._choice_title.text.begins_with("LEVEL"):
+			_choice_shot_done = true
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_choice.png"))
 		hud.pick_choice(0)
 	if run_over:
 		if _finishing:
@@ -528,6 +588,7 @@ func _autotest_step(delta: float) -> void:
 		if _shot_path != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
+		print("[autotest] tomes=%s weapons=%s items=%d" % [player.tomes, player.weapon_levels, items_owned.size()])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm])
 		get_tree().quit()

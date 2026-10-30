@@ -1,7 +1,8 @@
 # Riftbound: Arcane Academy — Rift Run Prototype (Godot 4)
 
 Prototype combat run ala Megabonk: map procedural, spawn player dan portal boss acak,
-chest berbayar, shrine, elite, Rift Surge, Final Swarm, boss, minimap + peta fog-of-war.
+chest berbayar, shrine, tome (upgrade stat bertingkat ala Megabonk, 4 slot), elite, Rift Surge,
+Final Swarm, boss, minimap + peta fog-of-war.
 Semua grafik masih placeholder (bentuk dasar), belum ada sprite atau suara.
 
 Diuji dengan **Godot 4.7.2** (headless + render via OpenGL). Kode tidak memakai fitur khusus 4.7,
@@ -27,7 +28,7 @@ Orientasi sudah diset landscape, renderer `mobile`, resolusi internal 640×360 d
 
 | File | Isi |
 | --- | --- |
-| `scripts/data/game_data.gd` | Semua angka tuning dan tabel konten (item, upgrade, shrine, musuh, boss, timeline) |
+| `scripts/data/game_data.gd` | Semua angka tuning dan tabel konten (item, tome, weapon, shrine, musuh, boss, timeline) |
 | `scripts/world/map_generator.gd` | Generator map deterministik dari seed + aturan penempatan objek |
 | `scripts/world/world.gd` | Render map (1 tekstur), collision grid, flow field BFS untuk pathing musuh |
 | `scripts/world/fog.gd` | Fog-of-war (sel 4×4 tile) untuk minimap & peta penuh |
@@ -40,7 +41,7 @@ Orientasi sudah diset landscape, renderer `mobile`, resolusi internal 640×360 d
 | `scripts/ui/hud.gd` | HUD, joystick, minimap, peta, panah tepi layar, panel pilihan, layar hasil |
 | `scripts/main.gd` | Orkestrasi run: timeline, spawn, ekonomi, shrine, boss, menang/kalah, autotest |
 
-Menambah item/shrine/musuh baru: tambahkan baris di `game_data.gd`.
+Menambah item/tome/shrine/musuh baru: tambahkan baris di `game_data.gd`.
 
 ## Tes otomatis
 

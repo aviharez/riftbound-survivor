@@ -133,6 +133,10 @@ func show_choices(title: String, options: Array, cb: Callable) -> void:
 		if i < options.size():
 			b.visible = true
 			b.text = "%s\n%s" % [options[i]["name"], options[i]["desc"]]
+			var col: Color = options[i].get("color", IVORY)
+			b.add_theme_color_override("font_color", col)
+			b.add_theme_color_override("font_hover_color", col.lightened(0.3))
+			b.add_theme_color_override("font_pressed_color", col.lightened(0.3))
 			b.set_meta("option", options[i])
 		else:
 			b.visible = false
@@ -202,17 +206,34 @@ func _draw_player_panel() -> void:
 	_bar(Rect2(40, 8, 120, 8), p.hp / p.stats["max_hp"], Color(0.9, 0.25, 0.3))
 	_text(Vector2(100, 15), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
 	_bar(Rect2(40, 19, 120, 4), game.xp / game.xp_next, CYAN)
+	# tome slots (empty slots shown as dim frames)
+	var tx := 40.0
+	var tome_ids: Array = p.tomes.keys()
+	for i in GameData.TOME_SLOTS:
+		var r := Rect2(tx, 26, 28, 12)
+		view.draw_rect(r, NAVY)
+		if i < tome_ids.size():
+			var t: Dictionary = GameData.tome_by_id(tome_ids[i])
+			view.draw_rect(r, CYAN, false, 1.0)
+			var short: String = t["name"].replace("Tome of ", "").replace(" Tome", "").substr(0, 3)
+			_text(Vector2(tx + 2, 35), short, IVORY, 7, false)
+			_text(Vector2(tx + 21, 35), str(p.tomes[tome_ids[i]]), CYAN, 7, true)
+		else:
+			view.draw_rect(r, Color(1, 1, 1, 0.15), false, 1.0)
+		tx += 30.0
+	if p.weapon_levels.has("nova"):
+		_text(Vector2(tx + 2, 35), "Nova %d" % p.weapon_levels["nova"], Color(0.6, 0.9, 1.0), 7, false)
 	# owned items
 	var x := 40.0
 	for id in game.items_owned:
 		var it: Dictionary = game.item_by_id(id)
 		var col: Color = GameData.RARITY_COLORS[int(it["rarity"])]
-		view.draw_rect(Rect2(x, 26, 12, 12), NAVY)
-		view.draw_rect(Rect2(x, 26, 12, 12), col, false, 1.0)
-		_text(Vector2(x + 6, 35), it["name"].substr(0, 1), col, 8, true)
+		view.draw_rect(Rect2(x, 41, 12, 12), NAVY)
+		view.draw_rect(Rect2(x, 41, 12, 12), col, false, 1.0)
+		_text(Vector2(x + 6, 50), it["name"].substr(0, 1), col, 8, true)
 		var n: int = game.items_owned[id]
 		if n > 1:
-			_text(Vector2(x + 11, 41), str(n), IVORY, 6, true)
+			_text(Vector2(x + 11, 56), str(n), IVORY, 6, true)
 		x += 14.0
 
 
@@ -338,6 +359,9 @@ func _edge_arrow(vs: Vector2, cam_center: Vector2, target: Vector2, col: Color, 
 		return
 	var k: float = min(inset.x / max(0.001, absf(rel.x)), inset.y / max(0.001, absf(rel.y)))
 	var p := half + rel * k
+	p.y = max(p.y, 72.0)  # keep arrows below the top HUD band (bars, timer, minimap)
+	if p.x > vs.x - MINIMAP_SIZE - 20 and p.y < MINIMAP_SIZE + 64:
+		p.y = MINIMAP_SIZE + 64
 	var d := rel.normalized()
 	var n := d.orthogonal()
 	view.draw_colored_polygon(PackedVector2Array([p + d * size, p - d * size * 0.6 + n * size * 0.8, p - d * size * 0.6 - n * size * 0.8]), col)
@@ -410,7 +434,7 @@ func _build_choice_panel() -> void:
 	box.add_child(row)
 	for i in 3:
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(150, 56)
+		b.custom_minimum_size = Vector2(186, 56)
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 9)
 		b.add_theme_stylebox_override("normal", _style(Color(0.5, 0.45, 0.7)))

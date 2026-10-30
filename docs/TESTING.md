@@ -10,6 +10,15 @@ Buat GitHub Issue atau tulis di chat dengan format:
 - Yang seharusnya:
 - Menit ke berapa:
 
+## Yang baru di build ini (fokus tes)
+- [ ] Chest dan shrine terasa cukup sering ditemui (sekarang 32 chest, 18 shrine, 120 pot per map)
+- [ ] Aether Well (shrine hijau muda) ditemukan; berdiri 1 detik di lingkarannya menarik semua XP gem di map
+- [ ] Level-up menawarkan tome: kartu (NEW) saat slot masih kosong, kartu "Lv 2 > 3" untuk tome yang sudah dimiliki
+- [ ] Setelah 4 tome dimiliki, tidak ada lagi tawaran tome baru, hanya naik level
+- [ ] Warna kartu sesuai rarity (putih/biru/ungu/emas) dan angkanya lebih besar untuk rarity tinggi
+- [ ] Slot tome dan levelnya terlihat di kiri atas, di bawah bar XP
+- [ ] Cursed Tome terasa sebagai pilihan berisiko (musuh lebih banyak dan kuat)
+
 ## Yang perlu dicek di build sekarang
 
 **Kontrol**

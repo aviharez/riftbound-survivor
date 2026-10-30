@@ -89,11 +89,15 @@ func _try_generate(s: int) -> Dictionary:
 			return true)
 		if c.x < 0:
 			return {}
-		var weights: Array = []
-		for k in type_keys:
-			var full: bool = int(type_count.get(k, 0)) >= GameData.SHRINE_MAX_PER_TYPE
-			weights.append(0.0 if full else float(GameData.SHRINE_TYPES[k]["weight"]))
-		var t: String = type_keys[GameData.weighted_index(rng, weights)]
+		var t: String
+		if n < GameData.SHRINE_GUARANTEED.size():
+			t = GameData.SHRINE_GUARANTEED[n]
+		else:
+			var weights: Array = []
+			for k in type_keys:
+				var full: bool = int(type_count.get(k, 0)) >= GameData.SHRINE_MAX_PER_TYPE
+				weights.append(0.0 if full else float(GameData.SHRINE_TYPES[k]["weight"]))
+			t = type_keys[GameData.weighted_index(rng, weights)]
 		type_count[t] = int(type_count.get(t, 0)) + 1
 		shrines.append({"cell": c, "type": t})
 		taken.append(c)

@@ -20,14 +20,16 @@ const T_RUINS := 3
 const SPAWN_EDGE_MIN := 12
 const PORTAL_MIN_DIST := 70
 const PORTAL_EDGE_MIN := 10
-const CHEST_COUNT := 16
-const CHEST_SPACING := 14
+const CHEST_COUNT := 32
+const CHEST_SPACING := 9
 const CHEST_SPAWN_MIN := 8
-const SHRINE_COUNT := 8
-const SHRINE_SPACING := 18
-const SHRINE_MAX_PER_TYPE := 2
-const POT_COUNT := 60
-const POT_SPACING := 4
+const SHRINE_COUNT := 18
+const SHRINE_SPACING := 11
+const SHRINE_MAX_PER_TYPE := 6
+# Placed first on every map, so these always exist (2 Aether Wells = gem pull is always findable)
+const SHRINE_GUARANTEED := ["ley", "ley", "ley", "well", "well", "trial", "moon"]
+const POT_COUNT := 120
+const POT_SPACING := 3
 
 # --- Timeline (seconds elapsed) ---
 const ELITE_START := 60.0
@@ -70,22 +72,71 @@ const ITEMS := [
 	{"id": "rift_heart", "name": "Rift Heart", "rarity": 3, "desc": "+25% damage, +25% area", "mods": [["damage_pct", 0.25], ["area_pct", 0.25]]},
 ]
 
-# Level-up choices (pick 1 of 3)
-const UPGRADES := [
-	{"id": "dmg", "name": "Arcane Power", "desc": "+15% damage", "weight": 10.0, "mods": [["damage_pct", 0.15]]},
-	{"id": "aspd", "name": "Quick Cast", "desc": "+12% attack speed", "weight": 10.0, "mods": [["attack_speed_pct", 0.12]]},
-	{"id": "proj", "name": "Split Bolt", "desc": "+1 projectile", "weight": 4.0, "mods": [["projectiles", 1.0]]},
-	{"id": "move", "name": "Fleet Step", "desc": "+8% move speed", "weight": 8.0, "mods": [["speed_pct", 0.08]]},
-	{"id": "hp", "name": "Vitality", "desc": "+20 max HP", "weight": 8.0, "mods": [["max_hp", 20.0]]},
-	{"id": "pick", "name": "Aether Pull", "desc": "+30% pickup radius", "weight": 6.0, "mods": [["pickup_pct", 0.30]]},
-	{"id": "bounce", "name": "Ricochet", "desc": "+1 bounce", "weight": 5.0, "mods": [["bounce", 1.0]]},
-	{"id": "area", "name": "Wide Weave", "desc": "+15% area", "weight": 6.0, "mods": [["area_pct", 0.15]]},
-	{"id": "regen", "name": "Mending", "desc": "+0.5 HP/s regen", "weight": 5.0, "mods": [["regen", 0.5]]},
-	{"id": "luck", "name": "Fortune", "desc": "+8 Luck", "weight": 5.0, "mods": [["luck", 8.0]]},
-	{"id": "xp", "name": "Studious", "desc": "+10% XP gain", "weight": 5.0, "mods": [["xp_pct", 0.10]]},
-	{"id": "nova", "name": "Frost Nova", "desc": "Pulse that hits all nearby foes", "weight": 7.0, "mods": [["nova", 1.0]], "unique": true},
-	{"id": "nova_up", "name": "Deep Frost", "desc": "Frost Nova +30% damage, faster", "weight": 6.0, "mods": [["nova_power", 1.0]], "requires": "nova"},
+# --- Tomes (Megabonk-style) ---
+# Level-up offers 3 cards. A card is either a NEW tome (only while a tome slot is free),
+# +1 level on a tome you own, or the Frost Nova weapon (unlock / level up).
+# Each card rolls a rarity (Luck helps); rarity multiplies that level's gain.
+# Megabonk starts with 2 tome slots and unlocks up to 4; here 4 for the prototype
+# (later this can be gated by the academy Library).
+const TOME_SLOTS := 4
+const OFFER_RARITY_MULT := [1.0, 1.4, 1.8, 2.5]
+# stat: player stat key ("curse" = run difficulty). per: gain per level at Common.
+# int: gain is rounded to a whole number (min 1). label: shown after the number.
+const TOMES := [
+	{"id": "power", "name": "Tome of Power", "stat": "damage_pct", "per": 0.08, "max": 99, "weight": 10.0, "label": "damage"},
+	{"id": "haste", "name": "Tome of Haste", "stat": "attack_speed_pct", "per": 0.08, "max": 99, "weight": 10.0, "label": "attack speed"},
+	{"id": "multitude", "name": "Tome of Multitude", "stat": "projectiles", "per": 1.0, "int": true, "max": 8, "weight": 6.0, "label": "projectile"},
+	{"id": "expanse", "name": "Tome of Expanse", "stat": "area_pct", "per": 0.10, "max": 99, "weight": 7.0, "label": "area"},
+	{"id": "swiftness", "name": "Tome of Swiftness", "stat": "speed_pct", "per": 0.06, "max": 99, "weight": 7.0, "label": "move speed"},
+	{"id": "vitality", "name": "Tome of Vitality", "stat": "max_hp", "per": 20.0, "max": 99, "weight": 7.0, "label": "max HP"},
+	{"id": "mending", "name": "Tome of Mending", "stat": "regen", "per": 0.4, "max": 99, "weight": 5.0, "label": "HP/s regen"},
+	{"id": "fortune", "name": "Tome of Fortune", "stat": "luck", "per": 6.0, "max": 99, "weight": 6.0, "label": "Luck"},
+	{"id": "study", "name": "Tome of Study", "stat": "xp_pct", "per": 0.07, "max": 99, "weight": 6.0, "label": "XP gain"},
+	{"id": "attraction", "name": "Tome of Attraction", "stat": "pickup_pct", "per": 0.25, "max": 99, "weight": 5.0, "label": "pickup radius"},
+	{"id": "precision", "name": "Tome of Precision", "stat": "crit", "per": 0.04, "max": 99, "weight": 6.0, "label": "crit chance"},
+	{"id": "greed", "name": "Tome of Greed", "stat": "gold_pct", "per": 0.10, "max": 99, "weight": 5.0, "label": "gold"},
+	{"id": "ricochet", "name": "Tome of Ricochet", "stat": "bounce", "per": 1.0, "int": true, "max": 6, "weight": 5.0, "label": "bounce"},
+	{"id": "cursed", "name": "Cursed Tome", "stat": "curse", "per": 0.035, "max": 99, "weight": 3.0, "label": "difficulty (more foes, more XP)"},
 ]
+const PCT_STATS := ["damage_pct", "attack_speed_pct", "area_pct", "speed_pct", "xp_pct", "pickup_pct", "crit", "gold_pct", "curse"]
+
+# Weapons offered at level-up besides tomes. Arcane Bolt is the starting weapon.
+const WEAPONS := [
+	{"id": "nova", "name": "Frost Nova", "max": 8, "weight": 7.0,
+		"unlock_desc": "New weapon: pulse that hits all nearby foes", "unlock_mods": [["nova", 1.0]],
+		"level_desc": "+30% damage, pulses faster", "level_mods": [["nova_power", 1.0]]},
+]
+# When every tome and weapon is maxed out
+const LEVELUP_FALLBACK := [
+	{"id": "fb_heal", "name": "Second Wind", "desc": "Heal 40% HP", "kind": "heal", "value": 0.4},
+	{"id": "fb_gold", "name": "Aether Coins", "desc": "+20 gold", "kind": "gold", "value": 20.0},
+]
+
+
+static func tome_by_id(id: String) -> Dictionary:
+	for t in TOMES:
+		if t["id"] == id:
+			return t
+	return {}
+
+
+## Gain for one tome level at a given offer rarity.
+static func tome_gain(t: Dictionary, rarity: int) -> float:
+	var g: float = float(t["per"]) * float(OFFER_RARITY_MULT[rarity])
+	if t.get("int", false):
+		g = max(1.0, round(g))
+	return g
+
+
+static func format_gain(t: Dictionary, gain: float) -> String:
+	if t["stat"] in PCT_STATS:
+		return "+%s%% %s" % [_num(gain * 100.0), t["label"]]
+	return "+%s %s" % [_num(gain), t["label"]]
+
+
+static func _num(v: float) -> String:
+	return str(int(round(v))) if absf(v - round(v)) < 0.05 else "%.1f" % v
+
 
 # Ley Shrine boons (pick 1 of 3)
 const BOONS := [
