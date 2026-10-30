@@ -11,13 +11,19 @@ Buat GitHub Issue atau tulis di chat dengan format:
 - Menit ke berapa:
 
 ## Yang baru di build ini (fokus tes)
-- [ ] Chest dan shrine terasa cukup sering ditemui (sekarang 32 chest, 18 shrine, 120 pot per map)
-- [ ] Aether Well (shrine hijau muda) ditemukan; berdiri 1 detik di lingkarannya menarik semua XP gem di map
-- [ ] Level-up menawarkan tome: kartu (NEW) saat slot masih kosong, kartu "Lv 2 > 3" untuk tome yang sudah dimiliki
-- [ ] Setelah 4 tome dimiliki, tidak ada lagi tawaran tome baru, hanya naik level
-- [ ] Warna kartu sesuai rarity (putih/biru/ungu/emas) dan angkanya lebih besar untuk rarity tinggi
-- [ ] Slot tome dan levelnya terlihat di kiri atas, di bawah bar XP
-- [ ] Cursed Tome terasa sebagai pilihan berisiko (musuh lebih banyak dan kuat)
+
+Game sekarang dibuka di **layar akademi**. Alurnya: akademi > Enter the Rift > run > layar hasil > Return to Academy.
+
+- [ ] Reward run (Gold, Materials, Aether, EXP) bertambah di akademi setelah run, termasuk run yang kalah (50%)
+- [ ] Upgrade **Library** menambah slot tome (2 > 3 > 4); **Training Ground** menambah slot weapon (2 > 3 > 4)
+- [ ] Slot yang terkunci terlihat sebagai "lock" di HUD kiri atas (baris atas weapon, baris bawah tome)
+- [ ] Biaya upgrade terasa wajar: berapa run yang kamu butuhkan untuk Lv 1 dan Lv 2?
+- [ ] Progres tetap ada setelah game ditutup dan dibuka lagi
+- [ ] Coba keenam weapon: Arcane Bolt (bawaan), Frost Nova, Flame Orb, Mana Burst, Storm Chain, Spirit Blade. Ada yang terlalu kuat/lemah atau efeknya tidak terbaca?
+- [ ] Setelah slot weapon penuh, level-up hanya menawarkan level weapon yang sudah dimiliki
+- [ ] "Reset save" (tekan 2x) mengembalikan semuanya ke awal
+
+Dari build sebelumnya, masih perlu dicek: kepadatan chest/shrine, Aether Well (penarik gem), dan tome.
 
 ## Yang perlu dicek di build sekarang
 

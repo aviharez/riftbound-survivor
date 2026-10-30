@@ -76,9 +76,11 @@ const ITEMS := [
 # Level-up offers 3 cards. A card is either a NEW tome (only while a tome slot is free),
 # +1 level on a tome you own, or the Frost Nova weapon (unlock / level up).
 # Each card rolls a rarity (Luck helps); rarity multiplies that level's gain.
-# Megabonk starts with 2 tome slots and unlocks up to 4; here 4 for the prototype
-# (later this can be gated by the academy Library).
-const TOME_SLOTS := 4
+# Like Megabonk, runs start with 2 tome slots and 2 weapon slots (Arcane Bolt always
+# takes one weapon slot). Academy buildings unlock up to 4 + 4 (see BUILDINGS).
+const BASE_TOME_SLOTS := 2
+const BASE_WEAPON_SLOTS := 2
+const MAX_SLOTS := 4
 const OFFER_RARITY_MULT := [1.0, 1.4, 1.8, 2.5]
 # stat: player stat key ("curse" = run difficulty). per: gain per level at Common.
 # int: gain is rounded to a whole number (min 1). label: shown after the number.
@@ -100,12 +102,76 @@ const TOMES := [
 ]
 const PCT_STATS := ["damage_pct", "attack_speed_pct", "area_pct", "speed_pct", "xp_pct", "pickup_pct", "crit", "gold_pct", "curse"]
 
-# Weapons offered at level-up besides tomes. Arcane Bolt is the starting weapon.
+# --- Weapons ---
+# Every weapon levels 1..max through level-up cards. Per level: damage x(1 + lvl_dmg*(lv-1)),
+# cooldown /(1 + lvl_cd*(lv-1)), size x(1 + lvl_area*(lv-1)); `count_at` lists the levels
+# that add +1 to the weapon's count (projectiles / orbs / chain jumps).
+# dmg is a multiplier of the player's damage. The player's "projectiles" stat
+# (Tome of Multitude, Twin Sigil) adds to the count of weapons with uses_projectiles.
+const WEAPON_MAX_LEVEL := 8
 const WEAPONS := [
-	{"id": "nova", "name": "Frost Nova", "max": 8, "weight": 7.0,
-		"unlock_desc": "New weapon: pulse that hits all nearby foes", "unlock_mods": [["nova", 1.0]],
-		"level_desc": "+30% damage, pulses faster", "level_mods": [["nova_power", 1.0]]},
+	{"id": "bolt", "name": "Arcane Bolt", "starter": true, "weight": 8.0,
+		"desc": "Homing magic bolt at the nearest foe", "level_desc": "+20% damage, faster casts",
+		"cd": 0.8, "dmg": 1.0, "range": 220.0, "count": 1, "count_at": [4, 7], "uses_projectiles": true,
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
+	{"id": "nova", "name": "Frost Nova", "weight": 7.0,
+		"desc": "Pulse that hits all nearby foes", "level_desc": "+20% damage, wider, faster",
+		"cd": 3.0, "dmg": 0.8, "radius": 60.0,
+		"lvl_dmg": 0.2, "lvl_cd": 0.06, "lvl_area": 0.06},
+	{"id": "orb", "name": "Flame Orb", "weight": 7.0,
+		"desc": "Fire orbs circle you and burn what they touch", "level_desc": "+20% damage, more orbs at Lv 3/5/7",
+		"cd": 0.5, "dmg": 0.45, "radius": 34.0, "count": 2, "count_at": [3, 5, 7], "uses_projectiles": true,
+		"spin": 3.2, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
+	{"id": "burst", "name": "Mana Burst", "weight": 7.0,
+		"desc": "Explosion on a random foe nearby", "level_desc": "+20% damage, bigger blast",
+		"cd": 2.4, "dmg": 2.2, "radius": 38.0, "range": 200.0,
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.08},
+	{"id": "chain", "name": "Storm Chain", "weight": 7.0,
+		"desc": "Lightning that jumps between foes", "level_desc": "+20% damage, more jumps at Lv 3/5/7",
+		"cd": 1.6, "dmg": 0.9, "range": 180.0, "jump_range": 90.0, "count": 3, "count_at": [3, 5, 7], "uses_projectiles": true,
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
+	{"id": "blade", "name": "Spirit Blade", "weight": 7.0,
+		"desc": "Wide slash in the direction you move", "level_desc": "+20% damage, longer reach",
+		"cd": 1.2, "dmg": 1.5, "radius": 46.0, "arc": 2.1,
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
 ]
+
+
+static func weapon_by_id(id: String) -> Dictionary:
+	for w in WEAPONS:
+		if w["id"] == id:
+			return w
+	return {}
+
+
+static func weapon_count(w: Dictionary, lv: int, extra_projectiles: int) -> int:
+	var n: int = int(w.get("count", 1))
+	for at in w.get("count_at", []):
+		if lv >= int(at):
+			n += 1
+	if w.get("uses_projectiles", false):
+		n += extra_projectiles
+	return n
+
+
+# --- Academy (meta progression, saved between runs) ---
+# Level names follow the concept doc's building progression.
+const BUILDING_STATES := ["Ruins", "Repaired", "Functional"]
+const BUILDINGS := [
+	{"id": "library", "name": "Library", "unlocks": "tome", "desc": "Restored shelves of spell tomes: +1 tome slot per level",
+		"costs": [{"gold": 400, "materials": 60, "aether": 0}, {"gold": 1200, "materials": 180, "aether": 20}]},
+	{"id": "training", "name": "Training Ground", "unlocks": "weapon", "desc": "Practice yards for combat magic: +1 weapon slot per level",
+		"costs": [{"gold": 350, "materials": 80, "aether": 0}, {"gold": 1100, "materials": 220, "aether": 20}]},
+]
+
+
+static func building_by_id(id: String) -> Dictionary:
+	for b in BUILDINGS:
+		if b["id"] == id:
+			return b
+	return {}
+
+
 # When every tome and weapon is maxed out
 const LEVELUP_FALLBACK := [
 	{"id": "fb_heal", "name": "Second Wind", "desc": "Heal 40% HP", "kind": "heal", "value": 0.4},

@@ -3,7 +3,7 @@ extends Node2D
 ## timeline (elites, Rift Surges, Final Swarm), the in-run economy, shrines,
 ## the boss portal and the win / lose flow.
 ##
-## Command-line (after `--`): --seed=123  --autotest  --autotest-die  --shot=res://shot.png
+## Command-line (after `--`): --seed=123  --slots=4  --autotest  --autotest-die  --autotest-late  --shot=/tmp/shot.png
 
 var seed_value := 0
 var rng := RandomNumberGenerator.new()
@@ -16,6 +16,7 @@ var enemies: Enemies
 var player: Player
 var projectiles: Projectiles
 var effects: Effects
+var weapons: Weapons
 var camera: Camera2D
 var hud: Hud
 
@@ -39,6 +40,9 @@ var boss_spawned := false
 var boss_killed := false
 var run_over := false
 var victory := false
+var tome_slots := GameData.BASE_TOME_SLOTS
+var weapon_slots := GameData.BASE_WEAPON_SLOTS
+var _forced_slots := 0
 
 var _spawn_accum := 0.0
 var _next_elite := GameData.ELITE_START
@@ -67,6 +71,13 @@ func _ready() -> void:
 	if seed_value == 0:
 		seed_value = randi() % 1000000 + 1
 	rng.seed = seed_value
+	if _forced_slots > 0:
+		tome_slots = clampi(_forced_slots, 1, GameData.MAX_SLOTS)
+		weapon_slots = tome_slots
+	elif not _auto:
+		var save := SaveData.load_data()
+		tome_slots = SaveData.slots_for(save, "tome")
+		weapon_slots = SaveData.slots_for(save, "weapon")
 
 	var t0 := Time.get_ticks_msec()
 	var map := MapGenerator.new().generate(seed_value)
@@ -83,6 +94,7 @@ func _ready() -> void:
 	player = _add(Player.new())
 	player.position = world.cell_center(map["spawn"])
 	projectiles = _add(Projectiles.new())
+	weapons = _add(Weapons.new())
 	effects = _add(Effects.new())
 
 	camera = Camera2D.new()
@@ -127,6 +139,8 @@ func _parse_args() -> void:
 		elif a == "--autotest-late":
 			_auto = true
 			_auto_portal_at = 640.0
+		elif a.begins_with("--slots="):
+			_forced_slots = int(a.get_slice("=", 1))
 		elif a.begins_with("--shot="):
 			_shot_path = a.get_slice("=", 1)
 
@@ -380,7 +394,7 @@ func item_by_id(id: String) -> Dictionary:
 func _roll_levelup_offers() -> Array:
 	var pool: Array = []
 	var weights: Array = []
-	var slots_free: bool = player.tomes.size() < GameData.TOME_SLOTS
+	var slots_free: bool = player.tomes.size() < tome_slots
 	for t in GameData.TOMES:
 		var lv: int = int(player.tomes.get(t["id"], 0))
 		if lv == 0 and not slots_free:
@@ -389,9 +403,12 @@ func _roll_levelup_offers() -> Array:
 			continue
 		pool.append({"kind": "tome", "def": t, "level": lv})
 		weights.append(float(t["weight"]) * (1.5 if lv > 0 else 1.0))  # owned tomes show up a bit more
+	var weapon_slot_free: bool = player.weapon_levels.size() < weapon_slots
 	for w in GameData.WEAPONS:
 		var lv: int = int(player.weapon_levels.get(w["id"], 0))
-		if lv >= int(w["max"]):
+		if lv == 0 and not weapon_slot_free:
+			continue
+		if lv >= GameData.WEAPON_MAX_LEVEL:
 			continue
 		pool.append({"kind": "weapon", "def": w, "level": lv})
 		weights.append(float(w["weight"]))
@@ -414,7 +431,7 @@ func _make_offer(entry: Dictionary) -> Dictionary:
 		var unlocking := lv == 0
 		return {"kind": "weapon", "def": d, "rarity": 0,
 			"name": ("%s (NEW)" % d["name"]) if unlocking else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1]),
-			"desc": d["unlock_desc"] if unlocking else d["level_desc"],
+			"desc": d["desc"] if unlocking else d["level_desc"],
 			"color": Color(0.6, 0.9, 1.0)}
 	var rarity := GameData.roll_rarity(rng, player.stats["luck"])
 	var gain := GameData.tome_gain(d, rarity)
@@ -435,9 +452,7 @@ func _apply_offer(opt: Dictionary) -> void:
 			else:
 				player.apply_mods([[d["stat"], float(opt["gain"])]])
 		"weapon":
-			var lv: int = int(player.weapon_levels.get(d["id"], 0))
-			player.apply_mods(d["unlock_mods"] if lv == 0 else d["level_mods"])
-			player.weapon_levels[d["id"]] = lv + 1
+			player.weapon_levels[d["id"]] = int(player.weapon_levels.get(d["id"], 0)) + 1
 		"fallback":
 			if d["kind"] == "heal":
 				player.heal(player.stats["max_hp"] * float(d["value"]))
@@ -556,12 +571,27 @@ func _end_run(won: bool) -> void:
 	var tome_list: Array = []
 	for id in player.tomes:
 		tome_list.append("%s %d" % [GameData.tome_by_id(id)["name"].replace("Tome of ", "").replace(" Tome", ""), player.tomes[id]])
-	var text := "%s\n\nKills: %d\nTime: %02d:%02d\nLevel: %d\nChests opened: %d   Shrines used: %d\nExplored: %d%%\nTomes: %s\nDamage dealt: %d\nFinal Swarm survived: %ds\n\nRewards%s:\nGold +%d   Materials +%d   Aether +%d   EXP +%d\n\nSeed %d" % [
+	var weapon_list: Array = []
+	for id in player.weapon_levels:
+		weapon_list.append("%s %d" % [GameData.weapon_by_id(id)["name"], player.weapon_levels[id]])
+	var text := "%s\n\nKills: %d\nTime: %02d:%02d\nLevel: %d\nChests opened: %d   Shrines used: %d\nExplored: %d%%\nWeapons: %s\nTomes: %s\nDamage dealt: %d\nFinal Swarm survived: %ds\n\nRewards%s:\nGold +%d   Materials +%d   Aether +%d   EXP +%d\n\nSeed %d" % [
 		"VICTORY" if won else "DEFEAT", kills, t / 60, t % 60, level, chests_opened, shrines_used,
-		int(fog.explored_ratio() * 100), ", ".join(tome_list) if not tome_list.is_empty() else "-", int(player.damage_dealt), int(final_swarm_t),
-		"" if won else " (50% on defeat)", academy_gold, materials, aether, exp_gain, seed_value]
+		int(fog.explored_ratio() * 100), ", ".join(weapon_list), ", ".join(tome_list) if not tome_list.is_empty() else "-", int(player.damage_dealt), int(final_swarm_t),
+		" (sent to the academy)" if won else " (50% on defeat, sent to the academy)", academy_gold, materials, aether, exp_gain, seed_value]
 	print("[run] END ", text.replace("\n", " | "))
+	if not _auto:
+		var save := SaveData.load_data()
+		SaveData.bank_run(save, {"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain},
+			{"victory": won, "kills": kills, "time": t, "level": level, "seed": seed_value,
+			"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain})
+		SaveData.save_data(save)
 	hud.show_result(text)
+
+
+func return_to_academy() -> void:
+	Engine.time_scale = 1.0
+	get_tree().paused = false
+	get_tree().change_scene_to_file("res://scenes/academy.tscn")
 
 
 func restart() -> void:
@@ -588,7 +618,7 @@ func _autotest_step(delta: float) -> void:
 		if _shot_path != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
-		print("[autotest] tomes=%s weapons=%s items=%d" % [player.tomes, player.weapon_levels, items_owned.size()])
+		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size()])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm])
 		get_tree().quit()

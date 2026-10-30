@@ -206,35 +206,40 @@ func _draw_player_panel() -> void:
 	_bar(Rect2(40, 8, 120, 8), p.hp / p.stats["max_hp"], Color(0.9, 0.25, 0.3))
 	_text(Vector2(100, 15), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
 	_bar(Rect2(40, 19, 120, 4), game.xp / game.xp_next, CYAN)
-	# tome slots (empty slots shown as dim frames)
-	var tx := 40.0
-	var tome_ids: Array = p.tomes.keys()
-	for i in GameData.TOME_SLOTS:
-		var r := Rect2(tx, 26, 28, 12)
-		view.draw_rect(r, NAVY)
-		if i < tome_ids.size():
-			var t: Dictionary = GameData.tome_by_id(tome_ids[i])
-			view.draw_rect(r, CYAN, false, 1.0)
-			var short: String = t["name"].replace("Tome of ", "").replace(" Tome", "").substr(0, 3)
-			_text(Vector2(tx + 2, 35), short, IVORY, 7, false)
-			_text(Vector2(tx + 21, 35), str(p.tomes[tome_ids[i]]), CYAN, 7, true)
-		else:
-			view.draw_rect(r, Color(1, 1, 1, 0.15), false, 1.0)
-		tx += 30.0
-	if p.weapon_levels.has("nova"):
-		_text(Vector2(tx + 2, 35), "Nova %d" % p.weapon_levels["nova"], Color(0.6, 0.9, 1.0), 7, false)
-	# owned items
+	# weapon row (y 26) and tome row (y 41): filled / empty / locked (opens via academy buildings)
+	_slot_row(26.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35), func(id): return GameData.weapon_by_id(id)["name"])
+	_slot_row(41.0, p.tomes, game.tome_slots, CYAN, func(id): return GameData.tome_by_id(id)["name"].replace("Tome of ", "").replace(" Tome", ""))
+	# owned items (y 56)
 	var x := 40.0
 	for id in game.items_owned:
 		var it: Dictionary = game.item_by_id(id)
 		var col: Color = GameData.RARITY_COLORS[int(it["rarity"])]
-		view.draw_rect(Rect2(x, 41, 12, 12), NAVY)
-		view.draw_rect(Rect2(x, 41, 12, 12), col, false, 1.0)
-		_text(Vector2(x + 6, 50), it["name"].substr(0, 1), col, 8, true)
+		view.draw_rect(Rect2(x, 56, 12, 12), NAVY)
+		view.draw_rect(Rect2(x, 56, 12, 12), col, false, 1.0)
+		_text(Vector2(x + 6, 65), it["name"].substr(0, 1), col, 8, true)
 		var n: int = game.items_owned[id]
 		if n > 1:
-			_text(Vector2(x + 11, 56), str(n), IVORY, 6, true)
+			_text(Vector2(x + 11, 71), str(n), IVORY, 6, true)
 		x += 14.0
+
+
+func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color, label: Callable) -> void:
+	var ids: Array = owned.keys()
+	var x := 40.0
+	for i in GameData.MAX_SLOTS:
+		var r := Rect2(x, y, 28, 12)
+		if i < ids.size():
+			view.draw_rect(r, NAVY)
+			view.draw_rect(r, col, false, 1.0)
+			_text(Vector2(x + 2, y + 9), String(label.call(ids[i])).substr(0, 3), IVORY, 7, false)
+			_text(Vector2(x + 22, y + 9), str(owned[ids[i]]), col, 7, true)
+		elif i < unlocked:
+			view.draw_rect(r, Color(NAVY, 0.6))
+			view.draw_rect(r, Color(col, 0.35), false, 1.0)
+		else:
+			view.draw_rect(r, Color(0, 0, 0, 0.45))
+			_text(Vector2(x + 14, y + 9), "lock", Color(1, 1, 1, 0.3), 6, true)
+		x += 30.0
 
 
 func _draw_timer(vs: Vector2) -> void:
@@ -466,6 +471,10 @@ func _build_pause_panel() -> void:
 	restart.text = "New run (new map)"
 	restart.pressed.connect(func(): game.restart())
 	box.add_child(restart)
+	var leave := Button.new()
+	leave.text = "Abandon run (no rewards)"
+	leave.pressed.connect(func(): game.return_to_academy())
+	box.add_child(leave)
 	_pause_panel.visibility_changed.connect(func():
 		if _pause_panel.visible:
 			info.text = "Seed %d\nEsc/P pause · M map · Space dash · WASD move" % game.seed_value)
@@ -479,7 +488,14 @@ func _build_result_panel() -> void:
 	_result_label.add_theme_font_size_override("font_size", 10)
 	_result_label.custom_minimum_size = Vector2(260, 0)
 	box.add_child(_result_label)
+	var academy := Button.new()
+	academy.text = "Return to Academy"
+	academy.pressed.connect(func(): game.return_to_academy())
+	box.add_child(academy)
 	var again := Button.new()
 	again.text = "Run again (new map)"
 	again.pressed.connect(func(): game.restart())
 	box.add_child(again)
+	for b in [academy, again]:
+		b.add_theme_font_size_override("font_size", 10)
+		b.custom_minimum_size = Vector2(0, 26)

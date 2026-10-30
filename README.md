@@ -1,8 +1,8 @@
 # Riftbound: Arcane Academy — Rift Run Prototype (Godot 4)
 
 Prototype combat run ala Megabonk: map procedural, spawn player dan portal boss acak,
-chest berbayar, shrine, tome (upgrade stat bertingkat ala Megabonk, 4 slot), elite, Rift Surge,
-Final Swarm, boss, minimap + peta fog-of-war.
+chest berbayar, shrine, tome dan 6 weapon (slot mulai 2 + 2, dibuka sampai 4 + 4 lewat bangunan akademi),
+elite, Rift Surge, Final Swarm, boss, minimap + peta fog-of-war, dan layar akademi sederhana di antara run.
 Semua grafik masih placeholder (bentuk dasar), belum ada sprite atau suara.
 
 Diuji dengan **Godot 4.7.2** (headless + render via OpenGL). Kode tidak memakai fitur khusus 4.7,
@@ -34,7 +34,10 @@ Orientasi sudah diset landscape, renderer `mobile`, resolusi internal 640×360 d
 | `scripts/world/fog.gd` | Fog-of-war (sel 4×4 tile) untuk minimap & peta penuh |
 | `scripts/world/interactables.gd` | Chest, shrine, pot, Rift Portal, Exit Portal |
 | `scripts/world/effects.gd` | Angka damage |
-| `scripts/actors/player.gd` | Gerak, dash, auto-attack, Frost Nova, stat |
+| `scripts/actors/player.gd` | Gerak, dash, HP, stat, level tome/weapon |
+| `scripts/actors/weapons.gd` | Keenam weapon: Arcane Bolt, Frost Nova, Flame Orb, Mana Burst, Storm Chain, Spirit Blade |
+| `scripts/meta/save_data.gd` | Save permanen: resource akademi, level bangunan, riwayat run |
+| `scripts/ui/academy.gd` | Layar akademi: upgrade Library (slot tome) dan Training Ground (slot weapon), masuk Rift |
 | `scripts/actors/enemies.gd` | Musuh, elite, boss, peluru musuh (data-oriented, 1 node) |
 | `scripts/actors/projectiles.gd` | Proyektil player + pantulan |
 | `scripts/actors/pickups.gd` | XP gem, gold, heal |
@@ -47,6 +50,7 @@ Menambah item/tome/shrine/musuh baru: tambahkan baris di `game_data.gd`.
 
 ```
 godot --headless --path . -s tests/test_mapgen.gd                    # 40 seed: sukses, waktu, determinisme
+godot --headless --path . -s tests/test_academy.gd                   # save, upgrade bangunan, jumlah slot
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242   # jalur menang (teleport ke objektif, god mode)
 godot --headless --path . --fixed-fps 60 -- --autotest-die           # jalur kalah (diam sampai mati)
 godot --headless --path . --fixed-fps 60 -- --autotest-late          # portal setelah timer habis → Final Swarm
@@ -54,7 +58,7 @@ godot --headless --path . --fixed-fps 60 -- --autotest-late          # portal se
 
 ## Batasan yang diketahui
 
-- Belum ada sprite, animasi, audio, atau menu utama; layar hasil langsung menawarkan run baru.
-- Reward akademi di layar hasil hanya angka; belum tersambung ke sistem akademi.
+- Belum ada sprite, animasi, atau audio. Akademi baru berisi 2 bangunan (Library, Training Ground).
+- Save tersimpan di `user://riftbound_save.json`; tombol "Reset save" (tekan 2x) di akademi untuk mulai ulang.
 - Balancing belum diuji oleh manusia: angka di `game_data.gd` adalah titik awal.
 - Performa diukur di CPU cloud (headless), belum di HP Android sungguhan.

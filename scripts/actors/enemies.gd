@@ -25,6 +25,7 @@ class Enemy:
 	var spawn_t := 0.0
 	var flash := 0.0
 	var shoot_t := 2.0
+	var orb_hit_at := -100.0  # Flame Orb re-hit timer
 	var alive := true
 	# boss state machine
 	var state := "idle"
