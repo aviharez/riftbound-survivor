@@ -23,9 +23,9 @@ jobs:
   apk:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
@@ -44,6 +44,8 @@ jobs:
       - name: Download Godot and export templates
         if: steps.godot-cache.outputs.cache-hit != 'true'
         run: |
+          exec > >(tee -a /tmp/ci.log) 2>&1
+          echo "### $GITHUB_STEP"
           mkdir -p ~/godot-dl && cd ~/godot-dl
           base="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable"
           wget -q "$base/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
@@ -51,6 +53,8 @@ jobs:
 
       - name: Install Godot
         run: |
+          exec > >(tee -a /tmp/ci.log) 2>&1
+          echo "### $GITHUB_STEP"
           cd ~/godot-dl
           unzip -q -o "Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip"
           sudo mv "Godot_v${GODOT_VERSION}-stable_linux.x86_64" /usr/local/bin/godot
@@ -62,6 +66,8 @@ jobs:
 
       - name: Configure Android export (SDK, JDK, fixed debug keystore)
         run: |
+          exec > >(tee -a /tmp/ci.log) 2>&1
+          echo "### $GITHUB_STEP"
           minor=$(echo "$GODOT_VERSION" | cut -d. -f1,2)
           mkdir -p ~/.config/godot
           cat > ~/.config/godot/editor_settings-${minor}.tres <<SETTINGS
@@ -79,7 +85,9 @@ jobs:
           sed -i "s/^version\/name=.*/version\/name=\"0.1.${GITHUB_RUN_NUMBER}\"/" export_presets.cfg
 
       - name: Import project
-        run: godot --headless --path . --import || true
+        run: |
+          exec > >(tee -a /tmp/ci.log) 2>&1
+          godot --headless --path . --import || true
 
       - name: Export debug APK
         env:
@@ -87,10 +95,19 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
+          exec > >(tee -a /tmp/ci.log) 2>&1
+          echo "### $GITHUB_STEP"
           mkdir -p build
           godot --headless --path . --export-debug "Android" build/riftbound-debug.apk
           test -s build/riftbound-debug.apk
           ls -la build
+
+      - name: Report failure log as annotations
+        if: failure()
+        run: |
+          [ -f /tmp/ci.log ] || exit 0
+          tail -n 60 /tmp/ci.log | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}' > /tmp/tail.txt
+          echo "::error title=ci-log-tail::$(cat /tmp/tail.txt)"
 
       - uses: actions/upload-artifact@v4
         with:
