@@ -112,12 +112,14 @@ func _draw() -> void:
 		return
 	_walk_t += get_process_delta_time() * (1.0 if move_dir.length() > 0.1 else 0.0)
 	var bob := -absf(sin(_walk_t * 11.0)) * 1.5
-	draw_circle(Vector2(0, 6), 6, Color(0, 0, 0, 0.32))  # shadow
+	draw_set_transform(Vector2(0, 6), 0.0, Vector2(1.0, 0.45))
+	draw_circle(Vector2.ZERO, 6, Color(0, 0, 0, 0.35))  # shadow
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var tint := Color(2.2, 0.8, 0.8) if hurt_flash > 0.0 else Color.WHITE
 	var tex := CharacterArt.texture(character["id"], CharacterArt.dir_for(facing))
 	if tex != null:
 		# 48 px sprite, feet at the shadow; slight squash on each step
-		var sz := Vector2(tex.get_width(), tex.get_height())
+		var sz := Vector2(tex.get_width(), tex.get_height()) * GameData.CHARACTER_SPRITE_SCALE
 		var squash := 1.0 + bob * 0.02
 		# sprite feet sit on the last pixel row; anchor them on the shadow
 		var rect := Rect2(Vector2(-sz.x * 0.5, 7.0 - sz.y * squash + bob), Vector2(sz.x, sz.y * squash))

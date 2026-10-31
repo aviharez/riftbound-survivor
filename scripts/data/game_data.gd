@@ -182,6 +182,9 @@ const CHARACTERS := [
 		"colors": {"robe": Color(0.9, 0.95, 0.9), "hair": Color(0.55, 1.0, 0.8), "accent": Color(0.3, 0.9, 0.45)}},
 ]
 const ARMOR_CAP := 0.5
+# Hero sprites are 48 px; drawn smaller so the hero stays ~1.5-2x a slime.
+# canvas_items stretch renders at the phone's native resolution, so this stays crisp.
+const CHARACTER_SPRITE_SCALE := 0.68
 
 
 static func character_by_id(id: String) -> Dictionary:
@@ -275,7 +278,7 @@ const ELITE_AFFIXES := ["swift", "warded", "splitter"]
 const ELITE_GOLD := 8
 
 const BOSS := {
-	"name": "Corrupted Guardian", "hp": 2500.0, "radius": 28.0, "sprite_scale": 2.0, "speed": 35.0, "dmg": 20.0,
+	"name": "Corrupted Guardian", "hp": 2500.0, "radius": 22.0, "sprite_scale": 1.5, "speed": 35.0, "dmg": 20.0,
 	"ring_bullets": 16, "bullet_speed": 90.0, "bullet_dmg": 10.0,
 	"dash_telegraph": 0.8, "dash_speed": 400.0, "dash_time": 0.5, "summon": 6,
 	"gap": 1.6, "gap_enraged": 0.9,
