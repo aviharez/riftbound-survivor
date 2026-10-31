@@ -201,9 +201,9 @@ func _draw_player_panel() -> void:
 	view.draw_rect(Rect2(6, 6, 30, 30), NAVY)
 	var face := CharacterArt.portrait(p.character["id"])
 	if face != null:
-		# head and shoulders: top-centre 28x28 of the south-facing sprite
 		var w := float(face.get_width())
-		view.draw_texture_rect_region(face, Rect2(7, 7, 28, 28), Rect2(w * 0.5 - 14.0, 0, 28, 28))
+		var cs := w * 0.5   # head-and-shoulders crop, proportional to the sprite size
+		view.draw_texture_rect_region(face, Rect2(7, 7, 28, 28), Rect2(w * 0.5 - cs * 0.5, 0, cs, cs))
 	else:
 		view.draw_circle(Vector2(21, 22), 8, Color(0.98, 0.86, 0.78))
 		view.draw_rect(Rect2(12, 11, 18, 6), Color(p.character["colors"]["hair"]))
