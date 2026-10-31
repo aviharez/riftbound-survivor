@@ -114,7 +114,7 @@ func draw_sprite_layer(ci: CanvasItem, layer: String) -> void:
 
 func _update_sprites(delta: float) -> void:
 	for s in sprites:
-		s["t"] += delta
+		s["t"] += delta * float(s.get("speed", 1.0))   # "speed": play a one-shot faster / slower
 		if s["follow"] != null and is_instance_valid(s["follow"]):
 			s["pos"] = s["follow"].position + s["offset"]
 		var def: Dictionary = s["def"]

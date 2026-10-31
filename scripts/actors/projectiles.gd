@@ -7,6 +7,7 @@ extends Node2D
 ## pierce left flies on through. On-hit extras (shards, roots) are handed back to Weapons.
 
 const BOUNCE_RANGE := 140.0
+const HOMING_RANGE := 180.0
 
 ## shot kind -> [pixelfx effect, impact effect, impact tint, spark colour, (optional) sprite scale multiplier]
 const LOOKS := {
@@ -55,7 +56,7 @@ func fire(kind: String, from: Vector2, dir: Vector2, damage_amount: float, w: Di
 		"bounces": bounces, "pierce": pierce, "piercing": pierce > 0, "life": life, "life0": life,
 		"hit_r": float(w.get("hit_r", 4.0)) * size,
 		"scale": float(w.get("fx_scale", 0.6)) * size * (float(look[4]) if look.size() > 4 else 1.0), "hit": [], "w": w,
-		"age": 0.0, "returning": false}
+		"age": 0.0, "returning": false, "target": null}
 	shot["scale0"] = shot["scale"]
 	shot["hit_r0"] = shot["hit_r"]
 	list.append(shot)
@@ -88,7 +89,22 @@ func _process(delta: float) -> void:
 				p["vel"] = to.normalized() * minf(float(w["speed"]) * 1.15, p["vel"].length() + 500.0 * delta)
 			else:
 				p["vel"] *= 1.0 - 1.6 * delta   # slows toward the turn
+		if w.has("homing"):
+			_steer(p, float(w["homing"]), delta)
 		var look: Array = LOOKS[p["kind"]]
+		if game.world.is_solid_at(p["pos"]) and w.get("wall_bounce", false) and p["bounces"] > 0:
+			# Flame Orb ricochets off walls too: step back and mirror the axis that hit the wall
+			var back: Vector2 = p["pos"] - p["vel"] * delta
+			if game.world.is_solid_at(Vector2(p["pos"].x, back.y)):
+				p["vel"].x = -p["vel"].x
+			if game.world.is_solid_at(Vector2(back.x, p["pos"].y)):
+				p["vel"].y = -p["vel"].y
+			p["pos"] = back
+			p["bounces"] -= 1
+			p["life"] = maxf(p["life"], p["life0"] * 0.6)
+			p["hit"].clear()
+			game.weapons.on_wall_bounce(p)
+			continue
 		if game.world.is_solid_at(p["pos"]) and not w.has("out_time"):
 			p["life"] = 0.0
 			game.vfx.sparks(p["pos"], look[3], 4, 70.0, 0.2, 1.0)
@@ -114,6 +130,7 @@ func _process(delta: float) -> void:
 			var nxt = game.enemies.nearest(p["pos"], BOUNCE_RANGE, hit)
 			if nxt != null:
 				p["vel"] = (nxt.pos - p["pos"]).normalized() * p["vel"].length()
+				p["target"] = nxt
 		else:
 			p["life"] = 0.0
 	# shots that ended this frame (last hit, wall or out of time): Solar / Absolute Zero detonate here
@@ -122,6 +139,20 @@ func _process(delta: float) -> void:
 			game.weapons.on_projectile_end(p)
 	list = list.filter(func(p): return p["life"] > 0.0)
 	queue_redraw()
+
+
+## Arcane Bolt homing: turn toward its target at up to turn_rate rad/s (re-acquiring when the target is gone),
+## leaving a cyan trail so the curve shows.
+func _steer(p: Dictionary, turn_rate: float, delta: float) -> void:
+	var t = p["target"]
+	if t == null or not t.alive:
+		t = game.enemies.nearest(p["pos"], HOMING_RANGE, p["hit"].back() if not p["hit"].is_empty() else null)
+		p["target"] = t
+	if t != null:
+		var want: float = p["vel"].angle_to(t.pos - p["pos"])
+		p["vel"] = p["vel"].rotated(clampf(want, -turn_rate * delta, turn_rate * delta))
+	if Engine.get_process_frames() % 2 == 0:
+		game.vfx.trail(p["pos"], Color(0.45, 1.25, 1.8), 1.5, 0.28)
 
 
 ## Nearest foe touching the shot that it has not hit yet (pierce) / did not just bounce off.

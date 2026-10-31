@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d3t1olxf26633"
-path="res://.godot/imported/root_snare_light.png-2cba584eac98e38718ff9c38a3c04fa9.ctex"
+uid="uid://sdr01dv3rekg"
+path="res://.godot/imported/thorn_patch_light.png-43d12fae2b4575a832705e89fb6befbf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/root_snare_light.png"
-dest_files=["res://.godot/imported/root_snare_light.png-2cba584eac98e38718ff9c38a3c04fa9.ctex"]
+source_file="res://assets/vfx/thorn_patch_light.png"
+dest_files=["res://.godot/imported/thorn_patch_light.png-43d12fae2b4575a832705e89fb6befbf.ctex"]
 
 [params]
 

@@ -13,6 +13,7 @@ extends Node2D
 const MAX_ROOTS := 28   # live root patches (oldest dropped first)
 const PRISM_KINDS := ["prism_arcane", "prism_fire", "prism_ice", "prism_nature"]
 # custom top-down bursts (tools/pixelfx_custom/riftbound): their ring's reach in px at scale 1
+const THORN_PATCH_TIME := 1.6  # riftbound/thorn-patch length (s)
 const MINE_FX_SCALE := 1.5     # rune-sigil sheet (25 px wide) drawn ~38 px wide so the rune reads
 const FAMILIAR_SCALE := 1.6   # the 14 px crystal sprite drawn ~22 px tall (hero is 33)
 const BURST_REACH := {"solar_burst": 44.0, "frost_burst": 42.0, "void_collapse": 46.0}
@@ -166,9 +167,11 @@ func _thornseed(w: Dictionary, lv: int) -> void:
 func on_projectile_hit(shot: Dictionary, pos: Vector2, enemy = null) -> void:
 	var w: Dictionary = shot["w"]
 	match shot["kind"]:
-		"flame", "solar":
+		"flame":
+			_flame_splash(shot, pos, enemy)
+		"solar":
 			game.vfx.sparks(pos, Color(2.6, 1.3, 0.35), 6, 110.0, 0.25, 1.4)
-			game.vfx.flash(pos, Color(2.0, 0.9, 0.3), 14.0 if shot["kind"] == "solar" else 10.0, 0.12)
+			game.vfx.flash(pos, Color(2.0, 0.9, 0.3), 14.0, 0.12)
 		"lance", "zero", "prism_ice":
 			if enemy != null:
 				enemy.slow_t = maxf(enemy.slow_t, float(w.get("slow", 1.0)))
@@ -186,6 +189,26 @@ func on_projectile_hit(shot: Dictionary, pos: Vector2, enemy = null) -> void:
 			if enemy != null:
 				enemy.slow_t = maxf(enemy.slow_t, 0.6)
 			game.vfx.motes(pos, Color(0.8, 2.0, 0.6), 3, 20.0, 0.5, 2.5, -10.0)
+
+
+## Flame Orb: every hit bursts into a star of flame that scorches the foes around it.
+func _flame_splash(shot: Dictionary, pos: Vector2, enemy) -> void:
+	var w: Dictionary = shot["w"]
+	var r: float = float(w["splash_r"]) * game.player.area()
+	for e in game.enemies.query_radius(pos, r):
+		if e != enemy:
+			_hit(e, float(shot["dmg"]) * float(w["splash"]), Color(2.4, 1.1, 0.3))
+	# solar_burst is a top-down star of flame whose ring reaches 44 px at scale 1
+	game.vfx.play("solar_burst", pos, 0.0, r / 44.0)
+	game.vfx.sparks(pos, Color(2.6, 1.3, 0.35), 5, 100.0, 0.25, 1.3)
+
+
+## Called by Projectiles when a shot ricochets off a wall (Flame Orb, Solar Cataclysm).
+func on_wall_bounce(shot: Dictionary) -> void:
+	if shot["kind"] == "flame":
+		_flame_splash(shot, shot["pos"], null)
+	else:
+		game.vfx.sparks(shot["pos"], Color(2.6, 1.6, 0.4), 6, 90.0, 0.25, 1.4)
 
 
 ## Called by Projectiles for every shot that ends (last hit, wall, or out of time).
@@ -245,8 +268,10 @@ func _spawn_roots(w: Dictionary, lv: int, pos: Vector2, r_mult := 1.0, gen := 0)
 	if roots.size() >= MAX_ROOTS:
 		roots[0]["t"] = roots[0]["life"]
 	var r: float = float(w["root_r"]) * level_size(w, lv) * r_mult
-	# nature/root-snare: the root tangle spans ~56 px at scale 1, pivot on the ground
-	game.vfx.play("root_snare", pos + Vector2(0, 3), 0.0, r / 28.0)
+	# riftbound/thorn-patch: snare ring 20 px in radius at scale 1, lasts 1.6 s; stretched to the patch's life
+	var fx: Dictionary = game.vfx.play("thorn_patch", pos, 0.0, r / 20.0)
+	if not fx.is_empty():
+		fx["speed"] = THORN_PATCH_TIME / float(w["root_time"])
 	_zones.append({"kind": "roots", "pos": pos, "r": r, "t": 0.0, "life": float(w["root_time"]),
 		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"]), "slow": float(w["slow"]),
 		"trap": float(w.get("trap", 0.0)), "branches": int(w.get("branches", 0)) if gen == 0 else 0,
@@ -382,6 +407,7 @@ func _update_zones(delta: float) -> void:
 						_spawn_roots(z["w"], z["lv"], spot, 0.7, 1)
 			for e in game.enemies.query_radius(z["pos"], z["r"]):
 				e.slow_t = maxf(e.slow_t, 0.3)
+				e.rooted_t = 0.25   # drawn tinted green while snared
 				if z["trap"] > 0.0 and _time - e.trap_at >= GameData.ROOT_TRAP_COOLDOWN:
 					e.trap_at = _time
 					_freeze(e, z["trap"])
@@ -416,10 +442,10 @@ func _detonate(z: Dictionary) -> void:
 		z["fx"]["dead"] = true
 	for e in game.enemies.query_radius(z["pos"], z["r"]):
 		_hit(e, z["dmg"], Color(1.8, 0.7, 2.8))
-	game.vfx.play("dark_explosion", z["pos"], 0.0, z["r"] / 90.0)
+	# the collapse is centred on the well itself (dark_explosion's pivot sits at its base, which drew the
+	# blast ~40 px above the pull centre)
+	game.vfx.play("void_collapse", z["pos"], 0.0, z["r"] / float(BURST_REACH["void_collapse"]))
 	if z["horizon"]:
-		# Event Horizon collapses with a violet plasma ring on top of the dark blast
-		game.vfx.play("void_collapse", z["pos"], 0.0, z["r"] / float(BURST_REACH["void_collapse"]))
 		game.screen_fx.chroma(0.3)
 	game.vfx.ring(z["pos"], Color(1.6, 0.7, 2.6), z["r"], 0.35, 2.0)
 	game.screen_fx.shockwave(z["pos"], z["r"] * 1.8, 1.0, 0.45)
@@ -440,7 +466,7 @@ func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
 	var hit_r: float = 5.0 * size
 	var rehit := level_cooldown(w, lv)
 	while _blade_fx.size() < count:
-		var inst: Dictionary = game.vfx.play("astral_blade", p.position, 0.0, fx_scale, Color.WHITE, 0.8)
+		var inst: Dictionary = game.vfx.play("astral_blade", p.position, 0.0, fx_scale, Color.WHITE, 0.45)
 		if inst.is_empty():
 			break
 		_blade_fx.append(inst)
@@ -459,8 +485,8 @@ func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
 			_blade_fx[i]["t"] = fmod(_blade_fx[i]["t"], 100.0)
 		# sweep trail: a crescent of light swept along the orbit behind the blade (drawn by _trail)
 		_blade_arcs.append({"c": p.position, "a": a, "r_in": r + blen * 0.25, "r_out": r + blen, "span": float(w["trail_arc"])})
-		if randf() < 0.25:
-			game.vfx.trail(hilt + out * blen * randf_range(0.5, 0.85), Color(1.2, 1.9, 2.6), 1.4, 0.3)
+		if randf() < 0.12:
+			game.vfx.trail(hilt + out * blen * randf_range(0.5, 0.85), Color(0.8, 1.3, 1.8), 1.2, 0.25)
 		# the cut runs from the hero's centre to the tip, so foes pressed against the hero are hit too
 		var tip := hilt + out * blen
 		for e in game.enemies.query_radius(p.position, r + blen + hit_r):
@@ -678,16 +704,18 @@ func _draw_blade_trails() -> void:
 			_trail.draw_polygon(PackedVector2Array([c + d0 * ri0, c + d0 * r_out, c + d1 * r_out, c + d1 * ri1]),
 				PackedColorArray([inner0, col0, col1, inner1]))
 			# hot rim along the tip's path, kept soft right at the blade tip so the tip does not flare
-			var rim := Color(1.6, 2.2, 2.8, k0 * 0.9 * smoothstep(0.0, 0.25, u0 + 0.05))
-			_trail.draw_line(c + d0 * (r_out - 0.5), c + d1 * (r_out - 0.5), rim, 1.5 * (1.0 - u0 * 0.6))
+			var rim := Color(1.15, 1.55, 1.9, k0 * 0.85 * smoothstep(0.0, 0.25, u0 + 0.05))
+			_trail.draw_line(c + d0 * (r_out - 0.5), c + d1 * (r_out - 0.5), rim, 1.0 * (1.0 - u0 * 0.5))
 
 
 func _trail_col(u: float, k: float) -> Color:
-	var head := Color(1.4, 2.0, 2.6)   # white-cyan at the blade
-	var mid := Color(0.35, 0.9, 1.9)   # cyan-blue
-	var tail := Color(0.7, 0.35, 1.6)  # violet
+	# the crescent's body stays under the bloom threshold (1.0) so it reads as a clear shape instead of a thick
+	# glow (Syifa: glow too thick); only the thin rim drawn above it blooms
+	var head := Color(0.85, 1.15, 1.4)  # white-cyan at the blade
+	var mid := Color(0.25, 0.62, 1.05)  # cyan-blue
+	var tail := Color(0.48, 0.25, 0.9)  # violet
 	var col := head.lerp(mid, clampf(u * 2.5, 0.0, 1.0)) if u < 0.4 else mid.lerp(tail, (u - 0.4) / 0.6)
-	return Color(col, k * 0.75)
+	return Color(col, k * 0.62)
 
 
 func clear_blades() -> void:

@@ -17,6 +17,23 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Perbaikan dari masukanmu (1 Nov):**
+- **Arcane Bolt vs Flame Orb** sekarang beda cara kerjanya. Bolt: cepat, kecil, **homing** (jalurnya melengkung
+  mengejar musuh, ada jejak cyan). Flame: besar & lambat, **memantul dari dinding juga**, dan tiap kena meledak jadi
+  semburan api berbentuk bintang yang melukai musuh di sekitarnya.
+- **Meteor**: sekarang batu abu-abu gelap berasap dengan retakan menyala, bayangannya di lantai membesar saat jatuh,
+  lalu benturan berupa cincin debu, pecahan batu yang memantul, dan kawah yang mendingin.
+- **Astral Blades**: glow dikurangi. Bentuk jejak bulan sabit tetap, tapi tidak lagi berpendar tebal; hanya tepi tipisnya yang bercahaya.
+- **Void Well**: ledakan sekarang tepat di pusat sedotan (sebelumnya bergeser ±40 px ke atas karena titik jangkar efeknya beda).
+- **Thornseed**: efek baru: area jeratan bergaris hijau di lantai, sulur berduri merambat keluar, duri mencuat, lalu
+  layu saat habis. Musuh yang sedang terjerat berwarna **kehijauan**.
+- [ ] Bolt dan Flame terasa beda jelas
+- [ ] Meteor terlihat seperti batu jatuh, bukan bola api
+- [ ] Glow Astral Blades pas (tidak tebal, jejak masih kelihatan)
+- [ ] Ledakan Void Well di tengah pusaran
+- [ ] Cara kerja Thornseed jelas: kelihatan area jeratnya & musuh yang terjerat
+
+
 **Evolusi weapon**. Aturannya: weapon **Lv 8 (maks)** + punya **tome pasangannya** (Lv berapa saja).
 Begitu syarat terpenuhi muncul banner "... can evolve — open a chest!". **Chest berikutnya** (berbayar atau emas)
 memberi evolusi, bukan item. Evolusi menggantikan weapon aslinya di slot yang sama, dan di HUD slotnya

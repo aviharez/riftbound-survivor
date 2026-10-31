@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dukqr5bf5c6hm"
-path="res://.godot/imported/root_snare_color.png-9da1aeee48f5c1686d6238439e2cc00d.ctex"
+uid="uid://sammqipowdje"
+path="res://.godot/imported/thorn_patch_color.png-9f9be7fe064f4d53898c0ca2d0fc5509.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/root_snare_color.png"
-dest_files=["res://.godot/imported/root_snare_color.png-9da1aeee48f5c1686d6238439e2cc00d.ctex"]
+source_file="res://assets/vfx/thorn_patch_color.png"
+dest_files=["res://.godot/imported/thorn_patch_color.png-9f9be7fe064f4d53898c0ca2d0fc5509.ctex"]
 
 [params]
 

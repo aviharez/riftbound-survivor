@@ -38,7 +38,7 @@ const EFFECTS = [
   { name: "arcane_bolt", id: "riftbound/arcane-bolt", fps: 30 },
   { name: "ice_lance", id: "ice/ice-lance", fps: 20 },
   { name: "thorn_seed", id: "riftbound/thorn-seed", fps: 20 },
-  { name: "root_snare", id: "nature/root-snare", fps: 15, max: 1.7 },
+  { name: "thorn_patch", id: "riftbound/thorn-patch", fps: 20 },  // Thornseed snare (top-down; replaced nature/root-snare)
   { name: "meteor_strike", id: "riftbound/meteor-strike", fps: 24 },
   { name: "void_orb", id: "shadow/void-orb", fps: 15 },
   { name: "astral_blade", id: "riftbound/astral-blade", fps: 20 },

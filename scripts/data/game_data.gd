@@ -138,14 +138,15 @@ const WEAPONS := [
 	# Attack types follow docs "Riftbound Weapon Attack Design" (prototype set of 8).
 	# Projectile weapons: speed (px/s), life (s), hit_r (px), fx_scale; bounce / pierce add to the shot.
 	{"id": "bolt", "name": "Arcane Bolt", "weight": 8.0,
-		"desc": "Magic orb that seeks a foe and ricochets", "level_desc": "+20% damage, faster casts, more bolts at Lv 4/7",
+		"desc": "Fast homing bolt that curves after its foe, then ricochets", "level_desc": "+20% damage, faster casts, more bolts at Lv 4/7",
 		"cd": 0.8, "dmg": 1.0, "range": 220.0, "count": 1, "count_at": [4, 7], "uses_projectiles": true,
-		"speed": 260.0, "life": 1.2, "hit_r": 4.0, "fx_scale": 0.6, "bounce": 1,
+		"speed": 330.0, "life": 1.2, "hit_r": 4.0, "fx_scale": 0.6, "bounce": 1, "homing": 7.0,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
 	{"id": "flame", "name": "Flame Orb", "weight": 7.0,
-		"desc": "Fireball that ricochets between foes", "level_desc": "+20% damage, +1 ricochet at Lv 3/5/7",
+		"desc": "Big slow fireball: bounces off foes AND walls, bursting into flame on every hit", "level_desc": "+20% damage, +1 ricochet at Lv 3/5/7",
 		"cd": 1.0, "dmg": 1.2, "range": 220.0, "count": 1, "count_at": [6], "uses_projectiles": true,
-		"speed": 210.0, "life": 1.4, "hit_r": 6.0, "fx_scale": 0.75, "bounce": 2, "bounce_at": [3, 5, 7],
+		"speed": 165.0, "life": 1.8, "hit_r": 7.5, "fx_scale": 1.05, "bounce": 2, "bounce_at": [3, 5, 7],
+		"wall_bounce": true, "splash_r": 18.0, "splash": 0.5,
 		"lvl_dmg": 0.2, "lvl_cd": 0.04, "lvl_area": 0.04},
 	{"id": "chain", "name": "Chain Lightning", "weight": 7.0,
 		"desc": "Lightning that jumps between foes", "level_desc": "+20% damage, more jumps at Lv 3/5/7",
@@ -220,7 +221,7 @@ const WEAPONS := [
 		"desc": "A miniature sun ricochets, then detonates in a solar blast",
 		"cd": 0.85, "dmg": 3.2, "range": 230.0, "count": 2, "uses_projectiles": true,
 		"speed": 200.0, "life": 1.5, "hit_r": 8.0, "fx_scale": 0.3, "bounce": 6,
-		"burst_r": 44.0, "burst_dmg": 2.0,
+		"burst_r": 44.0, "burst_dmg": 2.0, "wall_bounce": true,
 		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
 	{"id": "storm", "name": "Thunderstorm Network", "evolved": true, "from": "chain", "tome": "haste", "weight": 0.0,
 		"desc": "Several storms strike at once and chain across the whole pack",
@@ -259,6 +260,7 @@ const EVOLVE_LEVEL := WEAPON_MAX_LEVEL
 # Freeze (Absolute Zero, Worldroot traps): frozen foes stop and deal no contact damage.
 # Bosses are never frozen; they are slowed instead.
 const FROZEN_TINT := Color(0.55, 1.05, 1.6)
+const ROOTED_TINT := Color(0.75, 1.3, 0.6)   # foes inside a Thornseed / Worldroot snare
 const ROOT_TRAP_COOLDOWN := 2.5   # a foe can be root-trapped again after this many seconds
 
 

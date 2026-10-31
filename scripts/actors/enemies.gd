@@ -31,6 +31,7 @@ class Enemy:
 	var freeze_t := 0.0         # seconds frozen solid (Absolute Zero, Worldroot traps): no move, no contact damage
 	var trap_at := -100.0       # last Worldroot trap (re-trap cooldown)
 	var venom_hit_at := -100.0  # Venom Bloom tick timer
+	var rooted_t := 0.0         # inside a Thornseed snare (drawn tinted green)
 	var alive := true
 	var ghost := false   # drifts through walls (Final Swarm wraiths)
 	# boss state machine
@@ -189,6 +190,7 @@ func _process(delta: float) -> void:
 			continue
 		e.flash = max(0.0, e.flash - delta)
 		e.slow_t = max(0.0, e.slow_t - delta)
+		e.rooted_t = max(0.0, e.rooted_t - delta)
 		if e.spawn_t > 0.0:
 			e.spawn_t -= delta
 			continue
@@ -362,6 +364,8 @@ func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 		mod = Color(3.0, 3.0, 3.0)
 	elif e.freeze_t > 0.0:
 		mod = GameData.FROZEN_TINT
+	elif e.rooted_t > 0.0:
+		mod = GameData.ROOTED_TINT
 	elif e.elite:
 		mod = Color(1.35, 0.85, 0.85)
 	var size := Vector2(tw, tex.get_height()) * scale

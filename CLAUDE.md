@@ -102,6 +102,13 @@ Syifa's next priorities, in order she listed:
 3. **Academy expansion**: more buildings (e.g. unlock characters such as Selene/Noah from the doc,
    permanent stat upgrades, adding weapons to the pool). Save format changes need `SaveData.VERSION` + migration.
 
+Playtest fixes (1 Nov): Arcane Bolt = fast homing (`homing` turn rate, cyan trail); Flame Orb = big slow, bounces
+off walls (`wall_bounce`) and splashes a top-down flame star on every hit (`splash_r`/`splash`); meteor-strike is a grey
+cracked rock with a growing floor shadow and a dust ring (must not read as a fireball); Astral Blades trail body
+stays under the bloom threshold (only the rim blooms); Void Well detonates with the centred void_collapse
+(dark_explosion's pivot is at its base and drew the blast ~40 px above the pull centre: check pivots when mixing
+effects); Thornseed uses the custom thorn-patch (snare ring, vines, thorns; `fx["speed"]` stretches a one-shot
+to the zone's life) and snared foes are tinted `ROOTED_TINT`.
 Feedback to remember: VFX must read as top-down; heavy but not blinding (she asked to dim only the
 Astral Blades tips, not the whole trail); characters cute/chibi; every weapon fires on cooldown even
 with no enemy; PixelLab art is generated and uploaded by Syifa.

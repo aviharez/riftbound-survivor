@@ -74,34 +74,34 @@
    5
   ]
  },
- "root_snare": {
-  "source": "nature/root-snare",
-  "fps": 15,
+ "thorn_patch": {
+  "source": "riftbound/thorn-patch",
+  "fps": 20,
   "loop": false,
-  "frames": 26,
-  "columns": 26,
+  "frames": 32,
+  "columns": 32,
   "frame_size": [
-   69,
-   54
+   41,
+   27
   ],
   "pivot": [
-   34,
-   39
+   20,
+   14
   ]
  },
  "meteor_strike": {
   "source": "riftbound/meteor-strike",
   "fps": 24,
   "loop": false,
-  "frames": 27,
-  "columns": 23,
+  "frames": 29,
+  "columns": 20,
   "frame_size": [
-   88,
-   171
+   99,
+   173
   ],
   "pivot": [
-   44,
-   136
+   50,
+   143
   ]
  },
  "void_orb": {
