@@ -17,6 +17,13 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Info combo di kartu level-up (permintaanmu):** kartu tampil biasa selama kamu belum punya pasangannya. Kalau sudah
+punya weapon-nya lalu tome pasangannya muncul sebagai NEW, kartunya menulis
+"COMBO + Flame Orb (owned) -> Solar Cataclysm at Lv 8". Begitu juga sebaliknya: sudah punya tome-nya, lalu kartu
+weapon pasangannya muncul (baru atau naik level). Teks lama "Evolves at Lv 8 with ..." yang selalu tampil sudah dihapus.
+- [ ] Info combo muncul hanya saat pasangannya sudah dimiliki
+- [ ] Teks kartu terbaca dan tidak terpotong di layar HP
+
 **Perbaikan dari masukanmu (1 Nov):**
 - **Arcane Bolt vs Flame Orb** sekarang beda cara kerjanya. Bolt: cepat, kecil, **homing** (jalurnya melengkung
   mengejar musuh, ada jejak cyan). Flame: besar & lambat, **memantul dari dinding juga**, dan tiap kena meledak jadi

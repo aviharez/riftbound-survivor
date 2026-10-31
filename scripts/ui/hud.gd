@@ -458,6 +458,7 @@ func _build_choice_panel() -> void:
 		b.custom_minimum_size = Vector2(186, 56)
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 9)
+		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # long card text (combo hints) wraps instead of widening
 		b.add_theme_stylebox_override("normal", _style(Color(0.5, 0.45, 0.7)))
 		b.add_theme_stylebox_override("hover", _style(CYAN))
 		b.add_theme_stylebox_override("pressed", _style(CYAN))

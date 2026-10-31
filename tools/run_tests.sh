@@ -23,6 +23,7 @@ run() {
 timeout "$T" "$G" --headless --path . --import > /tmp/rb_test_import.log 2>&1 || { echo "FAIL import"; fail=1; }
 run mapgen "fails=0 " -s tests/test_mapgen.gd
 run academy "academy tests: PASS" -s tests/test_academy.gd
+run combo "combo tests: PASS" -s tests/test_combo.gd
 run auto_4242 "\[autotest\] done" --fixed-fps 60 -- --autotest --seed=4242
 run auto_slots4 "\[autotest\] done" --fixed-fps 60 -- --autotest --seed=565590 --slots=4
 run die_77 "\[autotest\] done" --fixed-fps 60 -- --autotest-die --seed=77

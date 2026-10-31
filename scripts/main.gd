@@ -5,6 +5,7 @@ extends Node2D
 ##
 ## Command-line (after `--`): --seed=123  --slots=4  --autotest  --autotest-die  --autotest-late  --shot=/tmp/shot.png
 ##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1; evolved ids such as solar come evolved)
+##   --tomes=ricochet,haste (tomes owned at Lv 1 from the start)
 ##   --ready-evolve (owned weapons start at the evolve level with their tomes, so chests evolve them)
 ##   --swarm-at=30 (early Final Swarm); autotest only
 
@@ -75,6 +76,7 @@ var _choice_shot_done := false
 var _auto_portal_at := 240.0
 var _swarm_at := -1.0  # --swarm-at=30: start the Final Swarm early (autotest only)
 var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
+var _extra_tomes: Array = []    # --tomes=ricochet,haste: tomes owned from the start (autotest; combo hint checks)
 var _ready_evolve := false      # --ready-evolve: owned weapons at the evolve level + their tomes
 var _profile := false           # --profile: print load counters every 20 s of game time
 var _profile_next := 20.0
@@ -116,6 +118,9 @@ func _ready() -> void:
 		var ew: Dictionary = GameData.weapon_by_id(id)
 		if _auto and not ew.is_empty():
 			player.weapon_levels[id] = GameData.WEAPON_MAX_LEVEL if ew.get("evolved", false) else 1
+	for id in _extra_tomes:
+		if _auto and not GameData.tome_by_id(id).is_empty():
+			player.tomes[id] = 1
 	if _auto and _ready_evolve:
 		for id in player.weapon_levels.keys():
 			var evo := GameData.evolution_of(id)
@@ -180,6 +185,8 @@ func _parse_args() -> void:
 			_swarm_at = float(a.get_slice("=", 1))
 		elif a == "--profile":
 			_profile = true
+		elif a.begins_with("--tomes="):
+			_extra_tomes = Array(a.get_slice("=", 1).split(","))
 		elif a == "--ready-evolve":
 			_ready_evolve = true
 		elif a.begins_with("--weapons="):
@@ -605,9 +612,9 @@ func _make_offer(entry: Dictionary) -> Dictionary:
 	if entry["kind"] == "weapon":
 		var unlocking := lv == 0
 		var desc: String = d["desc"] if unlocking else d["level_desc"]
-		var evo := GameData.evolution_of(d["id"])
-		if not evo.is_empty():
-			desc += "\nEvolves at Lv %d with %s" % [GameData.EVOLVE_LEVEL, GameData.tome_by_id(evo["tome"])["name"]]
+		var combo := GameData.combo_hint("weapon", d["id"], player.weapon_levels, player.tomes)
+		if combo != "":
+			desc += "\n" + combo
 		return {"kind": "weapon", "def": d, "rarity": 0,
 			"name": ("%s (NEW)" % d["name"]) if unlocking else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1]),
 			"desc": desc,
@@ -615,9 +622,13 @@ func _make_offer(entry: Dictionary) -> Dictionary:
 	var rarity := GameData.roll_rarity(rng, player.stats["luck"])
 	var gain := GameData.tome_gain(d, rarity)
 	var title: String = ("%s (NEW)" % d["name"]) if lv == 0 else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1])
+	var tdesc := "%s  ·  %s" % [GameData.RARITY_NAMES[rarity], GameData.format_gain(d, gain)]
+	var tcombo := GameData.combo_hint("tome", d["id"], player.weapon_levels, player.tomes)
+	if tcombo != "":
+		tdesc += "\n" + tcombo
 	return {"kind": "tome", "def": d, "rarity": rarity, "gain": gain,
 		"name": title,
-		"desc": "%s  ·  %s" % [GameData.RARITY_NAMES[rarity], GameData.format_gain(d, gain)],
+		"desc": tdesc,
 		"color": GameData.RARITY_COLORS[rarity]}
 
 

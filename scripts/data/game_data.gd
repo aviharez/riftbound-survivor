@@ -272,6 +272,26 @@ static func evolution_of(base_id: String) -> Dictionary:
 	return {}
 
 
+## Level-up card hint for an evolution combo, shown only when the player already owns the OTHER half
+## (Syifa: a card stays plain while neither half is owned).
+## kind "weapon": the paired tome is owned -> "COMBO: ..." (on every level of that weapon, it is working toward
+## EVOLVE_LEVEL). kind "tome": only for a NEW tome, when an owned, not yet evolved weapon pairs with it.
+## owned_weapons / owned_tomes: id -> level. Returns "" when there is nothing to say.
+static func combo_hint(kind: String, id: String, owned_weapons: Dictionary, owned_tomes: Dictionary) -> String:
+	if kind == "weapon":
+		var evo := evolution_of(id)
+		if evo.is_empty() or int(owned_tomes.get(evo["tome"], 0)) <= 0:
+			return ""
+		return "COMBO + %s (owned)\n-> %s at Lv %d" % [tome_by_id(evo["tome"])["name"], evo["name"], EVOLVE_LEVEL]
+	if int(owned_tomes.get(id, 0)) > 0:
+		return ""
+	var lines: Array = []
+	for w in WEAPONS:
+		if w.get("tome", "") == id and owned_weapons.has(w["from"]) and not owned_weapons.has(w["id"]):
+			lines.append("COMBO + %s (owned)\n-> %s at Lv %d" % [weapon_by_id(w["from"])["name"], w["name"], EVOLVE_LEVEL])
+	return "\n".join(lines)
+
+
 static func weapon_by_id(id: String) -> Dictionary:
 	for w in WEAPONS:
 		if w["id"] == id:

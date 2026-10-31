@@ -22,7 +22,9 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
   with `evolved`/`from`/`tome`, weight 0, final numbers (lvl_* = 0); they replace the base weapon in its slot.
   Pairs: bolt+Multitude=Prismatic Barrage, flame+Ricochet=Solar Cataclysm, chain+Haste=Thunderstorm Network,
   meteor+Expanse=Starfall, blades+Vitality=Blade Halo, void+Attraction=Event Horizon, lance+Precision=Absolute Zero,
-  seed+Mending=Worldroot Bloom. Freeze (`Enemy.freeze_t`) stops a foe and its contact damage; bosses are only slowed.
+  seed+Mending=Worldroot Bloom. Level-up cards show a "COMBO + ... (owned) -> evolution" hint only when the
+  player already owns the other half (`GameData.combo_hint`; tome cards only while the tome is NEW); plain otherwise.
+  `--tomes=ricochet,haste` gives autotest runs tomes from the start. Freeze (`Enemy.freeze_t`) stops a foe and its contact damage; bosses are only slowed.
 - Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
 - Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
 - VFX: weapon/event effects are pixelfx sprite effects (https://github.com/patch-gg/pixelfx, MIT), exported by
@@ -54,6 +56,7 @@ and check a suspicious script with `godot --headless --path . --check-only -s <s
 godot --headless --path . --import
 godot --headless --path . -s tests/test_mapgen.gd
 godot --headless --path . -s tests/test_academy.gd
+godot --headless --path . -s tests/test_combo.gd
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=565590 --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77
