@@ -174,7 +174,69 @@ const WEAPONS := [
 		"speed": 200.0, "life": 1.2, "hit_r": 5.0, "fx_scale": 0.8,
 		"root_r": 20.0, "root_time": 1.6, "tick_dmg": 0.3, "slow": 0.6,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
+
+	# --- Evolutions (doc "Evolution" lines). A base weapon at EVOLVE_LEVEL plus its tome (any level)
+	# turns into its evolution in the next chest opened. Evolved rows never level (lvl_* = 0) and are
+	# never offered on level-up (weight 0): their numbers are the final values. For comparison, base
+	# Lv 8 is about 2.4x base dmg and 1.35x faster casts.
+	{"id": "prism", "name": "Prismatic Barrage", "evolved": true, "from": "bolt", "tome": "multitude", "weight": 0.0,
+		"desc": "Volleys of elemental bolts (arcane, fire, ice, nature) that ricochet",
+		"cd": 0.55, "dmg": 2.4, "range": 230.0, "count": 6, "uses_projectiles": true,
+		"speed": 290.0, "life": 1.3, "hit_r": 4.5, "fx_scale": 0.62, "bounce": 2,
+		"fire_splash_r": 16.0, "fire_splash": 0.4, "slow": 0.8,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "solar", "name": "Solar Cataclysm", "evolved": true, "from": "flame", "tome": "ricochet", "weight": 0.0,
+		"desc": "A miniature sun ricochets, then detonates in a solar blast",
+		"cd": 0.85, "dmg": 3.2, "range": 230.0, "count": 2, "uses_projectiles": true,
+		"speed": 200.0, "life": 1.5, "hit_r": 8.0, "fx_scale": 0.3, "bounce": 6,
+		"burst_r": 44.0, "burst_dmg": 2.0,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "storm", "name": "Thunderstorm Network", "evolved": true, "from": "chain", "tome": "haste", "weight": 0.0,
+		"desc": "Several storms strike at once and chain across the whole pack",
+		"cd": 1.1, "dmg": 2.4, "range": 230.0, "jump_range": 110.0, "count": 3, "jumps": 7, "uses_projectiles": true,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "starfall", "name": "Starfall", "evolved": true, "from": "meteor", "tome": "expanse", "weight": 0.0,
+		"desc": "A rain of meteors strikes marked foes one after another",
+		"cd": 2.0, "dmg": 6.0, "radius": 40.0, "range": 240.0, "count": 8, "delay": 0.5, "stagger": 0.12,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "halo", "name": "Blade Halo", "evolved": true, "from": "blades", "tome": "vitality", "weight": 0.0,
+		"desc": "A halo of swords circles you and hurls blades at foes",
+		"cd": 0.45, "dmg": 1.4, "radius": 13.0, "blade_len": 30.0, "count": 6, "uses_projectiles": true,
+		"spin": 4.5, "trail_arc": 0.7,   # shorter trails: 6 blades with full trails merge into one bright disc
+		"launch_cd": 0.8, "launch_dmg": 2.0, "launch_range": 210.0, "speed": 340.0, "life": 0.75, "hit_r": 6.0,
+		"fx_scale": 1.15, "pierce": 5,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "horizon", "name": "Event Horizon", "evolved": true, "from": "void", "tome": "attraction", "weight": 0.0,
+		"desc": "A vast singularity drags whole packs in before it collapses",
+		"cd": 2.8, "dmg": 6.0, "radius": 95.0, "range": 180.0, "pull": 170.0, "duration": 2.2, "tick_dmg": 0.3,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "zero", "name": "Absolute Zero", "evolved": true, "from": "lance", "tome": "precision", "weight": 0.0,
+		"desc": "Ice spears pierce a line, then burst into crystals that freeze",
+		"cd": 1.0, "dmg": 4.2, "range": 250.0, "count": 2, "uses_projectiles": true,
+		"speed": 340.0, "life": 0.9, "hit_r": 6.0, "fx_scale": 0.6, "pierce": 8,
+		"slow": 1.5, "burst_r": 42.0, "burst_dmg": 1.0, "freeze": 1.6,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
+	{"id": "worldroot", "name": "Worldroot Bloom", "evolved": true, "from": "seed", "tome": "mending", "weight": 0.0,
+		"desc": "Seeds burst into spreading roots that trap whole packs",
+		"cd": 0.95, "dmg": 2.2, "range": 210.0, "count": 3, "uses_projectiles": true,
+		"speed": 210.0, "life": 1.2, "hit_r": 5.0, "fx_scale": 1.0,
+		"root_r": 32.0, "root_time": 2.6, "tick_dmg": 0.35, "slow": 0.6, "branches": 2, "trap": 0.9,
+		"lvl_dmg": 0.0, "lvl_cd": 0.0, "lvl_area": 0.0},
 ]
+# Base weapon level needed to evolve (lower this if Lv 8 is rarely reached in real runs).
+const EVOLVE_LEVEL := WEAPON_MAX_LEVEL
+# Freeze (Absolute Zero, Worldroot traps): frozen foes stop and deal no contact damage.
+# Bosses are never frozen; they are slowed instead.
+const FROZEN_TINT := Color(0.55, 1.05, 1.6)
+const ROOT_TRAP_COOLDOWN := 2.5   # a foe can be root-trapped again after this many seconds
+
+
+## The evolution row whose "from" is base_id ({} if none).
+static func evolution_of(base_id: String) -> Dictionary:
+	for w in WEAPONS:
+		if w.get("from", "") == base_id:
+			return w
+	return {}
 
 
 static func weapon_by_id(id: String) -> Dictionary:

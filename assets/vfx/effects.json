@@ -298,5 +298,65 @@
    48,
    71
   ]
+ },
+ "sun_orb": {
+  "source": "holy/sunburst",
+  "fps": 12,
+  "loop": true,
+  "frames": 13,
+  "columns": 13,
+  "frame_size": [
+   103,
+   98
+  ],
+  "pivot": [
+   54,
+   49
+  ]
+ },
+ "solar_burst": {
+  "source": "riftbound/solar-burst",
+  "fps": 15,
+  "loop": false,
+  "frames": 11,
+  "columns": 11,
+  "frame_size": [
+   98,
+   80
+  ],
+  "pivot": [
+   49,
+   42
+  ]
+ },
+ "frost_burst": {
+  "source": "riftbound/frost-burst",
+  "fps": 15,
+  "loop": false,
+  "frames": 16,
+  "columns": 16,
+  "frame_size": [
+   92,
+   68
+  ],
+  "pivot": [
+   46,
+   36
+  ]
+ },
+ "void_collapse": {
+  "source": "riftbound/void-collapse",
+  "fps": 15,
+  "loop": false,
+  "frames": 14,
+  "columns": 14,
+  "frame_size": [
+   100,
+   70
+  ],
+  "pivot": [
+   50,
+   36
+  ]
  }
 }

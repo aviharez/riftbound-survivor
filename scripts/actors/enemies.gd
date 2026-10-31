@@ -28,6 +28,8 @@ class Enemy:
 	var blade_hit_at := -100.0  # Astral Blades re-hit timer
 	var root_hit_at := -100.0   # Thornseed roots / Void Well tick timer
 	var slow_t := 0.0           # seconds of slow left (roots, frost)
+	var freeze_t := 0.0         # seconds frozen solid (Absolute Zero, Worldroot traps): no move, no contact damage
+	var trap_at := -100.0       # last Worldroot trap (re-trap cooldown)
 	var alive := true
 	var ghost := false   # drifts through walls (Final Swarm wraiths)
 	# boss state machine
@@ -188,6 +190,9 @@ func _process(delta: float) -> void:
 		e.slow_t = max(0.0, e.slow_t - delta)
 		if e.spawn_t > 0.0:
 			e.spawn_t -= delta
+			continue
+		if e.freeze_t > 0.0:
+			e.freeze_t -= delta
 			continue
 		if e.boss:
 			_boss_update(e, delta)
@@ -354,6 +359,8 @@ func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 	var mod := Color(1, 1, 1, 0.85) if e.ghost else Color.WHITE
 	if e.flash > 0.0:
 		mod = Color(3.0, 3.0, 3.0)
+	elif e.freeze_t > 0.0:
+		mod = GameData.FROZEN_TINT
 	elif e.elite:
 		mod = Color(1.35, 0.85, 0.85)
 	var size := Vector2(tw, tex.get_height()) * scale

@@ -237,8 +237,11 @@ func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color, label: Ca
 		if i < ids.size():
 			view.draw_rect(r, NAVY)
 			view.draw_rect(r, col, false, 1.0)
+			var evolved: bool = GameData.weapon_by_id(String(ids[i])).get("evolved", false) if owned == game.player.weapon_levels else false
+			if evolved:
+				view.draw_rect(r, GOLD, false, 1.0)
 			_text(Vector2(x + 2, y + 9), String(label.call(ids[i])).substr(0, 3), IVORY, 7, false)
-			_text(Vector2(x + 22, y + 9), str(owned[ids[i]]), col, 7, true)
+			_text(Vector2(x + 22, y + 9), "E" if evolved else str(owned[ids[i]]), GOLD if evolved else col, 7, true)
 		elif i < unlocked:
 			view.draw_rect(r, Color(NAVY, 0.6))
 			view.draw_rect(r, Color(col, 0.35), false, 1.0)

@@ -12,7 +12,15 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
 - Weapon behaviour lives in `scripts/actors/weapons.gd` (shots in `projectiles.gd`); its numbers in `GameData.WEAPONS`.
   Attack types follow `docs/weapon_attack_design.md` (Syifa's "Riftbound Weapon Attack Design"; prototype set of 8 done).
-  `--weapons=meteor,void` gives extra weapons and `--swarm-at=30` starts the Final Swarm early in an autotest run.
+  `--weapons=meteor,void` gives extra weapons (evolved ids such as `solar` come evolved) and `--swarm-at=30` starts
+  the Final Swarm early in an autotest run; `--ready-evolve` puts owned weapons at the evolve level with their tome
+  so the first chests evolve them; `--profile` prints load counters every 20 s of game time.
+- Weapon evolutions (approved by Syifa): base weapon at `GameData.EVOLVE_LEVEL` (= max, 8) + its tome (any level)
+  -> the next chest opened (any chest) gives the evolution instead of an item. Evolved rows are in `GameData.WEAPONS`
+  with `evolved`/`from`/`tome`, weight 0, final numbers (lvl_* = 0); they replace the base weapon in its slot.
+  Pairs: bolt+Multitude=Prismatic Barrage, flame+Ricochet=Solar Cataclysm, chain+Haste=Thunderstorm Network,
+  meteor+Expanse=Starfall, blades+Vitality=Blade Halo, void+Attraction=Event Horizon, lance+Precision=Absolute Zero,
+  seed+Mending=Worldroot Bloom. Freeze (`Enemy.freeze_t`) stops a foe and its contact damage; bosses are only slowed.
 - Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
 - Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
 - VFX: weapon/event effects are pixelfx sprite effects (https://github.com/patch-gg/pixelfx, MIT), exported by
@@ -37,6 +45,9 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 - Before every push, run the test commands below; all must print `[autotest] done` and no `SCRIPT ERROR`.
 
 ## Test commands (headless)
+`GODOT=<godot binary> tools/run_tests.sh` runs all of these with a timeout each and prints ok/FAIL per test.
+A GDScript parse error makes an autotest hang (the scene never loads) instead of failing: always use timeouts,
+and check a suspicious script with `godot --headless --path . --check-only -s <script>`.
 ```
 godot --headless --path . --import
 godot --headless --path . -s tests/test_mapgen.gd
@@ -47,7 +58,10 @@ godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77
 godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77 --char=kael
 godot --headless --path . --fixed-fps 60 -- --autotest-late --seed=99 --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest-boss --seed=31337 --char=lyra
+godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242 --char=lyra --weapons=bolt,chain,meteor --ready-evolve --slots=4
+godot --headless --path . --fixed-fps 60 -- --autotest --seed=565590 --char=kael --weapons=void,lance,seed --ready-evolve --slots=4
 ```
+The two `--ready-evolve` runs must end with all 4 evolutions in `evolutions=[...]`.
 The main scene is the academy; any `--autotest*` flag makes it jump straight into a run.
 Autotests never read or write the player's save (`SaveData`); without `--slots` they use the base 2 + 2 slots.
 Academy screenshot: `xvfb-run -a godot --path . --rendering-driver opengl3 --resolution 1280x720 -- --academy-shot=/tmp/academy.png`
@@ -63,17 +77,21 @@ Note: in the cloud workspace the Godot binary is not preinstalled; download the 
    Our custom effects live in `tools/pixelfx_custom/riftbound/`; the exporter copies them into the clone.
    Author new ones with the clone's `skills/pixelfx/SKILL.md` workflow (draft, `node tools/render.mjs`, look, fix,
    `node tools/check.mjs`), then copy the final file back into `tools/pixelfx_custom/`.
+   Top-down rule: Syifa wants every effect to read top-down. Many library effects are side-view (frost-nova,
+   ice-shatter, thorns, plasma-explosion's tilted rings): do not use those; author a custom one instead. Our
+   convention (see `riftbound/meteor-strike.js`): floor rings are ellipses with sy = 0.6, "up the screen" = "into the
+   sky", things fall down the screen. `p.disc` is round, so draw flat floor patches per pixel with `p.blend`.
 3. Screenshots need `xvfb-run`; software GL is slow, keep shot times early.
 
-## Status and next up (as of 2026-10-31)
+## Status and next up (as of 2026-10-31, evening)
 Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, Rift Surges, boss, Final Swarm
 (swarm level per minute, wraiths, threat meter), academy (Library, Training Ground), 4 characters with
-chibi sprites, 8 weapons from the design doc, pixelfx VFX, Android CI. No audio yet.
+chibi sprites, 8 weapons from the design doc, **8 weapon evolutions** (custom top-down bursts solar-burst,
+frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
+Open question: whether Lv 8 is reached often enough in real runs to evolve (EVOLVE_LEVEL is one constant).
 
 Syifa's next priorities, in order she listed:
-1. **Weapon evolutions** from `docs/weapon_attack_design.md` (e.g. Flame Orb -> Solar Cataclysm,
-   Astral Blades -> Blade Halo, Void Well -> Event Horizon). Decide the unlock rule (e.g. max level +
-   a matching tome/item, offered from a chest) and confirm it with Syifa before building.
+1. ~~Weapon evolutions~~ done (see Rules). Tune from her playtest feedback.
 2. **More weapons** from the doc, favouring attack types we do not have yet (Crescent Slash, Rune Chakram,
    Arcane Familiar, Aether Beam, Venom Bloom, Gravity Lens ...). Each needs top-down VFX.
 3. **Academy expansion**: more buildings (e.g. unlock characters such as Selene/Noah from the doc,

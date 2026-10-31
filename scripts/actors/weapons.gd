@@ -6,8 +6,14 @@ extends Node2D
 ## this file holds each weapon's behaviour. Shots fly in Projectiles; ground effects
 ## (meteor strikes, roots, void wells) are plain dictionaries updated here.
 ## Every weapon fires on its own cooldown (attack speed), with or without a target.
+## Evolutions (Prismatic Barrage, Solar Cataclysm, Thunderstorm Network, Starfall, Blade Halo,
+## Event Horizon, Absolute Zero, Worldroot Bloom) replace their base weapon; most reuse the base
+## behaviour with bigger numbers plus one new twist each.
 
-const MAX_ROOTS := 14   # live Thornseed root patches (oldest dropped first)
+const MAX_ROOTS := 28   # live root patches (oldest dropped first)
+const PRISM_KINDS := ["prism_arcane", "prism_fire", "prism_ice", "prism_nature"]
+# custom top-down bursts (tools/pixelfx_custom/riftbound): their ring's reach in px at scale 1
+const BURST_REACH := {"solar_burst": 44.0, "frost_burst": 42.0, "void_collapse": 46.0}
 
 var game: Node
 var _cd := {}            # weapon id -> seconds until next use
@@ -17,6 +23,7 @@ var _zones: Array = []   # roots / void wells {kind, pos, r, t, life, dmg, tick_
 var _blade_fx: Array = [] # looping astral-blade instances, one per blade
 var _blade_arcs: Array = [] # this frame's blade sweeps for the trail {c, a, r_in, r_out, span}
 var _trail: Node2D         # additive child that draws the Astral Blades sweep trails
+var _halo_t := 0.5         # Blade Halo: seconds until the next thrown blade
 
 
 func _ready() -> void:
@@ -47,11 +54,15 @@ func count_of(w: Dictionary, lv: int) -> int:
 func _process(delta: float) -> void:
 	_time += delta
 	var p: Player = game.player
-	for id in p.weapon_levels:
+	var orbit := false
+	for id in p.weapon_levels.keys():
 		var w: Dictionary = GameData.weapon_by_id(id)
 		var lv: int = p.weapon_levels[id]
-		if id == "blades":
+		if w.has("blade_len"):   # orbiting swords: Astral Blades, Blade Halo
+			orbit = true
 			_astral_blades(w, lv, delta)
+			if id == "halo":
+				_halo_throw(w, lv, delta)
 			continue
 		_cd[id] = float(_cd.get(id, 0.3)) - delta
 		if _cd[id] > 0.0:
@@ -64,10 +75,17 @@ func _process(delta: float) -> void:
 			"void": _void_well(w, lv)
 			"lance": _frost_lance(w, lv)
 			"seed": _thornseed(w, lv)
+			"prism": _prismatic_barrage(w, lv)
+			"solar": _fan("solar", w, lv, _aim(float(w["range"])), 0.22, int(w["bounce"]) + int(p.stats["bounce"]), 0)
+			"storm": _chain_lightning(w, lv)
+			"starfall": _meteor_fall(w, lv)
+			"horizon": _void_well(w, lv)
+			"zero": _fan("zero", w, lv, _aim(float(w["range"])), 0.12, 0, int(w["pierce"]) + int(p.stats["bounce"]))
+			"worldroot": _fan("worldseed", w, lv, _aim(float(w["range"])), 0.3, 0, 0)
 		_cd[id] = level_cooldown(w, lv)
 	_update_strikes(delta)
 	_update_zones(delta)
-	if not p.weapon_levels.has("blades"):
+	if not orbit:
 		_blade_arcs.clear()
 		if not _blade_fx.is_empty():
 			clear_blades()
@@ -128,63 +146,148 @@ func _thornseed(w: Dictionary, lv: int) -> void:
 func on_projectile_hit(shot: Dictionary, pos: Vector2, enemy = null) -> void:
 	var w: Dictionary = shot["w"]
 	match shot["kind"]:
-		"flame":
+		"flame", "solar":
 			game.vfx.sparks(pos, Color(2.6, 1.3, 0.35), 6, 110.0, 0.25, 1.4)
-			game.vfx.flash(pos, Color(2.0, 0.9, 0.3), 10.0, 0.12)
-		"lance":
+			game.vfx.flash(pos, Color(2.0, 0.9, 0.3), 14.0 if shot["kind"] == "solar" else 10.0, 0.12)
+		"lance", "zero", "prism_ice":
 			if enemy != null:
 				enemy.slow_t = maxf(enemy.slow_t, float(w.get("slow", 1.0)))
 			game.vfx.shards(pos, Color(0.9, 1.8, 2.4), 5, 90.0, 0.5)
 			game.vfx.motes(pos, Color(0.6, 1.2, 1.6), 2, 12.0, 0.6, 3.0, -8.0)
-		"seed":
-			_spawn_roots(w, game.player.weapon_levels.get("seed", 1), pos)
+		"seed", "worldseed":
+			_spawn_roots(w, int(game.player.weapon_levels.get(w["id"], 1)), pos)
+		"prism_fire":
+			# a small fire splash scorches foes next to the one hit
+			for e in game.enemies.query_radius(pos, float(w["fire_splash_r"]) * game.player.area()):
+				if e != enemy:
+					_hit(e, float(shot["dmg"]) * float(w["fire_splash"]), Color(2.4, 1.1, 0.3))
+			game.vfx.sparks(pos, Color(2.6, 1.3, 0.35), 5, 90.0, 0.22, 1.3)
+		"prism_nature":
+			if enemy != null:
+				enemy.slow_t = maxf(enemy.slow_t, 0.6)
+			game.vfx.motes(pos, Color(0.8, 2.0, 0.6), 3, 20.0, 0.5, 2.5, -10.0)
 
 
-func _spawn_roots(w: Dictionary, lv: int, pos: Vector2) -> void:
+## Called by Projectiles for every shot that ends (last hit, wall, or out of time).
+func on_projectile_end(shot: Dictionary) -> void:
+	var w: Dictionary = shot["w"]
+	match shot["kind"]:
+		"solar":
+			# Solar Cataclysm: the miniature sun detonates where it ends up
+			_burst(shot["pos"], float(w["burst_r"]) * game.player.area(), float(shot["dmg"]) * float(w["burst_dmg"]),
+				"solar_burst", Color(2.6, 1.6, 0.4), 0.0)
+		"zero":
+			# Absolute Zero: the spear shatters into a crystal blast that freezes the area
+			_burst(shot["pos"], float(w["burst_r"]) * game.player.area(), float(shot["dmg"]) * float(w["burst_dmg"]),
+				"frost_burst", Color(1.0, 1.9, 2.6), float(w["freeze"]))
+
+
+## Radial blast used by the evolutions, drawn with that element's top-down burst effect.
+func _burst(pos: Vector2, r: float, amount: float, fx: String, col: Color, freeze: float) -> void:
+	for e in game.enemies.query_radius(pos, r):
+		_hit(e, amount, col)
+		if freeze > 0.0:
+			_freeze(e, freeze)
+	game.vfx.play(fx, pos, 0.0, r / float(BURST_REACH[fx]))
+	game.screen_fx.shockwave(pos, r * 1.6, 0.8, 0.4)
+	game.screen_fx.shake(0.08)
+
+
+## Freezes a foe solid; bosses are only slowed.
+func _freeze(e, t: float) -> void:
+	if e.boss:
+		e.slow_t = maxf(e.slow_t, t)
+	else:
+		e.freeze_t = maxf(e.freeze_t, t)
+
+
+## Prismatic Barrage: a fan of bolts, each a different element (arcane, fire, ice, nature).
+func _prismatic_barrage(w: Dictionary, lv: int) -> void:
+	var p: Player = game.player
+	var dir := _aim(float(w["range"]))
+	var count := count_of(w, lv)
+	var b: int = int(w["bounce"]) + int(p.stats["bounce"])
+	var step := 0.16
+	for i in count:
+		var spread: float = 0.0 if count == 1 else lerp(-step * (count - 1), step * (count - 1), float(i) / (count - 1))
+		game.projectiles.fire(PRISM_KINDS[i % PRISM_KINDS.size()], p.position, dir.rotated(spread), level_damage(w, lv), w, b, 0, p.area())
+
+
+## Called by main when a weapon evolves: the new weapon fires almost at once.
+func on_evolved(_base_id: String, evo_id: String) -> void:
+	_cd[evo_id] = 0.2
+	_halo_t = 0.3
+
+
+## Root patch. Worldroot Bloom patches (w has "branches") trap foes and sprout smaller patches around them.
+func _spawn_roots(w: Dictionary, lv: int, pos: Vector2, r_mult := 1.0, gen := 0) -> void:
 	var roots := _zones.filter(func(z): return z["kind"] == "roots")
 	if roots.size() >= MAX_ROOTS:
 		roots[0]["t"] = roots[0]["life"]
-	var r: float = float(w["root_r"]) * level_size(w, lv)
+	var r: float = float(w["root_r"]) * level_size(w, lv) * r_mult
 	# nature/root-snare: the root tangle spans ~56 px at scale 1, pivot on the ground
 	game.vfx.play("root_snare", pos + Vector2(0, 3), 0.0, r / 28.0)
 	_zones.append({"kind": "roots", "pos": pos, "r": r, "t": 0.0, "life": float(w["root_time"]),
-		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"]), "slow": float(w["slow"])})
+		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"]), "slow": float(w["slow"]),
+		"trap": float(w.get("trap", 0.0)), "branches": int(w.get("branches", 0)) if gen == 0 else 0,
+		"w": w, "lv": lv})
 
 
 # ------------------------------------------------------------------ Chain Lightning
 
+## Chain Lightning: one bolt that jumps foe to foe. Thunderstorm Network (w has "jumps") strikes
+## several storms at once, each starting on a different nearby foe; the chains share their targets, so
+## together they spread across the whole pack.
 func _chain_lightning(w: Dictionary, lv: int) -> void:
 	var p: Player = game.player
-	var cur = game.enemies.nearest(p.position, float(w["range"]), null)
-	if cur == null:
-		# nothing in range: a lone zap strikes the ground ahead
-		var spot: Vector2 = p.position + p.facing * float(w["range"]) * 0.4
-		game.vfx.play("zap_hit", spot, p.facing.angle(), 0.6)
+	var storm: bool = w.has("jumps")
+	var chains := count_of(w, lv) if storm else 1
+	var jumps: int = int(w["jumps"]) if storm else count_of(w, lv)
+	var starts: Array = game.enemies.query_radius(p.position, float(w["range"]))
+	if starts.is_empty():
+		# nothing in range: lone zaps strike the ground ahead
+		for c in chains:
+			var spot: Vector2 = p.position + p.facing.rotated(randf_range(-0.6, 0.6) * c) * float(w["range"]) * 0.4
+			game.vfx.play("zap_hit", spot, p.facing.angle(), 0.6)
 		return
-	var prev: Vector2 = p.position + Vector2(0, -6)
+	starts.sort_custom(func(a, b): return a.pos.distance_squared_to(p.position) < b.pos.distance_squared_to(p.position))
 	var done: Array = []
-	var jumps := count_of(w, lv)
 	var amount := level_damage(w, lv)
-	for j in jumps:
-		done.append(cur)
-		_hit(cur, amount, Color(1.2, 1.8, 2.8))
-		# zap-hit's bolt arrives from the left of its pivot (~85 px long at scale 1)
-		var d: Vector2 = cur.pos - prev
-		game.vfx.play("zap_hit", cur.pos, d.angle(), clampf(d.length() / 85.0, 0.35, 1.2))
-		prev = cur.pos
-		var best = null
-		var best_d := INF
-		for e in game.enemies.query_radius(cur.pos, float(w["jump_range"])):
-			if e in done:
-				continue
-			var dd: float = e.pos.distance_squared_to(cur.pos)
-			if dd < best_d:
-				best_d = dd
-				best = e
-		if best == null:
+	var si := 0
+	for c in chains:
+		while si < starts.size() and starts[si] in done:
+			si += 1
+		if si >= starts.size():
 			break
-		cur = best
-	game.screen_fx.chroma(0.15)
+		var cur = starts[si]
+		var prev: Vector2 = p.position + Vector2(0, -6)
+		if storm:
+			# each storm cell opens with a bright flash and ring on its first foe
+			game.vfx.flash(cur.pos, Color(1.4, 2.0, 2.8), 18.0, 0.16)
+			game.vfx.ring(cur.pos, Color(1.0, 1.7, 2.8), 22.0, 0.3, 2.0)
+			game.vfx.play("zap_hit", cur.pos, -PI * 0.5, 0.9)
+		for j in jumps:
+			done.append(cur)
+			_hit(cur, amount, Color(1.2, 1.8, 2.8))
+			# zap-hit's bolt arrives from the left of its pivot (~85 px long at scale 1)
+			var d: Vector2 = cur.pos - prev
+			game.vfx.play("zap_hit", cur.pos, d.angle(), clampf(d.length() / 85.0, 0.35, 1.2))
+			prev = cur.pos
+			var best = null
+			var best_d := INF
+			for e in game.enemies.query_radius(cur.pos, float(w["jump_range"])):
+				if e in done:
+					continue
+				var dd: float = e.pos.distance_squared_to(cur.pos)
+				if dd < best_d:
+					best_d = dd
+					best = e
+			if best == null:
+				break
+			cur = best
+	game.screen_fx.chroma(0.25 if storm else 0.15)
+	if storm:
+		game.screen_fx.shake(0.06)
 
 
 # ------------------------------------------------------------------ Meteor Fall
@@ -201,14 +304,18 @@ func _meteor_fall(w: Dictionary, lv: int) -> void:
 			spot = foes[i].pos
 		else:
 			spot = p.position + p.facing.rotated(randf_range(-0.8, 0.8)) * float(w["range"]) * randf_range(0.25, 0.6)
-		# riftbound/meteor-strike: warning ring, the rock lands at 0.5 s, fire ring reaches 38 px at scale 1
-		game.vfx.play("meteor_strike", spot, 0.0, r / 38.0)
-		_strikes.append({"pos": spot, "t": -0.08 * i, "delay": float(w["delay"]), "r": r, "dmg": level_damage(w, lv)})
+		# Starfall staggers its meteors more, so they rain down one after another
+		_strikes.append({"pos": spot, "t": -float(w.get("stagger", 0.08)) * i, "delay": float(w["delay"]), "r": r,
+			"dmg": level_damage(w, lv), "fx": false})
 
 
 func _update_strikes(delta: float) -> void:
 	for s in _strikes:
 		s["t"] += delta
+		if not s["fx"] and s["t"] >= 0.0:
+			# riftbound/meteor-strike: warning ring, the rock lands at 0.5 s, fire ring reaches 38 px at scale 1
+			s["fx"] = true
+			game.vfx.play("meteor_strike", s["pos"], 0.0, s["r"] / 38.0)
 		if s["t"] >= s["delay"] and not s.get("done", false):
 			s["done"] = true
 			for e in game.enemies.query_radius(s["pos"], s["r"]):
@@ -229,8 +336,11 @@ func _void_well(w: Dictionary, lv: int) -> void:
 		else p.position + p.facing * float(w["range"]) * 0.4
 	var r: float = float(w["radius"]) * level_size(w, lv)
 	# shadow/void-orb: the swirl with its pulse ring is ~50 px in radius at scale 1
-	var fx: Dictionary = game.vfx.play("void_orb", center, 0.0, r / 50.0, Color.WHITE, GameData.VFX_LIGHT_BOOST, -1.0, null, true)
+	# Event Horizon is much bigger: its light is turned down so the huge vortex is heavy, not blinding
+	var light_k: float = GameData.VFX_LIGHT_BOOST * (0.45 if w["id"] == "horizon" else 1.0)
+	var fx: Dictionary = game.vfx.play("void_orb", center, 0.0, r / 50.0, Color.WHITE, light_k, -1.0, null, true)
 	_zones.append({"kind": "void", "pos": center, "r": r, "t": 0.0, "life": float(w["duration"]), "fx": fx,
+		"horizon": w["id"] == "horizon",
 		"pull": float(w["pull"]) * level_size(w, lv), "dmg": level_damage(w, lv),
 		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"])})
 
@@ -238,11 +348,23 @@ func _void_well(w: Dictionary, lv: int) -> void:
 # ------------------------------------------------------------------ zones (roots, void wells)
 
 func _update_zones(delta: float) -> void:
-	for z in _zones:
+	for z in _zones.duplicate():   # copy: Worldroot patches can sprout new zones mid-loop
 		z["t"] += delta
 		if z["kind"] == "roots":
+			if z["branches"] > 0 and z["t"] >= 0.35:
+				# Worldroot Bloom: the patch spreads, sprouting smaller patches around itself
+				var n: int = z["branches"]
+				z["branches"] = 0
+				var a0 := randf() * TAU
+				for i in n:
+					var spot: Vector2 = z["pos"] + Vector2.from_angle(a0 + TAU * i / n) * z["r"] * 1.3
+					if not game.world.is_solid_at(spot):
+						_spawn_roots(z["w"], z["lv"], spot, 0.7, 1)
 			for e in game.enemies.query_radius(z["pos"], z["r"]):
 				e.slow_t = maxf(e.slow_t, 0.3)
+				if z["trap"] > 0.0 and _time - e.trap_at >= GameData.ROOT_TRAP_COOLDOWN:
+					e.trap_at = _time
+					_freeze(e, z["trap"])
 				if _time - e.root_hit_at >= 0.45:
 					e.root_hit_at = _time
 					_hit(e, z["tick_dmg"], Color(0.8, 2.0, 0.6))
@@ -270,6 +392,10 @@ func _detonate(z: Dictionary) -> void:
 	for e in game.enemies.query_radius(z["pos"], z["r"]):
 		_hit(e, z["dmg"], Color(1.8, 0.7, 2.8))
 	game.vfx.play("dark_explosion", z["pos"], 0.0, z["r"] / 90.0)
+	if z["horizon"]:
+		# Event Horizon collapses with a violet plasma ring on top of the dark blast
+		game.vfx.play("void_collapse", z["pos"], 0.0, z["r"] / float(BURST_REACH["void_collapse"]))
+		game.screen_fx.chroma(0.3)
 	game.vfx.ring(z["pos"], Color(1.6, 0.7, 2.6), z["r"], 0.35, 2.0)
 	game.screen_fx.shockwave(z["pos"], z["r"] * 1.8, 1.0, 0.45)
 	game.screen_fx.shake(0.14)
@@ -320,6 +446,23 @@ func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
 				e.blade_hit_at = _time
 				_hit(e, level_damage(w, lv), Color(0.9, 1.8, 2.6))
 				game.vfx.play("hit_spark", e.pos, a + PI * 0.5, 0.28, Color(0.7, 0.95, 1.0))
+
+
+## Blade Halo: every so often one sword leaves the halo and flies, piercing, at the nearest foe.
+func _halo_throw(w: Dictionary, lv: int, delta: float) -> void:
+	_halo_t -= delta
+	if _halo_t > 0.0:
+		return
+	var p: Player = game.player
+	_halo_t = float(w["launch_cd"]) / (1.0 + float(p.stats["attack_speed_pct"]))
+	var target = game.enemies.nearest(p.position, float(w["launch_range"]), null)
+	if target == null:
+		return
+	var dir: Vector2 = (target.pos - p.position).normalized()
+	var from: Vector2 = p.position + dir * float(w["radius"]) * level_size(w, lv)
+	game.projectiles.fire("halo_blade", from, dir, level_damage(w, lv) * float(w["launch_dmg"]), w,
+		0, int(w["pierce"]) + int(p.stats["bounce"]), p.area())
+	game.vfx.sparks(from, Color(0.9, 1.8, 2.6), 4, 60.0, 0.2, 1.2)
 
 
 ## Each blade drags a crescent behind it: bright, white-cyan right at the blade, thinning towards the

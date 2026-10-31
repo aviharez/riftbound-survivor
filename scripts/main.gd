@@ -4,7 +4,9 @@ extends Node2D
 ## the boss portal and the win / lose flow.
 ##
 ## Command-line (after `--`): --seed=123  --slots=4  --autotest  --autotest-die  --autotest-late  --shot=/tmp/shot.png
-##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1)  --swarm-at=30 (early Final Swarm); autotest only
+##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1; evolved ids such as solar come evolved)
+##   --ready-evolve (owned weapons start at the evolve level with their tomes, so chests evolve them)
+##   --swarm-at=30 (early Final Swarm); autotest only
 
 var seed_value := 0
 var rng := RandomNumberGenerator.new()
@@ -35,6 +37,8 @@ var pending_levelups := 0
 var items_owned := {}   # id -> count (insertion order = HUD order)
 var chests_paid := 0
 var chests_opened := 0
+var evolutions: Array = []      # evolved weapon ids, in the order they happened
+var _evo_announced := {}        # base weapon id -> true once "ready to evolve" was shown
 var shrines_used := 0
 var difficulty := 1.0
 var final_swarm := false
@@ -71,6 +75,10 @@ var _choice_shot_done := false
 var _auto_portal_at := 240.0
 var _swarm_at := -1.0  # --swarm-at=30: start the Final Swarm early (autotest only)
 var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
+var _ready_evolve := false      # --ready-evolve: owned weapons at the evolve level + their tomes
+var _profile := false           # --profile: print load counters every 20 s of game time
+var _profile_next := 20.0
+var _profile_ms := 0
 
 
 func _ready() -> void:
@@ -105,8 +113,15 @@ func _ready() -> void:
 	player = _add(Player.new())
 	player.setup_character(GameData.character_by_id(character_id))
 	for id in _extra_weapons:
-		if _auto and not GameData.weapon_by_id(id).is_empty():
-			player.weapon_levels[id] = 1
+		var ew: Dictionary = GameData.weapon_by_id(id)
+		if _auto and not ew.is_empty():
+			player.weapon_levels[id] = GameData.WEAPON_MAX_LEVEL if ew.get("evolved", false) else 1
+	if _auto and _ready_evolve:
+		for id in player.weapon_levels.keys():
+			var evo := GameData.evolution_of(id)
+			if not evo.is_empty():
+				player.weapon_levels[id] = GameData.EVOLVE_LEVEL
+				player.tomes[evo["tome"]] = 1
 	player.position = world.cell_center(map["spawn"])
 	projectiles = _add(Projectiles.new())
 	weapons = _add(Weapons.new())
@@ -163,6 +178,10 @@ func _parse_args() -> void:
 			_auto_portal_at = 640.0
 		elif a.begins_with("--swarm-at="):
 			_swarm_at = float(a.get_slice("=", 1))
+		elif a == "--profile":
+			_profile = true
+		elif a == "--ready-evolve":
+			_ready_evolve = true
 		elif a.begins_with("--weapons="):
 			_extra_weapons = Array(a.get_slice("=", 1).split(","))
 		elif a.begins_with("--char="):
@@ -468,6 +487,10 @@ func open_chest(c: Dictionary) -> void:
 		chests_paid += 1
 	c["opened"] = true
 	chests_opened += 1
+	var ready := ready_evolutions()
+	if not ready.is_empty():
+		_evolve(ready[0], c["pos"])
+		return
 	var rarity := GameData.roll_rarity(rng, player.stats["luck"], min_rarity)
 	var pool := GameData.items_of_rarity(rarity)
 	while pool.is_empty() and rarity > 0:
@@ -481,6 +504,52 @@ func open_chest(c: Dictionary) -> void:
 		screen_fx.shockwave(c["pos"], 80.0, 0.8, 0.45)
 		screen_fx.hitstop(0.04)
 	hud.toast("%s (%s): %s" % [it["name"], GameData.RARITY_NAMES[rarity], it["desc"]], GameData.RARITY_COLORS[rarity])
+
+
+# ------------------------------------------------------------------ evolutions
+
+## Owned base weapons that meet their evolution's rule: weapon at EVOLVE_LEVEL and its tome owned.
+func ready_evolutions() -> Array:
+	var out: Array = []
+	for id in player.weapon_levels:
+		var evo := GameData.evolution_of(id)
+		if evo.is_empty():
+			continue
+		if int(player.weapon_levels[id]) >= GameData.EVOLVE_LEVEL and int(player.tomes.get(evo["tome"], 0)) > 0:
+			out.append(id)
+	return out
+
+
+## Shows "ready to evolve" once per weapon, the moment its rule is met.
+func _check_evolution_ready() -> void:
+	for id in ready_evolutions():
+		if _evo_announced.has(id):
+			continue
+		_evo_announced[id] = true
+		var evo := GameData.evolution_of(id)
+		hud.banner("%s can evolve — open a chest!" % GameData.weapon_by_id(id)["name"], Color(1.0, 0.85, 0.35), 4.0)
+		hud.toast("Next chest: %s" % evo["name"], Color(1.0, 0.85, 0.35))
+
+
+## Replaces a base weapon by its evolution in the same slot (slot order is kept).
+func _evolve(base_id: String, at: Vector2) -> void:
+	var evo := GameData.evolution_of(base_id)
+	var levels := {}
+	for id in player.weapon_levels:
+		if id == base_id:
+			levels[evo["id"]] = GameData.WEAPON_MAX_LEVEL
+		else:
+			levels[id] = player.weapon_levels[id]
+	player.weapon_levels = levels
+	evolutions.append(evo["id"])
+	weapons.on_evolved(base_id, evo["id"])
+	vfx.play("loot_beam", at, 0.0, 0.9, Color(1.0, 0.85, 0.4))
+	vfx.play("level_up", player.position + Vector2(0, 6), 0.0, 0.7, Color(1.0, 0.85, 0.4), GameData.VFX_LIGHT_BOOST, -1.0, player)
+	screen_fx.shockwave(player.position, 140.0, 1.0, 0.6)
+	screen_fx.hitstop(0.08)
+	screen_fx.shake(0.25)
+	hud.banner("EVOLUTION!  %s  >  %s" % [GameData.weapon_by_id(base_id)["name"], evo["name"]], Color(1.0, 0.85, 0.35), 4.0)
+	hud.toast("%s: %s" % [evo["name"], evo["desc"]], Color(1.0, 0.85, 0.35))
 
 
 func item_by_id(id: String) -> Dictionary:
@@ -506,6 +575,11 @@ func _roll_levelup_offers() -> Array:
 		weights.append(float(t["weight"]) * (1.5 if lv > 0 else 1.0))  # owned tomes show up a bit more
 	var weapon_slot_free: bool = player.weapon_levels.size() < weapon_slots
 	for w in GameData.WEAPONS:
+		if w.get("evolved", false):
+			continue   # evolutions only come from chests
+		var evo := GameData.evolution_of(w["id"])
+		if not evo.is_empty() and player.weapon_levels.has(evo["id"]):
+			continue   # already evolved: the base weapon is gone for this run
 		var lv: int = int(player.weapon_levels.get(w["id"], 0))
 		if lv == 0 and not weapon_slot_free:
 			continue
@@ -530,9 +604,13 @@ func _make_offer(entry: Dictionary) -> Dictionary:
 	var lv: int = entry["level"]
 	if entry["kind"] == "weapon":
 		var unlocking := lv == 0
+		var desc: String = d["desc"] if unlocking else d["level_desc"]
+		var evo := GameData.evolution_of(d["id"])
+		if not evo.is_empty():
+			desc += "\nEvolves at Lv %d with %s" % [GameData.EVOLVE_LEVEL, GameData.tome_by_id(evo["tome"])["name"]]
 		return {"kind": "weapon", "def": d, "rarity": 0,
 			"name": ("%s (NEW)" % d["name"]) if unlocking else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1]),
-			"desc": d["desc"] if unlocking else d["level_desc"],
+			"desc": desc,
 			"color": Color(0.6, 0.9, 1.0)}
 	var rarity := GameData.roll_rarity(rng, player.stats["luck"])
 	var gain := GameData.tome_gain(d, rarity)
@@ -560,6 +638,7 @@ func _apply_offer(opt: Dictionary) -> void:
 			else:
 				gold += float(d["value"])
 				gold_collected += float(d["value"])
+	_check_evolution_ready()
 
 
 # ------------------------------------------------------------------ shrines
@@ -737,12 +816,19 @@ func _autotest_step(delta: float) -> void:
 		if _shot_path != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
-		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size()])
+		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s swarm_t=%.0f swarm_lv=%d threat=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm, final_swarm_t, swarm_level(), threat_name()])
 		get_tree().quit()
 		return
 	_maybe_shot(false)
+	if _profile and elapsed >= _profile_next:
+		_profile_next += 20.0
+		var now := Time.get_ticks_msec()
+		print("[profile] t=%.0f real_ms_per_20s=%d enemies=%d shots=%d zones=%d strikes=%d sprites=%d weapons=%s" % [
+			elapsed, now - _profile_ms, enemies.count(), projectiles.list.size(), weapons._zones.size(),
+			weapons._strikes.size(), vfx.sprites.size(), player.weapon_levels])
+		_profile_ms = now
 	if get_tree().paused:
 		return
 	if _auto_die:

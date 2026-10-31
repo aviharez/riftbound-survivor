@@ -53,6 +53,12 @@ const EFFECTS = [
   { name: "heal", id: "holy/heal", fps: 20, max: 1.5 },
   { name: "loot_beam", id: "pickups/loot-beam", fps: 12 },
   { name: "blink_out", id: "arcane/blink-out", fps: 24, max: 0.8 },
+  // weapon evolutions
+  { name: "sun_orb", id: "holy/sunburst", fps: 12, max: 1.0 },  // Solar Cataclysm shot (radial, reads top-down)
+  // custom top-down bursts (tools/pixelfx_custom/riftbound): rings lie on the floor ellipse
+  { name: "solar_burst", id: "riftbound/solar-burst", fps: 15 },     // Solar Cataclysm detonation
+  { name: "frost_burst", id: "riftbound/frost-burst", fps: 15 },     // Absolute Zero crystal blast
+  { name: "void_collapse", id: "riftbound/void-collapse", fps: 15 }, // Event Horizon collapse
 ];
 
 mkdirSync(outDir, { recursive: true });

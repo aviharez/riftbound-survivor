@@ -1,18 +1,29 @@
 class_name Projectiles
 extends Node2D
-## Player projectiles for every shooting weapon (Arcane Bolt, Flame Orb, Frost Lance, Thornseed).
+## Player projectiles for every shooting weapon (Arcane Bolt, Flame Orb, Frost Lance, Thornseed and their
+## evolutions, plus Blade Halo's thrown blades).
 ## Each shot carries its weapon id; the look is that weapon's pixelfx effect (faces right, rotated to
 ## the flight direction). A shot with bounces left ricochets to the nearest other foe; a shot with
 ## pierce left flies on through. On-hit extras (shards, roots) are handed back to Weapons.
 
 const BOUNCE_RANGE := 140.0
 
-## weapon id -> [pixelfx effect, impact effect, impact tint, spark colour]
+## shot kind -> [pixelfx effect, impact effect, impact tint, spark colour, (optional) sprite scale multiplier]
 const LOOKS := {
 	"bolt": ["arcane_bolt", "hit_spark", Color(1, 1, 1), Color(0.6, 1.6, 2.0)],
 	"flame": ["flame_orb", "hit_spark", Color(1.0, 0.6, 0.25), Color(2.4, 1.1, 0.3)],
 	"lance": ["ice_lance", "hit_spark", Color(0.6, 0.95, 1.0), Color(0.8, 1.7, 2.4)],
 	"seed": ["thorn_seed", "hit_spark", Color(0.6, 1.0, 0.4), Color(0.8, 2.0, 0.6)],
+	# evolutions
+	"solar": ["sun_orb", "hit_spark", Color(1.0, 0.8, 0.3), Color(2.6, 1.8, 0.5)],
+	"zero": ["ice_lance", "hit_spark", Color(0.7, 1.0, 1.0), Color(1.0, 1.9, 2.6)],
+	"worldseed": ["thorn_seed", "hit_spark", Color(0.6, 1.0, 0.4), Color(0.8, 2.0, 0.6), 1.25],
+	"halo_blade": ["astral_blade", "hit_spark", Color(0.7, 0.95, 1.0), Color(0.9, 1.8, 2.6)],
+	# Prismatic Barrage: one bolt per element, each wearing that element's projectile look
+	"prism_arcane": ["arcane_bolt", "hit_spark", Color(1, 1, 1), Color(0.6, 1.6, 2.0), 1.0],
+	"prism_fire": ["flame_orb", "hit_spark", Color(1.0, 0.6, 0.25), Color(2.4, 1.1, 0.3), 1.0],
+	"prism_ice": ["ice_lance", "hit_spark", Color(0.6, 0.95, 1.0), Color(0.8, 1.7, 2.4), 0.62],
+	"prism_nature": ["thorn_seed", "hit_spark", Color(0.6, 1.0, 0.4), Color(0.8, 2.0, 0.6), 1.1],
 }
 
 var game: Node
@@ -32,11 +43,16 @@ func _ready() -> void:
 
 
 ## Fires one shot of weapon w. size scales hit radius and sprite (player area).
-func fire(kind: String, from: Vector2, dir: Vector2, damage_amount: float, w: Dictionary, bounces: int, pierce: int, size: float) -> void:
+## Returns the shot so callers can tweak it. Shots of a piercing weapon never re-hit a foe.
+func fire(kind: String, from: Vector2, dir: Vector2, damage_amount: float, w: Dictionary, bounces: int, pierce: int, size: float) -> Dictionary:
 	var life := float(w.get("life", 1.2))
-	list.append({"kind": kind, "pos": from, "vel": dir.normalized() * float(w.get("speed", 260.0)), "dmg": damage_amount,
-		"bounces": bounces, "pierce": pierce, "life": life, "life0": life, "hit_r": float(w.get("hit_r", 4.0)) * size,
-		"scale": float(w.get("fx_scale", 0.6)) * size, "hit": [], "w": w})
+	var look: Array = LOOKS[kind]
+	var shot := {"kind": kind, "pos": from, "vel": dir.normalized() * float(w.get("speed", 260.0)), "dmg": damage_amount,
+		"bounces": bounces, "pierce": pierce, "piercing": pierce > 0, "life": life, "life0": life,
+		"hit_r": float(w.get("hit_r", 4.0)) * size,
+		"scale": float(w.get("fx_scale", 0.6)) * size * (float(look[4]) if look.size() > 4 else 1.0), "hit": [], "w": w}
+	list.append(shot)
+	return shot
 
 
 func _process(delta: float) -> void:
@@ -48,7 +64,7 @@ func _process(delta: float) -> void:
 		if game.world.is_solid_at(p["pos"]):
 			p["life"] = 0.0
 			game.vfx.sparks(p["pos"], look[3], 4, 70.0, 0.2, 1.0)
-			if p["kind"] == "seed":
+			if p["kind"] == "seed" or p["kind"] == "worldseed":
 				game.weapons.on_projectile_hit(p, p["pos"])
 			continue
 		var hit = _first_hit(p)
@@ -72,6 +88,10 @@ func _process(delta: float) -> void:
 				p["vel"] = (nxt.pos - p["pos"]).normalized() * p["vel"].length()
 		else:
 			p["life"] = 0.0
+	# shots that ended this frame (last hit, wall or out of time): Solar / Absolute Zero detonate here
+	for p in list:
+		if p["life"] <= 0.0:
+			game.weapons.on_projectile_end(p)
 	list = list.filter(func(p): return p["life"] > 0.0)
 	queue_redraw()
 
@@ -81,7 +101,7 @@ func _first_hit(p: Dictionary):
 	var best = null
 	var best_d := INF
 	for e in game.enemies.query_radius(p["pos"], p["hit_r"] + 8.0):
-		if e in p["hit"] and (p["pierce"] > 0 or p["kind"] == "lance" or e == p["hit"].back()):
+		if e in p["hit"] and (p["piercing"] or e == p["hit"].back()):
 			continue
 		var d: float = e.pos.distance_to(p["pos"]) - e.radius
 		if d <= p["hit_r"] and d < best_d:

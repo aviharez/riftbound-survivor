@@ -17,21 +17,34 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
-**Astral Blades**: jejak sabetan bulan sabit kembali seperti sebelumnya; hanya cahaya di ujung pedang yang diredupkan.
-- [ ] Jejak sabetan terlihat jelas lagi
-- [ ] Ujung pedang tidak lagi menyala silau
+**Evolusi weapon**. Aturannya: weapon **Lv 8 (maks)** + punya **tome pasangannya** (Lv berapa saja).
+Begitu syarat terpenuhi muncul banner "... can evolve — open a chest!". **Chest berikutnya** (berbayar atau emas)
+memberi evolusi, bukan item. Evolusi menggantikan weapon aslinya di slot yang sama, dan di HUD slotnya
+berbingkai emas dengan huruf **E**. Kartu level-up weapon menulis "Evolves at Lv 8 with Tome of ...".
 
-**Final Swarm baru (gaya Megabonk)**:
-- Tiap 1 menit naik **SWARM LV** (ada banner). Tiap level: musuh muncul lebih banyak, lebih cepat,
-  HP dan damage-nya lebih besar, dan naiknya juga halus di dalam menit itu, jadi tidak pernah datar.
-- Musuh baru **Wraith**: hantu biru bermata merah yang cepat dan **menembus tembok**. Porsinya naik tiap level.
-- Di bawah timer ada **meter kesulitan** "Threat: Calm → ... → Doomed" yang naik seiring waktu,
-  Cursed Tome / Avarice, dan swarm level.
-- [ ] Final Swarm terasa makin sulit tiap menit sampai akhirnya kewalahan
-- [ ] Wraith terlihat jelas dan terasa mengancam, tidak terlalu banyak di menit pertama
-- [ ] Meter Threat terbaca dan tidak mengganggu
-- [ ] Performa tetap oke saat swarm penuh (sekarang maks 300 musuh saat swarm)
+| Weapon | Tome | Evolusi | Yang harus terlihat |
+| --- | --- | --- | --- |
+| Arcane Bolt | Multitude | Prismatic Barrage | kipas 6 bolt beda elemen (cyan, api, es, daun); api memercik, es & daun memperlambat |
+| Flame Orb | Ricochet | Solar Cataclysm | matahari kecil memantul, lalu meledak: cincin api di lantai + jari-jari api |
+| Chain Lightning | Haste | Thunderstorm Network | 3 petir dari atas sekaligus, rantainya menyebar ke seluruh gerombolan |
+| Meteor Fall | Expanse | Starfall | 8 meteor jatuh beruntun satu per satu |
+| Astral Blades | Vitality | Blade Halo | 6 pedang berputar, sesekali satu pedang dilempar menembus musuh |
+| Void Well | Attraction | Event Horizon | lubang hitam jauh lebih besar & kuat, runtuh dengan cincin ungu |
+| Frost Lance | Precision | Absolute Zero | tombak es, di ujungnya kristal es mencuat & musuh **membeku** (biru, diam, tidak melukai) |
+| Thornseed | Mending | Worldroot Bloom | akar besar yang menyebar ke 2 akar kecil dan menjerat (membekukan sebentar) musuh |
 
+Boss tidak bisa dibekukan, hanya diperlambat. Semua efek ledakan baru dibuat khusus untuk sudut kamera top-down.
+
+- [ ] Banner "can evolve" muncul saat syarat terpenuhi, lalu chest berikutnya memberi evolusi (banner EVOLUTION!)
+- [ ] **Penting:** apakah Lv 8 cukup sering tercapai di run biasa? Kalau jarang, bilang saja, syaratnya bisa diturunkan ke Lv 6
+- [ ] Tiap evolusi terasa jelas lebih kuat dan berbeda dari weapon aslinya
+- [ ] Efek ledakan (Solar, Absolute Zero, Event Horizon) terbaca top-down, cincin "rebah" di lantai
+- [ ] Tidak ada yang menyilaukan: Event Horizon dan 6 pedang Blade Halo terutama
+- [ ] Musuh beku terlihat jelas (biru) dan tidak bisa melukai selama beku
+- [ ] Performa oke saat evolusi + Final Swarm
+
+**Dari build sebelumnya (masih perlu dicek kalau belum):** Final Swarm per menit (SWARM LV, Wraith, meter Threat),
+jejak Astral Blades.
 
 **Weapon baru** (jenis serangan mengikuti dokumen *Riftbound Weapon Attack Design*, set prototipe 8 weapon):
 
