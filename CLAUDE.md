@@ -11,7 +11,7 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 ## Rules
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
 - Weapon behaviour lives in `scripts/actors/weapons.gd` (shots in `projectiles.gd`); its numbers in `GameData.WEAPONS`.
-  Attack types follow the uploaded "Riftbound Weapon Attack Design" doc (prototype set of 8 weapons).
+  Attack types follow `docs/weapon_attack_design.md` (Syifa's "Riftbound Weapon Attack Design"; prototype set of 8 done).
   `--weapons=meteor,void` gives extra weapons and `--swarm-at=30` starts the Final Swarm early in an autotest run.
 - Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
 - Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
@@ -56,3 +56,29 @@ Run screenshots (needs Xvfb): `xvfb-run -a godot --path . --rendering-driver ope
 
 Note: in the cloud workspace the Godot binary is not preinstalled; download the official
 `Godot_v4.7.2-stable_linux.x86_64.zip` from the godotengine/godot GitHub releases.
+
+## New session setup
+1. Godot: download `Godot_v4.7.2-stable_linux.x86_64.zip` (godotengine/godot releases), unzip, run `--import` once.
+2. pixelfx (only needed to change or add VFX): `git clone https://github.com/patch-gg/pixelfx`, `npm install` in it.
+   Our custom effects live in `tools/pixelfx_custom/riftbound/`; the exporter copies them into the clone.
+   Author new ones with the clone's `skills/pixelfx/SKILL.md` workflow (draft, `node tools/render.mjs`, look, fix,
+   `node tools/check.mjs`), then copy the final file back into `tools/pixelfx_custom/`.
+3. Screenshots need `xvfb-run`; software GL is slow, keep shot times early.
+
+## Status and next up (as of 2026-10-31)
+Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, Rift Surges, boss, Final Swarm
+(swarm level per minute, wraiths, threat meter), academy (Library, Training Ground), 4 characters with
+chibi sprites, 8 weapons from the design doc, pixelfx VFX, Android CI. No audio yet.
+
+Syifa's next priorities, in order she listed:
+1. **Weapon evolutions** from `docs/weapon_attack_design.md` (e.g. Flame Orb -> Solar Cataclysm,
+   Astral Blades -> Blade Halo, Void Well -> Event Horizon). Decide the unlock rule (e.g. max level +
+   a matching tome/item, offered from a chest) and confirm it with Syifa before building.
+2. **More weapons** from the doc, favouring attack types we do not have yet (Crescent Slash, Rune Chakram,
+   Arcane Familiar, Aether Beam, Venom Bloom, Gravity Lens ...). Each needs top-down VFX.
+3. **Academy expansion**: more buildings (e.g. unlock characters such as Selene/Noah from the doc,
+   permanent stat upgrades, adding weapons to the pool). Save format changes need `SaveData.VERSION` + migration.
+
+Feedback to remember: VFX must read as top-down; heavy but not blinding (she asked to dim only the
+Astral Blades tips, not the whole trail); characters cute/chibi; every weapon fires on cooldown even
+with no enemy; PixelLab art is generated and uploaded by Syifa.
