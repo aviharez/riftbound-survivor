@@ -213,7 +213,7 @@ func _draw_player_panel() -> void:
 	_text(Vector2(100, 15), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
 	_bar(Rect2(40, 19, 120, 4), game.xp / game.xp_next, CYAN)
 	# weapon row (y 26) and tome row (y 41): filled / empty / locked (opens via academy buildings)
-	_slot_row(26.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35), func(id): return GameData.weapon_by_id(id)["name"])
+	_slot_row(26.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35), func(id): return GameData.weapon_by_id(id).get("short", GameData.weapon_by_id(id)["name"]))
 	_slot_row(41.0, p.tomes, game.tome_slots, CYAN, func(id): return GameData.tome_by_id(id)["name"].replace("Tome of ", "").replace(" Tome", ""))
 	# owned items (y 56)
 	var x := 40.0

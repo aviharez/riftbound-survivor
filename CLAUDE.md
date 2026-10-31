@@ -11,7 +11,9 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 ## Rules
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
 - Weapon behaviour lives in `scripts/actors/weapons.gd` (shots in `projectiles.gd`); its numbers in `GameData.WEAPONS`.
-  Attack types follow `docs/weapon_attack_design.md` (Syifa's "Riftbound Weapon Attack Design"; prototype set of 8 done).
+  Attack types follow `docs/weapon_attack_design.md` (Syifa's "Riftbound Weapon Attack Design"; prototype set of 8 done,
+  plus 6 alpha weapons: Crescent Slash, Rune Chakram (out-and-return), Arcane Familiar (summon), Aether Beam,
+  Venom Bloom (poison cloud), Arcane Mine (trap)). Optional `short` in a weapon row = 3-letter HUD label.
   `--weapons=meteor,void` gives extra weapons (evolved ids such as `solar` come evolved) and `--swarm-at=30` starts
   the Final Swarm early in an autotest run; `--ready-evolve` puts owned weapons at the evolve level with their tome
   so the first chests evolve them; `--profile` prints load counters every 20 s of game time.
@@ -60,6 +62,7 @@ godot --headless --path . --fixed-fps 60 -- --autotest-late --seed=99 --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest-boss --seed=31337 --char=lyra
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242 --char=lyra --weapons=bolt,chain,meteor --ready-evolve --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=565590 --char=kael --weapons=void,lance,seed --ready-evolve --slots=4
+godot --headless --path . --fixed-fps 60 -- --autotest --seed=31337 --char=astra --weapons=slash,chakram,familiar,beam,venom,mine --slots=4
 ```
 The two `--ready-evolve` runs must end with all 4 evolutions in `evolutions=[...]`.
 The main scene is the academy; any `--autotest*` flag makes it jump straight into a run.
@@ -86,14 +89,16 @@ Note: in the cloud workspace the Godot binary is not preinstalled; download the 
 ## Status and next up (as of 2026-10-31, evening)
 Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, Rift Surges, boss, Final Swarm
 (swarm level per minute, wraiths, threat meter), academy (Library, Training Ground), 4 characters with
-chibi sprites, 8 weapons from the design doc, **8 weapon evolutions** (custom top-down bursts solar-burst,
-frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
+chibi sprites, 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
+The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
+Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).
 Open question: whether Lv 8 is reached often enough in real runs to evolve (EVOLVE_LEVEL is one constant).
 
 Syifa's next priorities, in order she listed:
 1. ~~Weapon evolutions~~ done (see Rules). Tune from her playtest feedback.
-2. **More weapons** from the doc, favouring attack types we do not have yet (Crescent Slash, Rune Chakram,
-   Arcane Familiar, Aether Beam, Venom Bloom, Gravity Lens ...). Each needs top-down VFX.
+2. ~~More weapons~~ alpha set of 6 done. Still open from the doc: Hex Mark (damage amp), Glacial Burst,
+   Gravity Lens / Mirror Gate / Crystal Barricade (arena manipulation), Phantom Knight, Prism Sweep, Riftstorm.
 3. **Academy expansion**: more buildings (e.g. unlock characters such as Selene/Noah from the doc,
    permanent stat upgrades, adding weapons to the pool). Save format changes need `SaveData.VERSION` + migration.
 

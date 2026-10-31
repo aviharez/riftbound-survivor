@@ -358,5 +358,80 @@
    50,
    36
   ]
+ },
+ "crescent_slash": {
+  "source": "riftbound/crescent-slash",
+  "fps": 30,
+  "loop": true,
+  "frames": 12,
+  "columns": 12,
+  "frame_size": [
+   30,
+   40
+  ],
+  "pivot": [
+   12,
+   20
+  ]
+ },
+ "rune_chakram": {
+  "source": "riftbound/rune-chakram",
+  "fps": 30,
+  "loop": true,
+  "frames": 7,
+  "columns": 7,
+  "frame_size": [
+   30,
+   30
+  ],
+  "pivot": [
+   15,
+   15
+  ]
+ },
+ "venom_cloud": {
+  "source": "riftbound/venom-cloud",
+  "fps": 12,
+  "loop": true,
+  "frames": 24,
+  "columns": 24,
+  "frame_size": [
+   59,
+   50
+  ],
+  "pivot": [
+   29,
+   32
+  ]
+ },
+ "rune_sigil": {
+  "source": "riftbound/rune-sigil",
+  "fps": 15,
+  "loop": true,
+  "frames": 18,
+  "columns": 18,
+  "frame_size": [
+   25,
+   20
+  ],
+  "pivot": [
+   12,
+   11
+  ]
+ },
+ "rune_burst": {
+  "source": "riftbound/solar-burst",
+  "fps": 15,
+  "loop": false,
+  "frames": 11,
+  "columns": 11,
+  "frame_size": [
+   98,
+   80
+  ],
+  "pivot": [
+   49,
+   42
+  ]
  }
 }

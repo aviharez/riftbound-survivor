@@ -43,6 +43,24 @@ Boss tidak bisa dibekukan, hanya diperlambat. Semua efek ledakan baru dibuat khu
 - [ ] Musuh beku terlihat jelas (biru) dan tidak bisa melukai selama beku
 - [ ] Performa oke saat evolusi + Final Swarm
 
+**6 weapon baru** (muncul di kartu level-up seperti weapon lain; jenis serangan yang belum ada sebelumnya):
+
+| Weapon | Jenis | Cara kerja |
+| --- | --- | --- |
+| Crescent Slash | tebasan menembus | bulan sabit cahaya terbang lurus, membesar, menembus semua musuh |
+| Rune Chakram | keluar lalu kembali | cakram emas berputar terbang keluar, lalu balik ke kamu; kena musuh di dua arah |
+| Arcane Familiar | summon | kristal kecil bermata melayang mengitarimu dan menembak sendiri (+1 di Lv 4/7) |
+| Aether Beam | sinar | sinar lurus instan menembus satu barisan musuh (sinar ke-2 di Lv 5) |
+| Venom Bloom | racun | awan racun hijau dilempar ke musuh, damage terus selama 3 dtk |
+| Arcane Mine | jebakan | rune di lantai di sekitarmu; meledak saat musuh mendekat (maks 8 rune) |
+
+- [ ] Tiap weapon terasa beda jenis serangannya
+- [ ] VFX terbaca top-down (rune & noda racun rebah di lantai, familiar melayang di atas bayangannya)
+- [ ] Familiar terlihat sebagai makhluk kecil yang lucu, tidak tertutup karaktermu
+- [ ] Aether Beam tidak menyilaukan
+- [ ] Awan racun cukup terlihat di atas rumput hijau
+- [ ] Ada weapon baru yang jelas terlalu kuat/lemah?
+
 **Dari build sebelumnya (masih perlu dicek kalau belum):** Final Swarm per menit (SWARM LV, Wraith, meter Threat),
 jejak Astral Blades.
 

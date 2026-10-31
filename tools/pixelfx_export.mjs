@@ -59,6 +59,13 @@ const EFFECTS = [
   { name: "solar_burst", id: "riftbound/solar-burst", fps: 15 },     // Solar Cataclysm detonation
   { name: "frost_burst", id: "riftbound/frost-burst", fps: 15 },     // Absolute Zero crystal blast
   { name: "void_collapse", id: "riftbound/void-collapse", fps: 15 }, // Event Horizon collapse
+  // new weapons (all custom top-down)
+  { name: "crescent_slash", id: "riftbound/crescent-slash", fps: 30 }, // Crescent Slash shot (faces right)
+  { name: "rune_chakram", id: "riftbound/rune-chakram", fps: 30 },     // Rune Chakram disc
+  { name: "venom_cloud", id: "riftbound/venom-cloud", fps: 12 },       // Venom Bloom cloud (loop)
+  { name: "rune_sigil", id: "riftbound/rune-sigil", fps: 15 },         // Arcane Mine waiting on the floor (loop)
+  { name: "rune_burst", id: "riftbound/solar-burst", fps: 15,          // Arcane Mine blast: solar-burst in arcane colours
+    opts: { palette: ["#140a2e", "#3a1a7a", "#6a3cd0", "#4a9ce0", "#7ce0ff", "#d0f8ff", "#ffffff"], seed: 8 } },
 ];
 
 mkdirSync(outDir, { recursive: true });

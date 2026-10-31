@@ -10,11 +10,27 @@ const PALETTES := {
 	"brute": {"o": "#1a1612", "d": "#4a4038", "m": "#6e6255", "l": "#958877", "c": "#e04aff", "e": "#ff6a3a"},
 	"caster": {"o": "#14070f", "d": "#4d0f2e", "m": "#8a1f4f", "l": "#c23a73", "s": "#2a1a12", "g": "#ff7ad9", "e": "#ffe0f0"},
 	"wraith": {"o": "#0a1420", "d": "#2a4a6e", "m": "#5f9ac4", "l": "#a8dcf2", "w": "#eafaff", "e": "#ff3a5a"},
+	"familiar": {"o": "#0a1830", "d": "#1f5a8a", "m": "#3ab0e0", "l": "#a0f0ff", "w": "#ffffff", "e": "#140a2e", "p": "#c684ff"},
 	"chest": {"o": "#120a1e", "d": "#3b2560", "m": "#5d3c8f", "l": "#8462bd", "g": "#d9b04a", "y": "#ffe9a3"},
 	"chest_gold": {"o": "#2a1a05", "d": "#8a5a12", "m": "#c88a1e", "l": "#f0bf3c", "g": "#fff1b0", "y": "#ffffff"},
 }
 
 const GRIDS := {
+	# Arcane Familiar: a small floating crystal with a face and two violet fins
+	"familiar": [
+		"......oo......",
+		".....owlo.....",
+		"....owllmo....",
+		"...owlllmmo...",
+		"poowllllmmmoop",
+		"ppolleomeomdpp",
+		".poollllmmdop.",
+		"...odlllmmdo..",
+		"....odlmmdo...",
+		".....odmdo....",
+		"......odo.....",
+		".......o......",
+	],
 	"slime": [
 		"......oooo......",
 		"....oolllloo....",

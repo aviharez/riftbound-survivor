@@ -13,6 +13,8 @@ extends Node2D
 const MAX_ROOTS := 28   # live root patches (oldest dropped first)
 const PRISM_KINDS := ["prism_arcane", "prism_fire", "prism_ice", "prism_nature"]
 # custom top-down bursts (tools/pixelfx_custom/riftbound): their ring's reach in px at scale 1
+const MINE_FX_SCALE := 1.5     # rune-sigil sheet (25 px wide) drawn ~38 px wide so the rune reads
+const FAMILIAR_SCALE := 1.6   # the 14 px crystal sprite drawn ~22 px tall (hero is 33)
 const BURST_REACH := {"solar_burst": 44.0, "frost_burst": 42.0, "void_collapse": 46.0}
 
 var game: Node
@@ -24,6 +26,9 @@ var _blade_fx: Array = [] # looping astral-blade instances, one per blade
 var _blade_arcs: Array = [] # this frame's blade sweeps for the trail {c, a, r_in, r_out, span}
 var _trail: Node2D         # additive child that draws the Astral Blades sweep trails
 var _halo_t := 0.5         # Blade Halo: seconds until the next thrown blade
+var _familiars: Array = [] # Arcane Familiar: {cd, pos, hover, face} per familiar
+var _beams: Array = []     # Aether Beam visuals {a, b, t, life, width}
+var _mines: Array = []     # Arcane Mine runes on the floor {pos, t, life, arm, r, trig, dmg, fx}
 
 
 func _ready() -> void:
@@ -31,7 +36,7 @@ func _ready() -> void:
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_trail.material = mat
-	_trail.draw.connect(_draw_blade_trails)
+	_trail.draw.connect(_draw_additive)
 	add_child(_trail)
 
 
@@ -58,6 +63,9 @@ func _process(delta: float) -> void:
 	for id in p.weapon_levels.keys():
 		var w: Dictionary = GameData.weapon_by_id(id)
 		var lv: int = p.weapon_levels[id]
+		if id == "familiar":
+			_arcane_familiars(w, lv, delta)
+			continue
 		if w.has("blade_len"):   # orbiting swords: Astral Blades, Blade Halo
 			orbit = true
 			_astral_blades(w, lv, delta)
@@ -82,9 +90,21 @@ func _process(delta: float) -> void:
 			"horizon": _void_well(w, lv)
 			"zero": _fan("zero", w, lv, _aim(float(w["range"])), 0.12, 0, int(w["pierce"]) + int(p.stats["bounce"]))
 			"worldroot": _fan("worldseed", w, lv, _aim(float(w["range"])), 0.3, 0, 0)
+			"slash": _fan("slash", w, lv, _aim(float(w["range"])), float(w["spread"]), 0, int(w["pierce"]))
+			"chakram": _fan("chakram", w, lv, _aim(float(w["range"])), float(w["spread"]), 0, int(w["pierce"]))
+			"beam": _aether_beam(w, lv)
+			"venom": _venom_bloom(w, lv)
+			"mine": _drop_mines(w, lv)
 		_cd[id] = level_cooldown(w, lv)
 	_update_strikes(delta)
 	_update_zones(delta)
+	_update_mines(delta)
+	for b in _beams:
+		b["t"] += delta
+	_beams = _beams.filter(func(b): return b["t"] < b["life"])
+	if not p.weapon_levels.has("familiar") and not _familiars.is_empty():
+		_familiars.clear()
+	queue_redraw()
 	if not orbit:
 		_blade_arcs.clear()
 		if not _blade_fx.is_empty():
@@ -368,6 +388,11 @@ func _update_zones(delta: float) -> void:
 				if _time - e.root_hit_at >= 0.45:
 					e.root_hit_at = _time
 					_hit(e, z["tick_dmg"], Color(0.8, 2.0, 0.6))
+		elif z["kind"] == "venom":
+			for e in game.enemies.query_radius(z["pos"], z["r"]):
+				if _time - e.venom_hit_at >= z["tick"]:
+					e.venom_hit_at = _time
+					_hit(e, z["tick_dmg"], Color(1.0, 2.2, 0.5))
 		elif z["kind"] == "void":
 			var reach: float = z["r"] * 1.5
 			for e in game.enemies.query_radius(z["pos"], reach):
@@ -463,6 +488,164 @@ func _halo_throw(w: Dictionary, lv: int, delta: float) -> void:
 	game.projectiles.fire("halo_blade", from, dir, level_damage(w, lv) * float(w["launch_dmg"]), w,
 		0, int(w["pierce"]) + int(p.stats["bounce"]), p.area())
 	game.vfx.sparks(from, Color(0.9, 1.8, 2.6), 4, 60.0, 0.2, 1.2)
+
+
+# ------------------------------------------------------------------ Arcane Familiar
+
+## Little crystal familiars circle the hero on a floor ellipse, hovering above their shadows, and each
+## shoots a bolt at the nearest foe on its own cooldown (straight ahead when there is none).
+func _arcane_familiars(w: Dictionary, lv: int, delta: float) -> void:
+	var p: Player = game.player
+	var n := count_of(w, lv)
+	while _familiars.size() < n:
+		_familiars.append({"cd": 0.2 + 0.3 * _familiars.size(), "pos": p.position, "hover": 0.0, "face": 1.0})
+		game.vfx.play("blink_out", p.position + Vector2(0, -10), 0.0, 0.35, Color(0.7, 1.0, 1.0))
+	while _familiars.size() > n:
+		_familiars.pop_back()
+	var cd := level_cooldown(w, lv)
+	for i in n:
+		var f: Dictionary = _familiars[i]
+		var a: float = _time * float(w["orbit_speed"]) + TAU * i / n
+		var target_pos: Vector2 = p.position + Vector2(cos(a), sin(a) * 0.6) * float(w["orbit_r"])
+		f["pos"] = f["pos"].lerp(target_pos, clampf(delta * 8.0, 0.0, 1.0))
+		f["hover"] = float(w["hover"]) + sin(_time * 3.0 + i * 1.7) * 2.0
+		f["cd"] -= delta
+		if f["cd"] > 0.0:
+			continue
+		f["cd"] = cd
+		var muzzle: Vector2 = f["pos"] - Vector2(0, f["hover"])
+		var foe = game.enemies.nearest(muzzle, float(w["range"]), null)
+		var dir: Vector2 = (foe.pos - muzzle).normalized() if foe != null else p.facing
+		f["face"] = -1.0 if dir.x < 0.0 else 1.0
+		game.projectiles.fire("familiar_shot", muzzle, dir, level_damage(w, lv), w, 0, 0, p.area())
+		game.vfx.sparks(muzzle, Color(0.7, 1.8, 2.4), 3, 50.0, 0.15, 1.0)
+
+
+# ------------------------------------------------------------------ Aether Beam
+
+## A straight beam from the hero through a whole line of foes (toward the nearest one, then other foes
+## for the extra beams), with a short afterglow.
+func _aether_beam(w: Dictionary, lv: int) -> void:
+	var p: Player = game.player
+	var size := level_size(w, lv)
+	var length: float = float(w["length"]) * size
+	var width: float = float(w["width"]) * size
+	var foes: Array = game.enemies.query_radius(p.position, float(w["range"]))
+	foes.sort_custom(func(a, b): return a.pos.distance_squared_to(p.position) < b.pos.distance_squared_to(p.position))
+	var amount := level_damage(w, lv)
+	for i in count_of(w, lv):
+		var dir: Vector2 = (foes[i].pos - p.position).normalized() if i < foes.size() else p.facing.rotated(0.6 * i)
+		var a: Vector2 = p.position + Vector2(0, -6) + dir * 6.0
+		var b: Vector2 = a + dir * length
+		for e in game.enemies.query_radius((a + b) * 0.5, length * 0.5 + width + 12.0):
+			var q := Geometry2D.get_closest_point_to_segment(e.pos, a, b)
+			if q.distance_to(e.pos) <= width * 0.5 + e.radius:
+				_hit(e, amount, Color(1.0, 2.0, 2.8))
+		_beams.append({"a": a, "b": b, "t": 0.0, "life": float(w["show_time"]), "width": width})
+		game.vfx.flash(a, Color(1.2, 2.2, 2.8), 10.0, 0.12)
+		for k in 6:
+			game.vfx.trail(a.lerp(b, randf()), Color(0.8, 1.9, 2.6), 1.6, 0.35)
+	game.screen_fx.chroma(0.12)
+
+
+# ------------------------------------------------------------------ Venom Bloom
+
+## Lobs poison clouds onto foes (ahead when there are none). A cloud ticks damage on every foe inside it.
+func _venom_bloom(w: Dictionary, lv: int) -> void:
+	var p: Player = game.player
+	var foes: Array = game.enemies.query_radius(p.position, float(w["range"]))
+	var r: float = float(w["radius"]) * level_size(w, lv)
+	for i in count_of(w, lv):
+		var center: Vector2 = foes[randi() % foes.size()].pos if not foes.is_empty() \
+			else p.position + p.facing.rotated(randf_range(-0.7, 0.7)) * float(w["range"]) * 0.45
+		# riftbound/venom-cloud: the floor stain is 30 px in radius at scale 1
+		var fx: Dictionary = game.vfx.play("venom_cloud", center, 0.0, r / 30.0, Color.WHITE, 0.9, float(w["duration"]))
+		game.vfx.sparks(center, Color(0.9, 2.2, 0.5), 6, 60.0, 0.3, 1.3)
+		_zones.append({"kind": "venom", "pos": center, "r": r, "t": 0.0, "life": float(w["duration"]),
+			"tick": float(w["tick"]), "tick_dmg": level_damage(w, lv), "fx": fx})
+
+
+# ------------------------------------------------------------------ Arcane Mine
+
+## Drops runes on the floor near the hero; after arming, a rune blows up when a foe steps close.
+func _drop_mines(w: Dictionary, lv: int) -> void:
+	var p: Player = game.player
+	var size := level_size(w, lv)
+	for i in count_of(w, lv):
+		var spot: Vector2 = p.position + Vector2.from_angle(randf() * TAU) * randf_range(float(w["drop_min"]), float(w["drop_max"]))
+		if game.world.is_solid_at(spot):
+			spot = p.position
+		if _mines.size() >= int(w["max_mines"]):
+			var old: Dictionary = _mines.pop_front()
+			if not old["fx"].is_empty():
+				old["fx"]["dead"] = true
+		var fx: Dictionary = game.vfx.play("rune_sigil", spot, 0.0, size * MINE_FX_SCALE, Color(1, 1, 1, 0.45), 0.6, float(w["mine_life"]))
+		_mines.append({"pos": spot, "t": 0.0, "life": float(w["mine_life"]), "arm": float(w["arm"]),
+			"r": float(w["radius"]) * size, "trig": float(w["trigger"]) * size, "dmg": level_damage(w, lv), "fx": fx})
+
+
+func _update_mines(delta: float) -> void:
+	for m in _mines:
+		m["t"] += delta
+		if m["t"] < m["arm"]:
+			continue
+		if not m.get("armed", false):
+			m["armed"] = true
+			if not m["fx"].is_empty():
+				m["fx"]["tint"] = Color.WHITE
+				m["fx"]["light_k"] = 1.2
+		for e in game.enemies.query_radius(m["pos"], m["trig"] + 12.0):
+			if e.pos.distance_to(m["pos"]) <= m["trig"] + e.radius:
+				_mine_blast(m)
+				break
+	_mines = _mines.filter(func(m): return not m.get("done", false) and m["t"] < m["life"])
+
+
+func _mine_blast(m: Dictionary) -> void:
+	m["done"] = true
+	if not m["fx"].is_empty():
+		m["fx"]["dead"] = true
+	for e in game.enemies.query_radius(m["pos"], m["r"]):
+		_hit(e, m["dmg"], Color(1.2, 1.6, 2.8))
+	# rune_burst is riftbound/solar-burst in arcane colours: its ring reaches 44 px at scale 1
+	game.vfx.play("rune_burst", m["pos"], 0.0, m["r"] / 44.0)
+	game.screen_fx.shockwave(m["pos"], m["r"] * 1.6, 0.7, 0.35)
+	game.screen_fx.shake(0.06)
+
+
+# ------------------------------------------------------------------ drawing
+
+## Normal-blend layer: the familiars (sprite above a soft floor shadow).
+func _draw() -> void:
+	if _familiars.is_empty():
+		return
+	var tex := PixelSprites.texture("familiar")
+	var sz := Vector2(tex.get_width(), tex.get_height()) * FAMILIAR_SCALE
+	for f in _familiars:
+		var pos: Vector2 = f["pos"]
+		draw_set_transform(pos, 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, 7.0, Color(0, 0, 0, 0.28))
+		draw_set_transform(pos - Vector2(0, f["hover"]), 0.0, Vector2(f["face"], 1.0))
+		draw_texture_rect(tex, Rect2(-sz * 0.5, sz), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+## Additive layer: Astral Blades trails, Aether Beams and the familiars' glow.
+func _draw_additive() -> void:
+	_draw_blade_trails()
+	for b in _beams:
+		var k: float = 1.0 - b["t"] / b["life"]
+		var wd: float = b["width"]
+		# wide soft body, bright mid band, white-hot core that thins as the beam fades (afterglow)
+		# kept below the bloom threshold except the thin core, so a long beam is heavy but not blinding
+		_trail.draw_line(b["a"], b["b"], Color(0.15, 0.5, 0.9, 0.3 * k), wd * 1.8)
+		_trail.draw_line(b["a"], b["b"], Color(0.3, 0.85, 1.2, 0.6 * k), wd * (0.5 + 0.5 * k))
+		_trail.draw_line(b["a"], b["b"], Color(1.0, 1.4, 1.6, 0.8 * k), maxf(1.0, wd * 0.25 * k))
+		_trail.draw_circle(b["b"], wd * 0.6 * k, Color(0.6, 1.2, 1.6, 0.6 * k))
+		_trail.draw_circle(b["a"], wd * 0.8 * k, Color(0.9, 1.5, 1.8, 0.7 * k))
+	for f in _familiars:
+		var c: Vector2 = f["pos"] - Vector2(0, f["hover"])
+		_trail.draw_texture_rect(game.vfx.glow_tex, Rect2(c - Vector2(9, 9), Vector2(18, 18)), false, Color(0.3, 0.9, 1.4, 0.22))
 
 
 ## Each blade drags a crescent behind it: bright, white-cyan right at the blade, thinning towards the

@@ -30,6 +30,7 @@ class Enemy:
 	var slow_t := 0.0           # seconds of slow left (roots, frost)
 	var freeze_t := 0.0         # seconds frozen solid (Absolute Zero, Worldroot traps): no move, no contact damage
 	var trap_at := -100.0       # last Worldroot trap (re-trap cooldown)
+	var venom_hit_at := -100.0  # Venom Bloom tick timer
 	var alive := true
 	var ghost := false   # drifts through walls (Final Swarm wraiths)
 	# boss state machine

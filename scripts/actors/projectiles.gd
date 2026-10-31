@@ -24,6 +24,10 @@ const LOOKS := {
 	"prism_fire": ["flame_orb", "hit_spark", Color(1.0, 0.6, 0.25), Color(2.4, 1.1, 0.3), 1.0],
 	"prism_ice": ["ice_lance", "hit_spark", Color(0.6, 0.95, 1.0), Color(0.8, 1.7, 2.4), 0.62],
 	"prism_nature": ["thorn_seed", "hit_spark", Color(0.6, 1.0, 0.4), Color(0.8, 2.0, 0.6), 1.1],
+	# alpha weapons
+	"slash": ["crescent_slash", "hit_spark", Color(0.75, 0.9, 1.0), Color(1.2, 1.7, 2.6)],
+	"chakram": ["rune_chakram", "hit_spark", Color(1.0, 0.85, 0.45), Color(2.4, 1.8, 0.6)],
+	"familiar_shot": ["arcane_bolt", "hit_spark", Color(0.8, 1.0, 1.0), Color(0.6, 1.6, 2.0)],
 }
 
 var game: Node
@@ -50,7 +54,10 @@ func fire(kind: String, from: Vector2, dir: Vector2, damage_amount: float, w: Di
 	var shot := {"kind": kind, "pos": from, "vel": dir.normalized() * float(w.get("speed", 260.0)), "dmg": damage_amount,
 		"bounces": bounces, "pierce": pierce, "piercing": pierce > 0, "life": life, "life0": life,
 		"hit_r": float(w.get("hit_r", 4.0)) * size,
-		"scale": float(w.get("fx_scale", 0.6)) * size * (float(look[4]) if look.size() > 4 else 1.0), "hit": [], "w": w}
+		"scale": float(w.get("fx_scale", 0.6)) * size * (float(look[4]) if look.size() > 4 else 1.0), "hit": [], "w": w,
+		"age": 0.0, "returning": false}
+	shot["scale0"] = shot["scale"]
+	shot["hit_r0"] = shot["hit_r"]
 	list.append(shot)
 	return shot
 
@@ -60,8 +67,29 @@ func _process(delta: float) -> void:
 	for p in list:
 		p["pos"] += p["vel"] * delta
 		p["life"] -= delta
+		p["age"] += delta
+		var w: Dictionary = p["w"]
+		if w.has("grow"):
+			# Crescent Slash widens as it flies
+			var k: float = 1.0 + float(w["grow"]) * clampf(p["age"] / p["life0"], 0.0, 1.0)
+			p["scale"] = p["scale0"] * k
+			p["hit_r"] = p["hit_r0"] * k
+		if w.has("out_time"):
+			# Rune Chakram: flies out, then homes back to the hero, able to cut every foe once more
+			if not p["returning"] and p["age"] >= float(w["out_time"]):
+				p["returning"] = true
+				p["hit"].clear()
+			if p["returning"]:
+				var to: Vector2 = player.position - p["pos"]
+				if to.length() < 10.0:
+					p["life"] = 0.0
+					continue
+				# speeds back up on the way home
+				p["vel"] = to.normalized() * minf(float(w["speed"]) * 1.15, p["vel"].length() + 500.0 * delta)
+			else:
+				p["vel"] *= 1.0 - 1.6 * delta   # slows toward the turn
 		var look: Array = LOOKS[p["kind"]]
-		if game.world.is_solid_at(p["pos"]):
+		if game.world.is_solid_at(p["pos"]) and not w.has("out_time"):
 			p["life"] = 0.0
 			game.vfx.sparks(p["pos"], look[3], 4, 70.0, 0.2, 1.0)
 			if p["kind"] == "seed" or p["kind"] == "worldseed":
