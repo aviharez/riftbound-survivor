@@ -17,6 +17,23 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Efek lebih kalem** (bloom diturunkan dan memakai mode "screen", jadi efek yang bertumpuk tidak lagi jadi layar putih):
+- [ ] Late game dengan banyak proyektil (Tome of Multitude tinggi) tidak lagi silau / putih menutupi layar
+- [ ] Efek tetap terasa "menyala", tidak jadi kusam
+- [ ] Astral Blades maksimal 6 pedang (dulu bisa 11 dengan Multitude); jejaknya memendek kalau pedangnya banyak
+
+**Final Swarm baru (gaya Megabonk)**:
+- Tiap 1 menit naik **SWARM LV** (ada banner). Tiap level: musuh muncul lebih banyak, lebih cepat,
+  HP dan damage-nya lebih besar, dan naiknya juga halus di dalam menit itu, jadi tidak pernah datar.
+- Musuh baru **Wraith**: hantu biru bermata merah yang cepat dan **menembus tembok**. Porsinya naik tiap level.
+- Di bawah timer ada **meter kesulitan** "Threat: Calm → ... → Doomed" yang naik seiring waktu,
+  Cursed Tome / Avarice, dan swarm level.
+- [ ] Final Swarm terasa makin sulit tiap menit sampai akhirnya kewalahan
+- [ ] Wraith terlihat jelas dan terasa mengancam, tidak terlalu banyak di menit pertama
+- [ ] Meter Threat terbaca dan tidak mengganggu
+- [ ] Performa tetap oke saat swarm penuh (sekarang maks 300 musuh saat swarm)
+
+
 **Weapon baru** (jenis serangan mengikuti dokumen *Riftbound Weapon Attack Design*, set prototipe 8 weapon):
 
 | Weapon | Cara kerja |

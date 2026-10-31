@@ -268,6 +268,13 @@ func _draw_timer(vs: Vector2) -> void:
 		for s in GameData.SURGES:
 			var sx: float = cx - 120 + 240 * float(s["at"]) / GameData.RUN_TIME
 			view.draw_rect(Rect2(sx - 1, 24, 2, 7), Color(1, 0.55, 0.25))
+		# difficulty meter: threat name, reddening as it climbs; the swarm level during the Final Swarm
+		var k := clampf(float(game.threat_level()) / float(GameData.THREAT_NAMES.size() - 1), 0.0, 1.0)
+		var tcol := Color(0.75, 0.9, 0.7).lerp(Color(1, 0.6, 0.25), minf(k * 2.0, 1.0)).lerp(CRIMSON, maxf(k * 2.0 - 1.0, 0.0))
+		var line := "Threat: %s" % game.threat_name()
+		if game.final_swarm:
+			line = "SWARM LV %d  ·  %s" % [game.swarm_level(), game.threat_name()]
+		_text(Vector2(cx, 40), line, tcol, 7, true)
 
 
 func _draw_top_right(vs: Vector2) -> void:

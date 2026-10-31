@@ -12,7 +12,8 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
 - Weapon behaviour lives in `scripts/actors/weapons.gd` (shots in `projectiles.gd`); its numbers in `GameData.WEAPONS`.
   Attack types follow the uploaded "Riftbound Weapon Attack Design" doc (prototype set of 8 weapons).
-  `--weapons=meteor,void` gives extra weapons in an autotest run (for screenshots).
+  `--weapons=meteor,void` gives extra weapons and `--swarm-at=30` starts the Final Swarm early in an autotest run.
+- Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
 - Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
 - VFX: weapon/event effects are pixelfx sprite effects (https://github.com/patch-gg/pixelfx, MIT), exported by
   `node tools/pixelfx_export.mjs <pixelfx clone> assets/vfx` into a colour sheet + a light sheet per effect and

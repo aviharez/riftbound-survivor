@@ -29,6 +29,7 @@ class Enemy:
 	var root_hit_at := -100.0   # Thornseed roots / Void Well tick timer
 	var slow_t := 0.0           # seconds of slow left (roots, frost)
 	var alive := true
+	var ghost := false   # drifts through walls (Final Swarm wraiths)
 	# boss state machine
 	var state := "idle"
 	var state_t := 1.5
@@ -59,6 +60,7 @@ func spawn(type: String, pos: Vector2, hp_mult: float, speed_mult: float, elite 
 	e.color = d["color"]
 	e.xp = int(d["xp"])
 	e.ranged = bool(d.get("ranged", false))
+	e.ghost = bool(d.get("ghost", false))
 	e.spawn_t = SPAWN_ANIM
 	if elite:
 		e.elite = true
@@ -229,6 +231,9 @@ func _walk(e: Enemy, target: Vector2, delta: float, speed_mult: float) -> void:
 			if d2 > 0.01 and d2 < min_d * min_d:
 				push += diff / sqrt(d2)
 	var v := (dir + push * 0.6) * e.speed * speed_mult * (GameData.SLOW_MULT if e.slow_t > 0.0 else 1.0)
+	if e.ghost:
+		e.pos += ((direct + push * 0.4) * e.speed * speed_mult * (GameData.SLOW_MULT if e.slow_t > 0.0 else 1.0)) * delta
+		return
 	e.pos = game.world.move(e.pos, v * delta, e.radius * 0.6)
 
 
@@ -344,7 +349,9 @@ func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 		sy = 1.0 + sin(t * 9.0) * 0.08
 	elif e.type == "bat":
 		lift = -3.0 + sin(t * 7.0) * 1.5
-	var mod := Color.WHITE
+	elif e.type == "wraith":
+		lift = -4.0 + sin(t * 5.0) * 2.0
+	var mod := Color(1, 1, 1, 0.85) if e.ghost else Color.WHITE
 	if e.flash > 0.0:
 		mod = Color(3.0, 3.0, 3.0)
 	elif e.elite:

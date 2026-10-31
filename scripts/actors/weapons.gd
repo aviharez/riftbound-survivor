@@ -229,7 +229,7 @@ func _void_well(w: Dictionary, lv: int) -> void:
 		else p.position + p.facing * float(w["range"]) * 0.4
 	var r: float = float(w["radius"]) * level_size(w, lv)
 	# shadow/void-orb: the swirl with its pulse ring is ~50 px in radius at scale 1
-	var fx: Dictionary = game.vfx.play("void_orb", center, 0.0, r / 50.0, Color.WHITE, 1.6, -1.0, null, true)
+	var fx: Dictionary = game.vfx.play("void_orb", center, 0.0, r / 50.0, Color.WHITE, GameData.VFX_LIGHT_BOOST, -1.0, null, true)
 	_zones.append({"kind": "void", "pos": center, "r": r, "t": 0.0, "life": float(w["duration"]), "fx": fx,
 		"pull": float(w["pull"]) * level_size(w, lv), "dmg": level_damage(w, lv),
 		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"])})
@@ -281,7 +281,7 @@ func _detonate(z: Dictionary) -> void:
 ## trailing a curved streak of starlight (spawned along the orbit, so it follows the circle).
 func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
 	var p: Player = game.player
-	var count := count_of(w, lv)
+	var count := mini(count_of(w, lv), int(w.get("max_count", 99)))
 	var size := level_size(w, lv)
 	var r: float = float(w["radius"]) * size
 	var blen: float = float(w["blade_len"]) * size
@@ -289,7 +289,7 @@ func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
 	var hit_r: float = 5.0 * size
 	var rehit := level_cooldown(w, lv)
 	while _blade_fx.size() < count:
-		var inst: Dictionary = game.vfx.play("astral_blade", p.position, 0.0, fx_scale, Color.WHITE, 0.8)
+		var inst: Dictionary = game.vfx.play("astral_blade", p.position, 0.0, fx_scale, Color.WHITE, 0.6)
 		if inst.is_empty():
 			break
 		_blade_fx.append(inst)
@@ -307,9 +307,12 @@ func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
 			_blade_fx[i]["scale"] = fx_scale
 			_blade_fx[i]["t"] = fmod(_blade_fx[i]["t"], 100.0)
 		# sweep trail: a crescent of light swept along the orbit behind the blade (drawn by _trail)
-		_blade_arcs.append({"c": p.position, "a": a, "r_in": r + blen * 0.25, "r_out": r + blen, "span": float(w["trail_arc"])})
+		# with many blades the crescents would overlap into a solid disc: shorten them to fit the gaps
+		var span: float = minf(float(w["trail_arc"]), TAU / count * 0.55)
+		_blade_arcs.append({"c": p.position, "a": a, "r_in": r + blen * 0.25, "r_out": r + blen, "span": span,
+			"k": 1.0 / sqrt(maxf(1.0, count / 2.0))})
 		if randf() < 0.25:
-			game.vfx.trail(hilt + out * blen * randf_range(0.6, 1.0), Color(1.2, 1.9, 2.6), 1.4, 0.3)
+			game.vfx.trail(hilt + out * blen * randf_range(0.6, 1.0), Color(0.9, 1.4, 1.9), 1.4, 0.3)
 		# the cut runs from the hero's centre to the tip, so foes pressed against the hero are hit too
 		var tip := hilt + out * blen
 		for e in game.enemies.query_radius(p.position, r + blen + hit_r):
@@ -333,6 +336,7 @@ func _draw_blade_trails() -> void:
 		var span: float = b["span"]
 		var r_in: float = b["r_in"]
 		var r_out: float = b["r_out"]
+		var bk: float = b["k"]
 		for i in SEGS:
 			var u0 := float(i) / SEGS
 			var u1 := float(i + 1) / SEGS
@@ -343,8 +347,8 @@ func _draw_blade_trails() -> void:
 			var ri1: float = lerp(r_in, r_out - 2.0, u1 * u1)
 			var k0 := pow(1.0 - u0, 1.6)
 			var k1 := pow(1.0 - u1, 1.6)
-			var col0 := _trail_col(u0, k0)
-			var col1 := _trail_col(u1, k1)
+			var col0 := _trail_col(u0, k0 * bk)
+			var col1 := _trail_col(u1, k1 * bk)
 			var d0 := Vector2.from_angle(g0)
 			var d1 := Vector2.from_angle(g1)
 			var inner0 := Color(col0, col0.a * 0.15)
@@ -352,19 +356,19 @@ func _draw_blade_trails() -> void:
 			_trail.draw_polygon(PackedVector2Array([c + d0 * ri0, c + d0 * r_out, c + d1 * r_out, c + d1 * ri1]),
 				PackedColorArray([inner0, col0, col1, inner1]))
 			# hot rim along the tip's path
-			var rim := Color(1.6, 2.2, 2.8, k0 * 0.9)
+			var rim := Color(1.1, 1.6, 2.0, k0 * 0.8 * bk)
 			_trail.draw_line(c + d0 * (r_out - 0.5), c + d1 * (r_out - 0.5), rim, 1.5 * (1.0 - u0 * 0.6))
 		# a soft light at the blade's tip where the trail starts
 		var tip: Vector2 = c + Vector2.from_angle(a0) * r_out
-		_trail.draw_circle(tip, 3.0, Color(0.8, 1.6, 2.4, 0.35))
+		_trail.draw_circle(tip, 3.0, Color(0.6, 1.2, 1.8, 0.3 * bk))
 
 
 func _trail_col(u: float, k: float) -> Color:
-	var head := Color(1.4, 2.0, 2.6)   # white-cyan at the blade
-	var mid := Color(0.35, 0.9, 1.9)   # cyan-blue
-	var tail := Color(0.7, 0.35, 1.6)  # violet
+	var head := Color(1.0, 1.45, 1.8)  # white-cyan at the blade
+	var mid := Color(0.3, 0.75, 1.4)   # cyan-blue
+	var tail := Color(0.55, 0.3, 1.2)  # violet
 	var col := head.lerp(mid, clampf(u * 2.5, 0.0, 1.0)) if u < 0.4 else mid.lerp(tail, (u - 0.4) / 0.6)
-	return Color(col, k * 0.75)
+	return Color(col, k * 0.6)
 
 
 func clear_blades() -> void:

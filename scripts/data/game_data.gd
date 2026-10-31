@@ -11,6 +11,11 @@ const MAX_ENEMIES := 220
 
 # --- VFX quality (lower these if a phone struggles) ---
 const VFX_GLOW := true              # HDR bloom
+# Bloom strength. Screen blend (not additive) so stacked effects saturate instead of blowing out to white.
+const VFX_GLOW_INTENSITY := 0.55
+const VFX_GLOW_THRESHOLD := 1.15     # only light brighter than this blooms
+const VFX_LIGHT_BOOST := 1.25        # sprite-effect light layers are multiplied by this into HDR
+const VFX_PROJECTILE_LIGHT := 1.1    # light layer of player shots
 const VFX_PARTICLE_SCALE := 1.0     # 0.5 halves particle counts
 const VFX_SHAKE := 1.0              # camera shake multiplier (0 = off)
 const FOG_REVEAL_TILES := 11.0
@@ -49,8 +54,24 @@ const SURGES := [
 const SPAWN_RATE_START := 0.8
 const SPAWN_RATE_END := 6.0
 const HP_SCALE_PER_MIN := 0.15
-const FINAL_SWARM_RATE := 8.0
-const FINAL_SWARM_STEP := 15.0     # every 15 s: +10% hp, +3% speed
+# Final Swarm: endless and climbing. Every FINAL_SWARM_LEVEL_TIME seconds the swarm level goes up;
+# each level multiplies (1 + per_level * level) on spawn rate, enemy HP and contact damage, and adds
+# speed. Within a level the numbers also ramp smoothly, so it never plateaus. Wraiths (ghosts that
+# ignore walls) make up a growing share of the spawns.
+const FINAL_SWARM_RATE := 9.0
+const FINAL_SWARM_LEVEL_TIME := 60.0
+const FINAL_SWARM_RATE_PER_LEVEL := 0.45
+const FINAL_SWARM_HP_PER_LEVEL := 0.35
+const FINAL_SWARM_DMG_PER_LEVEL := 0.25
+const FINAL_SWARM_SPEED_PER_LEVEL := 0.10
+const FINAL_SWARM_SPEED_MAX := 2.0
+const FINAL_SWARM_WRAITH_START := 0.35
+const FINAL_SWARM_WRAITH_PER_LEVEL := 0.12
+const FINAL_SWARM_WRAITH_MAX := 0.85
+const FINAL_SWARM_MAX_ENEMIES := 300
+# Difficulty meter (HUD): run threat rises with time, curse/avarice and swarm level.
+# One name per threat step; the last one repeats with a growing number.
+const THREAT_NAMES := ["Calm", "Uneasy", "Restless", "Hostile", "Dangerous", "Brutal", "Deadly", "Nightmare", "Cataclysm", "Doomed"]
 const BOSS_ALIVE_SPAWN_MULT := 0.4
 const DEFEAT_REWARD_SHARE := 0.5
 
@@ -136,9 +157,9 @@ const WEAPONS := [
 		"cd": 2.6, "dmg": 2.4, "radius": 30.0, "range": 210.0, "count": 1, "count_at": [4, 7], "delay": 0.5,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
 	{"id": "blades", "name": "Astral Blades", "weight": 7.0,
-		"desc": "Spectral swords circle you and cut what they touch", "level_desc": "+20% damage, more blades at Lv 3/5/7",
+		"desc": "Spectral swords circle you and cut what they touch", "level_desc": "+20% damage, more blades at Lv 3/5/7 (max 6)",
 		"cd": 0.5, "dmg": 0.5, "radius": 9.0, "blade_len": 22.0, "count": 2, "count_at": [3, 5, 7], "uses_projectiles": true,
-		"spin": 4.0, "trail_arc": 1.5, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
+		"spin": 4.0, "trail_arc": 1.5, "max_count": 6, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
 	{"id": "void", "name": "Void Well", "weight": 6.0,
 		"desc": "A singularity pulls foes in, then detonates", "level_desc": "+20% damage, wider pull, faster casts",
 		"cd": 4.0, "dmg": 2.0, "radius": 46.0, "range": 160.0, "pull": 70.0, "duration": 1.3, "tick_dmg": 0.25,
@@ -297,6 +318,9 @@ const ENEMY_TYPES := {
 	"slime": {"hp": 10.0, "speed": 38.0, "radius": 6.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.55, 0.3, 0.85), "xp": 1},
 	"bat": {"hp": 6.0, "speed": 70.0, "radius": 5.0, "dmg": 4.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.35, 0.3, 0.5), "xp": 1},
 	"brute": {"hp": 40.0, "speed": 28.0, "radius": 10.0, "dmg": 12.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.5, 0.45, 0.4), "xp": 3},
+	# Final Swarm only: fast ghosts that drift through walls (Megabonk-style swarm ghosts)
+	"wraith": {"hp": 12.0, "speed": 78.0, "radius": 6.0, "dmg": 8.0, "min_time": 0.0, "weight": 0.0, "swarm_only": true,
+		"color": Color(0.6, 0.85, 1.0), "xp": 1, "ghost": true},
 	"caster": {"hp": 14.0, "speed": 34.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.85, 0.25, 0.55), "xp": 2, "ranged": true},
 }
 const ELITE_SCALE := 1.6

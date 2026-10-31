@@ -4,7 +4,7 @@ extends Node2D
 ## the boss portal and the win / lose flow.
 ##
 ## Command-line (after `--`): --seed=123  --slots=4  --autotest  --autotest-die  --autotest-late  --shot=/tmp/shot.png
-##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1, autotest only)
+##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1)  --swarm-at=30 (early Final Swarm); autotest only
 
 var seed_value := 0
 var rng := RandomNumberGenerator.new()
@@ -69,6 +69,7 @@ var _shot_times: Array = [3.0, 160.0]
 var _finishing := false
 var _choice_shot_done := false
 var _auto_portal_at := 240.0
+var _swarm_at := -1.0  # --swarm-at=30: start the Final Swarm early (autotest only)
 var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
 
 
@@ -160,6 +161,8 @@ func _parse_args() -> void:
 		elif a == "--autotest-late":
 			_auto = true
 			_auto_portal_at = 640.0
+		elif a.begins_with("--swarm-at="):
+			_swarm_at = float(a.get_slice("=", 1))
 		elif a.begins_with("--weapons="):
 			_extra_weapons = Array(a.get_slice("=", 1).split(","))
 		elif a.begins_with("--char="):
@@ -220,15 +223,46 @@ func surge_active() -> bool:
 	return elapsed < _surge_end
 
 
+## Continuous Final Swarm progress in levels (0 at the start, 1.0 after the first minute ...).
+func swarm_progress() -> float:
+	return final_swarm_t / GameData.FINAL_SWARM_LEVEL_TIME if final_swarm else 0.0
+
+
+## Swarm level shown on the HUD: 1 when the swarm starts, +1 every minute.
+func swarm_level() -> int:
+	return 1 + int(floorf(swarm_progress())) if final_swarm else 0
+
+
 func hp_mult() -> float:
 	var m := (1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0) * difficulty
 	if final_swarm:
-		m *= 1.0 + 0.10 * floorf(final_swarm_t / GameData.FINAL_SWARM_STEP)
+		m *= 1.0 + GameData.FINAL_SWARM_HP_PER_LEVEL * swarm_progress()
 	return m
 
 
+## Live speed multiplier, applied every frame in Enemies._walk (so the swarm speeds up as it ramps).
 func speed_mult() -> float:
-	return 1.0 + (0.03 * floorf(final_swarm_t / GameData.FINAL_SWARM_STEP) if final_swarm else 0.0)
+	if not final_swarm:
+		return 1.0
+	return minf(1.0 + GameData.FINAL_SWARM_SPEED_PER_LEVEL * swarm_progress(), GameData.FINAL_SWARM_SPEED_MAX)
+
+
+func dmg_mult() -> float:
+	return 1.0 + GameData.FINAL_SWARM_DMG_PER_LEVEL * swarm_progress()
+
+
+## Threat step for the HUD difficulty meter: one step per two minutes of the run, plus curse
+## (every +20% difficulty), plus one per swarm level.
+func threat_level() -> int:
+	return int(floorf(minf(elapsed, GameData.RUN_TIME) / 120.0)) + int(floorf((difficulty - 1.0) / 0.2)) + swarm_level()
+
+
+func threat_name() -> String:
+	var names: Array = GameData.THREAT_NAMES
+	var t := threat_level()
+	if t < names.size():
+		return names[t]
+	return "%s %d" % [names.back(), t - names.size() + 2]
 
 
 func _update_timeline(delta: float) -> void:
@@ -251,10 +285,14 @@ func _update_timeline(delta: float) -> void:
 			hud.banner("RIFT SURGE %d" % (_surge_index + 1), Color(1, 0.45, 0.2), 2.5)
 			_surge_index += 1
 	# Final Swarm
-	if not final_swarm and elapsed >= GameData.RUN_TIME:
+	if not final_swarm and (elapsed >= GameData.RUN_TIME or (_auto and _swarm_at > 0.0 and elapsed >= _swarm_at)):
 		_start_final_swarm()
 	if final_swarm:
+		var before := swarm_level()
 		final_swarm_t += delta
+		if swarm_level() > before:
+			hud.banner("SWARM LEVEL %d" % swarm_level(), Color(1, 0.25, 0.3), 2.5)
+			hud.toast("The swarm grows faster and stronger", Color(1, 0.5, 0.4))
 
 
 func _start_final_swarm() -> void:
@@ -267,7 +305,7 @@ func _start_final_swarm() -> void:
 func _update_spawning(delta: float) -> void:
 	var rate: float
 	if final_swarm:
-		rate = GameData.FINAL_SWARM_RATE * (1.0 + 0.1 * floorf(final_swarm_t / GameData.FINAL_SWARM_STEP))
+		rate = GameData.FINAL_SWARM_RATE * (1.0 + GameData.FINAL_SWARM_RATE_PER_LEVEL * swarm_progress())
 	else:
 		rate = lerp(GameData.SPAWN_RATE_START, GameData.SPAWN_RATE_END, clamp(elapsed / GameData.RUN_TIME, 0.0, 1.0))
 		if surge_active():
@@ -294,6 +332,8 @@ func _pick_type() -> String:
 	var weights: Array = []
 	for k in GameData.ENEMY_TYPES:
 		var d: Dictionary = GameData.ENEMY_TYPES[k]
+		if d.get("swarm_only", false):
+			continue
 		if elapsed >= float(d["min_time"]):
 			keys.append(k)
 			weights.append(float(d["weight"]))
@@ -304,10 +344,17 @@ func _spawn_one() -> void:
 	var p := _spawn_point()
 	if p == Vector2.INF:
 		return
-	if enemies.count() >= GameData.MAX_ENEMIES:
+	var cap: int = GameData.FINAL_SWARM_MAX_ENEMIES if final_swarm else GameData.MAX_ENEMIES
+	if enemies.count() >= cap:
 		enemies.recycle_farthest(p)
 		return
-	enemies.spawn(_pick_type(), p, hp_mult(), speed_mult())
+	var type := _pick_type()
+	if final_swarm and enemies.boss == null:
+		var share := minf(GameData.FINAL_SWARM_WRAITH_START + GameData.FINAL_SWARM_WRAITH_PER_LEVEL * swarm_progress(), GameData.FINAL_SWARM_WRAITH_MAX)
+		if rng.randf() < share:
+			type = "wraith"
+	var e := enemies.spawn(type, p, hp_mult(), 1.0)
+	e.dmg *= dmg_mult()
 
 
 func _spawn_elite(at := Vector2.INF) -> Enemies.Enemy:
@@ -315,7 +362,9 @@ func _spawn_elite(at := Vector2.INF) -> Enemies.Enemy:
 	if p == Vector2.INF:
 		return null
 	var affix: String = GameData.ELITE_AFFIXES[rng.randi_range(0, GameData.ELITE_AFFIXES.size() - 1)]
-	return enemies.spawn(_pick_type(), p, hp_mult(), speed_mult(), true, affix)
+	var e := enemies.spawn(_pick_type(), p, hp_mult(), 1.0, true, affix)
+	e.dmg *= dmg_mult()
+	return e
 
 
 # ------------------------------------------------------------------ combat events
@@ -377,7 +426,7 @@ func on_pickup(kind: int, value: float) -> void:
 
 
 func _level_up_vfx() -> void:
-	vfx.play("level_up", player.position + Vector2(0, 6), 0.0, 0.5, Color.WHITE, 1.7, -1.0, player)
+	vfx.play("level_up", player.position + Vector2(0, 6), 0.0, 0.5, Color.WHITE, GameData.VFX_LIGHT_BOOST, -1.0, player)
 	screen_fx.shockwave(player.position, 70.0, 0.5, 0.4)
 
 
@@ -521,7 +570,7 @@ func on_shrine_activated(s: Dictionary) -> void:
 	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
 	vfx.motes(s["pos"] + Vector2(0, -6), Color(sc.r, sc.g, sc.b) * 1.6, 6, 30.0, 0.6, 2.5, -30.0)
 	if s["type"] == "moon":
-		vfx.play("heal", player.position + Vector2(0, 6), 0.0, 0.7, Color.WHITE, 1.7, -1.0, player)
+		vfx.play("heal", player.position + Vector2(0, 6), 0.0, 0.7, Color.WHITE, GameData.VFX_LIGHT_BOOST, -1.0, player)
 	match s["type"]:
 		"ley":
 			var boons: Array = GameData.BOONS.duplicate()
@@ -554,7 +603,7 @@ func start_trial(s: Dictionary) -> void:
 		count += 1
 	for i in GameData.TRIAL_MINIONS:
 		var p := _walkable_near(s["pos"] + Vector2.from_angle(TAU * i / GameData.TRIAL_MINIONS) * 70.0)
-		var e := enemies.spawn(_pick_type(), p, hp_mult(), speed_mult())
+		var e := enemies.spawn(_pick_type(), p, hp_mult(), 1.0)
 		e.trial_id = id
 		count += 1
 	_trials[id] = {"shrine": s, "remaining": count}
@@ -689,8 +738,8 @@ func _autotest_step(delta: float) -> void:
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
 		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size()])
-		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s" % [
-			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm])
+		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s swarm_t=%.0f swarm_lv=%d threat=%s" % [
+			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm, final_swarm_t, swarm_level(), threat_name()])
 		get_tree().quit()
 		return
 	_maybe_shot(false)

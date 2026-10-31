@@ -9,7 +9,7 @@ enum Shape { DOT, GLOW, STREAK, RING, SHARD }
 const MAX_PARTICLES := 1800
 const MAX_SPRITE_FX := 140
 const FX_DIR := "res://assets/vfx/"
-const LIGHT_BOOST := 1.7   # light layer is multiplied into HDR so it blooms
+const LIGHT_BOOST := GameData.VFX_LIGHT_BOOST   # light layer is multiplied into HDR so it blooms
 
 # Sprite effects exported from pixelfx (see tools/pixelfx_export.mjs): each has a
 # colour sheet (normal blend, drawn by SpriteFxColor) and a light sheet (additive, drawn here).

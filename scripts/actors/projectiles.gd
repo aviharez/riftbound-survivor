@@ -98,7 +98,11 @@ func _draw() -> void:
 
 ## Every look faces right; rotating it to the velocity keeps the trail straight behind the head.
 func _draw_layer(ci: CanvasItem, layer: String) -> void:
-	var tint := Color(1.6, 1.6, 1.6) if layer == "light" else Color.WHITE
+	var lk: float = GameData.VFX_PROJECTILE_LIGHT
+	# many shots on screen at once: dim each one so the swarm of lights does not wash out
+	if layer == "light" and list.size() > 12:
+		lk *= sqrt(12.0 / list.size())
+	var tint := Color(lk, lk, lk) if layer == "light" else Color.WHITE
 	for p in list:
 		var def := Vfx.fx_def(LOOKS[p["kind"]][0])
 		if def.is_empty():
