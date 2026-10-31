@@ -9,8 +9,11 @@
 // fps than the source, and trailing empty frames are dropped, to keep texture
 // memory small on phones.
 //
+// Effects written for this game (top-down versions) live in tools/pixelfx_custom/<category>/ and are copied
+// into the pixelfx checkout's src/fx before rendering.
+//
 // usage: node tools/pixelfx_export.mjs /path/to/pixelfx assets/vfx
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, readdirSync, copyFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -19,6 +22,12 @@ if (!pixelfxDir || !outDir) {
   console.error("usage: node tools/pixelfx_export.mjs <pixelfx dir> <out dir>");
   process.exit(1);
 }
+// install this game's own effects into the pixelfx checkout
+const customRoot = new URL("./pixelfx_custom/", import.meta.url).pathname;
+for (const cat of readdirSync(customRoot)) {
+  mkdirSync(resolve(pixelfxDir, "src/fx", cat), { recursive: true });
+  for (const f of readdirSync(join(customRoot, cat))) copyFileSync(join(customRoot, cat, f), resolve(pixelfxDir, "src/fx", cat, f));
+}
 const lib = await import(pathToFileURL(resolve(pixelfxDir, "tools/lib/fxlib.mjs")).href);
 const { encodePNG } = await import(pathToFileURL(resolve(pixelfxDir, "tools/lib/png.mjs")).href);
 
@@ -26,12 +35,12 @@ const { encodePNG } = await import(pathToFileURL(resolve(pixelfxDir, "tools/lib/
 const EFFECTS = [
   { name: "hit_spark", id: "impacts/hit-spark", fps: 24 },
   { name: "crit_hit", id: "impacts/crit-hit", fps: 20, max: 0.7 },
-  { name: "arcane_orb", id: "arcane/arcane-orb", fps: 15, max: 1.2 },
-  { name: "frost_nova", id: "ice/frost-nova", fps: 15, max: 1.5 },
+  { name: "arcane_bolt", id: "riftbound/arcane-bolt", fps: 30 },
+  { name: "frost_nova", id: "riftbound/frost-nova-td", fps: 20 },
   { name: "spirit_flame", id: "fire/spirit-flame", fps: 15, max: 1.2, opts: { palette: ["#2a0802", "#6e1a04", "#c2410c", "#f97316", "#fdba74", "#fff4d6"] } },
   { name: "mana_burst", id: "arcane/mana-burst", fps: 18, max: 1.1 },
   { name: "zap_hit", id: "lightning/zap-hit", fps: 24, max: 0.6 },
-  { name: "sword_slash", id: "melee/sword-slash", fps: 30, max: 0.5 },
+  { name: "spin_slash", id: "melee/spin-slash", fps: 30, max: 0.6 },
   { name: "poof", id: "spawn/poof", fps: 20, max: 1.0 },
   { name: "dark_explosion", id: "shadow/dark-explosion", fps: 15, max: 1.1 },
   { name: "big_explosion", id: "explosions/big-explosion", fps: 12, max: 1.6 },

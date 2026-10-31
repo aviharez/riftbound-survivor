@@ -136,8 +136,8 @@ const WEAPONS := [
 		"cd": 1.6, "dmg": 0.9, "range": 180.0, "jump_range": 90.0, "count": 3, "count_at": [3, 5, 7], "uses_projectiles": true,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
 	{"id": "blade", "name": "Spirit Blade", "weight": 7.0,
-		"desc": "Wide slash in the direction you move", "level_desc": "+20% damage, longer reach",
-		"cd": 1.2, "dmg": 1.5, "radius": 46.0, "arc": 2.1,
+		"desc": "Spinning slash that hits all around you", "level_desc": "+20% damage, longer reach",
+		"cd": 1.2, "dmg": 1.2, "radius": 46.0,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
 ]
 

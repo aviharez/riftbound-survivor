@@ -29,9 +29,13 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 - [ ] Tiap karakter terasa berbeda cara mainnya
 - [ ] Ada karakter yang jelas terlalu kuat atau terlalu lemah?
 
-**VFX** (sekarang memakai efek pixel art dari pixelfx):
-- [ ] Frost Nova (cincin es + kristal), Mana Burst (ledakan ungu bersigil), Storm Chain (petir zap ke tiap musuh),
-      Spirit Blade (tebasan bulan sabit), Flame Orb (api roh berputar), Arcane Bolt (orb arcane + percikan saat kena)
+**VFX** (efek pixel art pixelfx; Frost Nova dan Arcane Bolt dibuat khusus untuk sudut pandang top-down):
+- [ ] Semua weapon menyerang terus sesuai attack speed, juga saat tidak ada musuh (Arcane Bolt ke arah hadap,
+      Mana Burst di depan karakter, Storm Chain zap ke depan)
+- [ ] Arcane Bolt: trail lurus di belakang kepala proyektil, ke segala arah
+- [ ] Frost Nova: cincin es di lantai di sekeliling karakter, kristal muncul melingkar
+- [ ] Spirit Blade: sekarang tebasan putar 360° (elips di lantai), mengenai semua arah
+- [ ] Mana Burst, Storm Chain, Flame Orb masih terasa cocok untuk tampilan dari atas?
 - [ ] Musuh mati jadi kepulan asap kecil; elite mati meledak gelap; boss muncul dari portal dan mati dengan ledakan besar
 - [ ] Rift Portal berputar ungu, level up, chest (sinar sesuai rarity), Moon Fountain (efek heal), dash (blink)
 - [ ] Efek terasa "pixel art", tidak ada kotak/tepi terpotong di sekitar efek

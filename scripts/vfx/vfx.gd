@@ -71,14 +71,17 @@ static func fx_def(name: String) -> Dictionary:
 
 ## Plays a pixelfx effect. Returns the instance (set "dead" = true to stop a loop early).
 ## follow: a Node2D the effect sticks to. until: seconds a looping effect lasts (-1 = forever).
-func play(name: String, pos: Vector2, rot := 0.0, scale := 1.0, tint := Color.WHITE, light_k := LIGHT_BOOST, until := -1.0, follow: Node2D = null) -> Dictionary:
+## centered: anchor the frame's centre on pos instead of the effect's own pivot (radial effects).
+func play(name: String, pos: Vector2, rot := 0.0, scale := 1.0, tint := Color.WHITE, light_k := LIGHT_BOOST, until := -1.0, follow: Node2D = null, centered := false) -> Dictionary:
 	if sprites.size() >= MAX_SPRITE_FX:
 		return {}
 	var def := fx_def(name)
 	if def.is_empty():
 		return {}
 	var inst := {"def": def, "t": 0.0, "pos": pos, "rot": rot, "scale": scale, "tint": tint,
-		"light_k": light_k, "until": until, "follow": follow, "dead": false}
+		"light_k": light_k, "until": until, "follow": follow, "dead": false,
+		"anchor": def["size"] * 0.5 if centered else def["pivot"],
+		"offset": pos - follow.position if follow != null else Vector2.ZERO}
 	sprites.append(inst)
 	return inst
 
@@ -105,7 +108,7 @@ func draw_sprite_layer(ci: CanvasItem, layer: String) -> void:
 			var k: float = s["light_k"]
 			tint = Color(tint.r * k, tint.g * k, tint.b * k, tint.a)
 		ci.draw_set_transform(pos, s["rot"], Vector2(s["scale"], s["scale"]))
-		ci.draw_texture_rect_region(tex, Rect2(-def["pivot"], def["size"]), frame_region(def, s["t"]), tint)
+		ci.draw_texture_rect_region(tex, Rect2(-s["anchor"], def["size"]), frame_region(def, s["t"]), tint)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
@@ -113,7 +116,7 @@ func _update_sprites(delta: float) -> void:
 	for s in sprites:
 		s["t"] += delta
 		if s["follow"] != null and is_instance_valid(s["follow"]):
-			s["pos"] = s["follow"].position
+			s["pos"] = s["follow"].position + s["offset"]
 		var def: Dictionary = s["def"]
 		if def["loop"]:
 			if s["until"] >= 0.0 and s["t"] >= s["until"]:

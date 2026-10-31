@@ -29,34 +29,34 @@
    96
   ]
  },
- "arcane_orb": {
-  "source": "arcane/arcane-orb",
-  "fps": 15,
+ "arcane_bolt": {
+  "source": "riftbound/arcane-bolt",
+  "fps": 30,
   "loop": true,
-  "frames": 19,
-  "columns": 19,
+  "frames": 12,
+  "columns": 12,
   "frame_size": [
-   94,
-   105
+   38,
+   18
   ],
   "pivot": [
-   47,
-   98
+   28,
+   9
   ]
  },
  "frost_nova": {
-  "source": "ice/frost-nova",
-  "fps": 15,
+  "source": "riftbound/frost-nova-td",
+  "fps": 20,
   "loop": false,
-  "frames": 23,
-  "columns": 8,
+  "frames": 24,
+  "columns": 12,
   "frame_size": [
-   253,
-   130
+   163,
+   111
   ],
   "pivot": [
-   124,
-   92
+   86,
+   62
   ]
  },
  "spirit_flame": {
@@ -104,19 +104,19 @@
    47
   ]
  },
- "sword_slash": {
-  "source": "melee/sword-slash",
+ "spin_slash": {
+  "source": "melee/spin-slash",
   "fps": 30,
   "loop": false,
-  "frames": 16,
-  "columns": 16,
+  "frames": 19,
+  "columns": 11,
   "frame_size": [
-   125,
-   98
+   182,
+   96
   ],
   "pivot": [
-   43,
-   89
+   78,
+   78
   ]
  },
  "poof": {

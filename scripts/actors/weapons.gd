@@ -52,7 +52,8 @@ func _process(delta: float) -> void:
 			"burst": fired = _mana_burst(w, lv)
 			"chain": fired = _storm_chain(w, lv)
 			"blade": fired = _spirit_blade(w, lv)
-		_cd[id] = level_cooldown(w, lv) if fired else 0.1  # no target: check again soon
+		# every weapon fires on its own rhythm (attack speed), with or without a target
+		_cd[id] = level_cooldown(w, lv)
 	_update_bursts(delta)
 	if not p.weapon_levels.has("orb") and not _orb_fx.is_empty():
 		clear_orbs()
@@ -73,10 +74,8 @@ func _hit(e, amount: float, color: Color) -> void:
 func _arcane_bolt(w: Dictionary, lv: int) -> bool:
 	var p: Player = game.player
 	var target = game.enemies.nearest(p.position, float(w["range"]), null)
-	if target == null:
-		return false
 	var count := count_of(w, lv)
-	var base_dir: Vector2 = (target.pos - p.position).normalized()
+	var base_dir: Vector2 = (target.pos - p.position).normalized() if target != null else p.facing
 	for i in count:
 		var spread: float = 0.0 if count == 1 else lerp(-0.18 * (count - 1), 0.18 * (count - 1), float(i) / (count - 1))
 		game.projectiles.fire(p.position, base_dir.rotated(spread), level_damage(w, lv), int(p.stats["bounce"]), p.area())
@@ -86,13 +85,10 @@ func _arcane_bolt(w: Dictionary, lv: int) -> bool:
 func _frost_nova(w: Dictionary, lv: int) -> bool:
 	var p: Player = game.player
 	var r: float = float(w["radius"]) * level_size(w, lv)
-	var foes: Array = game.enemies.query_radius(p.position, r)
-	if foes.is_empty():
-		return false
-	for e in foes:
+	for e in game.enemies.query_radius(p.position, r):
 		_hit(e, level_damage(w, lv), Color(0.7, 1.6, 2.4))
-	# the effect's ring spans ~250 px at scale 1
-	game.vfx.play("frost_nova", p.position + Vector2(0, 6), 0.0, r * 2.0 / 230.0, Color.WHITE, 1.7, -1.0, p)
+	# riftbound/frost-nova-td: the ring lies on the floor round the feet and reaches 60 px at scale 1
+	game.vfx.play("frost_nova", p.position + Vector2(0, 5), 0.0, r / 60.0, Color.WHITE, 1.6, -1.0, p)
 	game.screen_fx.shockwave(p.position, r * 1.3, 0.7, 0.4)
 	game.screen_fx.shake(0.08)
 	return true
@@ -133,9 +129,12 @@ func _flame_orb(w: Dictionary, lv: int, delta: float) -> void:
 func _mana_burst(w: Dictionary, lv: int) -> bool:
 	var p: Player = game.player
 	var foes: Array = game.enemies.query_radius(p.position, float(w["range"]))
+	var center: Vector2
 	if foes.is_empty():
-		return false
-	var center: Vector2 = foes[randi() % foes.size()].pos
+		# nothing in range: burst ahead of the player
+		center = p.position + p.facing * float(w["range"]) * randf_range(0.3, 0.6)
+	else:
+		center = foes[randi() % foes.size()].pos
 	var r: float = float(w["radius"]) * level_size(w, lv)
 	# the effect gathers for ~0.25 s, then bursts: damage lands with the burst
 	game.vfx.play("mana_burst", center, 0.0, r / 55.0)
@@ -159,7 +158,10 @@ func _storm_chain(w: Dictionary, lv: int) -> bool:
 	var p: Player = game.player
 	var cur = game.enemies.nearest(p.position, float(w["range"]), null)
 	if cur == null:
-		return false
+		# nothing in range: a lone zap strikes the ground ahead
+		var spot: Vector2 = p.position + p.facing * float(w["range"]) * 0.4
+		game.vfx.play("zap_hit", spot, p.facing.angle(), 0.6)
+		return true
 	var prev: Vector2 = p.position + Vector2(0, -6)
 	var done: Array = []
 	var jumps := count_of(w, lv)
@@ -190,17 +192,10 @@ func _storm_chain(w: Dictionary, lv: int) -> bool:
 func _spirit_blade(w: Dictionary, lv: int) -> bool:
 	var p: Player = game.player
 	var r: float = float(w["radius"]) * level_size(w, lv)
-	var foes: Array = game.enemies.query_radius(p.position, r)
-	if foes.is_empty():
-		return false
-	var dir := p.facing
-	var half: float = float(w["arc"]) * 0.5
-	for e in foes:
-		var to: Vector2 = e.pos - p.position
-		if to.length() < 1.0 or absf(dir.angle_to(to)) <= half:
-			_hit(e, level_damage(w, lv), Color(0.9, 2.4, 1.9))
-	# sword-slash faces right with its arc ~60 px out from the pivot
-	game.vfx.play("sword_slash", p.position + Vector2(0, -4), dir.angle(), r / 55.0, Color(0.85, 1.15, 1.0))
+	for e in game.enemies.query_radius(p.position, r):
+		_hit(e, level_damage(w, lv), Color(0.9, 2.4, 1.9))
+	# spin-slash: an ellipse on the ground plane around the hero, ~85 px half-width at scale 1
+	game.vfx.play("spin_slash", p.position + Vector2(0, 2), 0.0, r / 80.0, Color(0.85, 1.15, 1.0), 1.7, -1.0, p, true)
 	game.screen_fx.shake(0.05)
 	return true
 
