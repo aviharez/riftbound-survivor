@@ -43,6 +43,7 @@ Frost Nova, Mana Burst, Spirit Blade dan orb api yang mengorbit sudah dihapus.
 
 - [ ] Tiap weapon terasa jelas jenis serangannya (pantul, tembus, area tertunda, tarik, orbit, akar)
 - [ ] Astral Blades terlihat seperti pedang (gagang ungu, bilah cyan), bukan garis cahaya
+- [ ] Jejak putaran pedang: sabetan cahaya berbentuk bulan sabit di belakang tiap pedang (putih-cyan di pedang, memudar ke ungu)
 - [ ] Meteor: lingkaran peringatan terlihat sebelum meteor jatuh
 - [ ] Semua weapon tetap menyerang sesuai attack speed walau tidak ada musuh
 - [ ] Ada weapon/karakter yang jelas terlalu kuat atau terlalu lemah?

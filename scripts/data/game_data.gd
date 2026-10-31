@@ -138,7 +138,7 @@ const WEAPONS := [
 	{"id": "blades", "name": "Astral Blades", "weight": 7.0,
 		"desc": "Spectral swords circle you and cut what they touch", "level_desc": "+20% damage, more blades at Lv 3/5/7",
 		"cd": 0.5, "dmg": 0.5, "radius": 9.0, "blade_len": 22.0, "count": 2, "count_at": [3, 5, 7], "uses_projectiles": true,
-		"spin": 4.0, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
+		"spin": 4.0, "trail_arc": 1.5, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
 	{"id": "void", "name": "Void Well", "weight": 6.0,
 		"desc": "A singularity pulls foes in, then detonates", "level_desc": "+20% damage, wider pull, faster casts",
 		"cd": 4.0, "dmg": 2.0, "radius": 46.0, "range": 160.0, "pull": 70.0, "duration": 1.3, "tick_dmg": 0.25,
