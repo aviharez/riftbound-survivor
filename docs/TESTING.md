@@ -17,10 +17,9 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
-**Efek lebih kalem** (bloom diturunkan dan memakai mode "screen", jadi efek yang bertumpuk tidak lagi jadi layar putih):
-- [ ] Late game dengan banyak proyektil (Tome of Multitude tinggi) tidak lagi silau / putih menutupi layar
-- [ ] Efek tetap terasa "menyala", tidak jadi kusam
-- [ ] Astral Blades maksimal 6 pedang (dulu bisa 11 dengan Multitude); jejaknya memendek kalau pedangnya banyak
+**Astral Blades**: jejak sabetan bulan sabit kembali seperti sebelumnya; hanya cahaya di ujung pedang yang diredupkan.
+- [ ] Jejak sabetan terlihat jelas lagi
+- [ ] Ujung pedang tidak lagi menyala silau
 
 **Final Swarm baru (gaya Megabonk)**:
 - Tiap 1 menit naik **SWARM LV** (ada banner). Tiap level: musuh muncul lebih banyak, lebih cepat,

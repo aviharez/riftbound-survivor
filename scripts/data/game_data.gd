@@ -11,11 +11,10 @@ const MAX_ENEMIES := 220
 
 # --- VFX quality (lower these if a phone struggles) ---
 const VFX_GLOW := true              # HDR bloom
-# Bloom strength. Screen blend (not additive) so stacked effects saturate instead of blowing out to white.
-const VFX_GLOW_INTENSITY := 0.55
-const VFX_GLOW_THRESHOLD := 1.15     # only light brighter than this blooms
-const VFX_LIGHT_BOOST := 1.25        # sprite-effect light layers are multiplied by this into HDR
-const VFX_PROJECTILE_LIGHT := 1.1    # light layer of player shots
+const VFX_GLOW_INTENSITY := 0.9
+const VFX_GLOW_THRESHOLD := 1.0      # only light brighter than this blooms
+const VFX_LIGHT_BOOST := 1.7         # sprite-effect light layers are multiplied by this into HDR
+const VFX_PROJECTILE_LIGHT := 1.6    # light layer of player shots
 const VFX_PARTICLE_SCALE := 1.0     # 0.5 halves particle counts
 const VFX_SHAKE := 1.0              # camera shake multiplier (0 = off)
 const FOG_REVEAL_TILES := 11.0
@@ -157,9 +156,9 @@ const WEAPONS := [
 		"cd": 2.6, "dmg": 2.4, "radius": 30.0, "range": 210.0, "count": 1, "count_at": [4, 7], "delay": 0.5,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
 	{"id": "blades", "name": "Astral Blades", "weight": 7.0,
-		"desc": "Spectral swords circle you and cut what they touch", "level_desc": "+20% damage, more blades at Lv 3/5/7 (max 6)",
+		"desc": "Spectral swords circle you and cut what they touch", "level_desc": "+20% damage, more blades at Lv 3/5/7",
 		"cd": 0.5, "dmg": 0.5, "radius": 9.0, "blade_len": 22.0, "count": 2, "count_at": [3, 5, 7], "uses_projectiles": true,
-		"spin": 4.0, "trail_arc": 1.5, "max_count": 6, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
+		"spin": 4.0, "trail_arc": 1.5, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
 	{"id": "void", "name": "Void Well", "weight": 6.0,
 		"desc": "A singularity pulls foes in, then detonates", "level_desc": "+20% damage, wider pull, faster casts",
 		"cd": 4.0, "dmg": 2.0, "radius": 46.0, "range": 160.0, "pull": 70.0, "duration": 1.3, "tick_dmg": 0.25,

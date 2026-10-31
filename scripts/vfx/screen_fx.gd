@@ -24,10 +24,10 @@ func _ready() -> void:
 		env.glow_enabled = true
 		env.glow_intensity = GameData.VFX_GLOW_INTENSITY
 		env.glow_strength = 1.0
-		env.glow_bloom = 0.0
+		env.glow_bloom = 0.04
 		env.glow_hdr_threshold = GameData.VFX_GLOW_THRESHOLD
-		env.glow_hdr_scale = 1.5
-		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+		env.glow_hdr_scale = 2.0
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 		for i in 7:
 			env.set_glow_level(i, i >= 1 and i <= 4)
 		var we := WorldEnvironment.new()

@@ -19,7 +19,7 @@ export const meta = {
 export function draw(p, t, o) {
   const C = fit(o.palette, 7), L = o.length, u = t / meta.duration;
   // soft halo along the whole blade
-  p.glowLine(2, 0, L, 0, 6, C[4], 0.32);
+  p.glowLine(2, 0, L * 0.8, 0, 6, C[4], 0.32);
   // pommel and grip
   p.circle(-3, 0, 1.6, C[2]);
   p.px(-3, 0, C[5]);
@@ -49,6 +49,6 @@ export function draw(p, t, o) {
   }
   // star twinkle at the tip
   const tw = 0.5 + 0.5 * Math.sin(u * TAU * 2);
-  p.dot(L + 2, -1, C[6], tw);
-  p.glow(L, -1, 4, C[5], 0.25 + 0.2 * tw);
+  p.dot(L + 2, -1, C[5], 0.6 * tw);
+  p.glow(L, -1, 3, C[4], 0.08 + 0.06 * tw);
 }
