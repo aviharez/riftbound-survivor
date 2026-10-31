@@ -29,13 +29,13 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 - [ ] Tiap karakter terasa berbeda cara mainnya
 - [ ] Ada karakter yang jelas terlalu kuat atau terlalu lemah?
 
-**VFX** (di HP, bukan PC, karena glow paling terlihat di renderer Mobile):
-- [ ] Glow/bloom pada proyektil, Flame Orb, petir, ledakan
-- [ ] Gelombang distorsi layar saat Frost Nova, Mana Burst, elite mati, boss muncul/mati
-- [ ] Getaran layar dan jeda singkat (hit-stop) saat elite/boss mati tidak mengganggu
-- [ ] Layar merah berdenyut saat HP rendah, efek kena hit terasa
-- [ ] Retakan Rift ungu di tanah berpendar
-- [ ] Performa: tetap lancar saat Rift Surge dan Final Swarm? Kalau patah-patah, sebutkan model HP-mu
+**VFX** (sekarang memakai efek pixel art dari pixelfx):
+- [ ] Frost Nova (cincin es + kristal), Mana Burst (ledakan ungu bersigil), Storm Chain (petir zap ke tiap musuh),
+      Spirit Blade (tebasan bulan sabit), Flame Orb (api roh berputar), Arcane Bolt (orb arcane + percikan saat kena)
+- [ ] Musuh mati jadi kepulan asap kecil; elite mati meledak gelap; boss muncul dari portal dan mati dengan ledakan besar
+- [ ] Rift Portal berputar ungu, level up, chest (sinar sesuai rarity), Moon Fountain (efek heal), dash (blink)
+- [ ] Efek terasa "pixel art", tidak ada kotak/tepi terpotong di sekitar efek
+- [ ] Performa saat banyak musuh mati sekaligus (Rift Surge, Final Swarm)
 
 **Grafik**: Astra, Lyra, Kael, Nym, dan boss Corrupted Guardian memakai sprite PixelLab 8 arah (boss digambar 2x). Musuh dan chest memakai pixel art buatan Claude.
 - [ ] Arah hadap karakter sesuai arah gerak

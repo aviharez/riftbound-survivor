@@ -182,9 +182,10 @@ const CHARACTERS := [
 		"colors": {"robe": Color(0.9, 0.95, 0.9), "hair": Color(0.55, 1.0, 0.8), "accent": Color(0.3, 0.9, 0.45)}},
 ]
 const ARMOR_CAP := 0.5
-# Hero sprites are 48 px; drawn smaller so the hero stays ~1.5-2x a slime.
+# Hero sprites are drawn so the whole sprite canvas is this many world pixels tall
+# (~2x a slime), whatever size the source art is (48 or 64 px).
 # canvas_items stretch renders at the phone's native resolution, so this stays crisp.
-const CHARACTER_SPRITE_SCALE := 0.68
+const CHARACTER_SPRITE_HEIGHT := 33.0
 
 
 static func character_by_id(id: String) -> Dictionary:

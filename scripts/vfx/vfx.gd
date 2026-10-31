@@ -7,6 +7,15 @@ extends Node2D
 enum Shape { DOT, GLOW, STREAK, RING, SHARD }
 
 const MAX_PARTICLES := 1800
+const MAX_SPRITE_FX := 140
+const FX_DIR := "res://assets/vfx/"
+const LIGHT_BOOST := 1.7   # light layer is multiplied into HDR so it blooms
+
+# Sprite effects exported from pixelfx (see tools/pixelfx_export.mjs): each has a
+# colour sheet (normal blend, drawn by SpriteFxColor) and a light sheet (additive, drawn here).
+static var _defs := {}
+var sprites: Array = []   # {def, t, pos, rot, scale, tint, light_k, until, follow}
+var color_node: Node2D     # draws the colour layer with normal blending (SpriteFxColor)
 
 var game: Node
 var list: Array = []   # particle dictionaries (see _spawn)
@@ -36,6 +45,82 @@ static func make_glow_texture() -> Texture2D:
 	t.width = 64
 	t.height = 64
 	return t
+
+
+# ------------------------------------------------------------------ sprite effects
+
+static func fx_def(name: String) -> Dictionary:
+	if _defs.is_empty():
+		var f := FileAccess.open(FX_DIR + "effects.json", FileAccess.READ)
+		if f == null:
+			push_error("Vfx: missing effects.json")
+			_defs["__missing"] = true
+			return {}
+		var data: Dictionary = JSON.parse_string(f.get_as_text())
+		for k in data:
+			var d: Dictionary = data[k]
+			_defs[k] = {"name": k, "fps": float(d["fps"]), "loop": bool(d["loop"]), "frames": int(d["frames"]),
+				"cols": int(d["columns"]), "size": Vector2(d["frame_size"][0], d["frame_size"][1]),
+				"pivot": Vector2(d["pivot"][0], d["pivot"][1]), "color": null, "light": null}
+	var def: Dictionary = _defs.get(name, {})
+	if not def.is_empty() and def["color"] == null:
+		def["color"] = load(FX_DIR + name + "_color.png")
+		def["light"] = load(FX_DIR + name + "_light.png")
+	return def
+
+
+## Plays a pixelfx effect. Returns the instance (set "dead" = true to stop a loop early).
+## follow: a Node2D the effect sticks to. until: seconds a looping effect lasts (-1 = forever).
+func play(name: String, pos: Vector2, rot := 0.0, scale := 1.0, tint := Color.WHITE, light_k := LIGHT_BOOST, until := -1.0, follow: Node2D = null) -> Dictionary:
+	if sprites.size() >= MAX_SPRITE_FX:
+		return {}
+	var def := fx_def(name)
+	if def.is_empty():
+		return {}
+	var inst := {"def": def, "t": 0.0, "pos": pos, "rot": rot, "scale": scale, "tint": tint,
+		"light_k": light_k, "until": until, "follow": follow, "dead": false}
+	sprites.append(inst)
+	return inst
+
+
+static func frame_region(def: Dictionary, t: float) -> Rect2:
+	var n: int = def["frames"]
+	var i := int(t * def["fps"])
+	i = i % n if def["loop"] else mini(i, n - 1)
+	var sz: Vector2 = def["size"]
+	return Rect2((i % int(def["cols"])) * sz.x, (i / int(def["cols"])) * sz.y, sz.x, sz.y)
+
+
+## Draws one layer ("color" or "light") of every live sprite effect onto `ci`.
+func draw_sprite_layer(ci: CanvasItem, layer: String) -> void:
+	var cam: Vector2 = game.player.position
+	for s in sprites:
+		var pos: Vector2 = s["pos"]
+		if absf(pos.x - cam.x) > 460.0 or absf(pos.y - cam.y) > 300.0:
+			continue
+		var def: Dictionary = s["def"]
+		var tex: Texture2D = def[layer]
+		var tint: Color = s["tint"]
+		if layer == "light":
+			var k: float = s["light_k"]
+			tint = Color(tint.r * k, tint.g * k, tint.b * k, tint.a)
+		ci.draw_set_transform(pos, s["rot"], Vector2(s["scale"], s["scale"]))
+		ci.draw_texture_rect_region(tex, Rect2(-def["pivot"], def["size"]), frame_region(def, s["t"]), tint)
+	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+func _update_sprites(delta: float) -> void:
+	for s in sprites:
+		s["t"] += delta
+		if s["follow"] != null and is_instance_valid(s["follow"]):
+			s["pos"] = s["follow"].position
+		var def: Dictionary = s["def"]
+		if def["loop"]:
+			if s["until"] >= 0.0 and s["t"] >= s["until"]:
+				s["dead"] = true
+		elif s["t"] * def["fps"] >= def["frames"]:
+			s["dead"] = true
+	sprites = sprites.filter(func(s): return not s["dead"])
 
 
 # ------------------------------------------------------------------ spawning
@@ -122,10 +207,14 @@ func _process(delta: float) -> void:
 		p["vel"].y += p["grav"] * delta
 		p["pos"] += p["vel"] * delta
 	list = list.filter(func(p): return p["t"] < p["life"])
+	_update_sprites(delta)
 	queue_redraw()
+	if color_node != null:
+		color_node.queue_redraw()
 
 
 func _draw() -> void:
+	draw_sprite_layer(self, "light")
 	var cam: Vector2 = game.player.position
 	for p in list:
 		var pos: Vector2 = p["pos"]

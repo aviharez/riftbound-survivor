@@ -12,7 +12,13 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
 - Weapon behaviour lives in `scripts/actors/weapons.gd`; its numbers in `GameData.WEAPONS`.
 - Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
-- VFX: particles/lights in `scripts/vfx/vfx.gd` (one additive node; colours > 1.0 bloom via HDR 2D glow),
+- VFX: weapon/event effects are pixelfx sprite effects (https://github.com/patch-gg/pixelfx, MIT), exported by
+  `node tools/pixelfx_export.mjs <pixelfx clone> assets/vfx` into a colour sheet + a light sheet per effect and
+  `assets/vfx/effects.json` (which must stay in the Android `include_filter`). Play them with
+  `game.vfx.play(name, pos, rot, scale, tint, light_k, until, follow)`; the light layer is drawn additively
+  and boosted into HDR, the colour layer by `SpriteFxColor`. Keep total VFX texture memory under ~70 MB
+  (the exporter prints it). Small particles/lights also live in `scripts/vfx/vfx.gd`
+  (one additive node; colours > 1.0 bloom via HDR 2D glow),
   screen effects (shockwave/chroma/vignette shader, shake, hit-stop) in `scripts/vfx/screen_fx.gd`,
   shaders in `shaders/`. Quality switches: `GameData.VFX_*`.
 - Art: character sprites in `assets/characters/<id>/<direction>.png` (see its README); enemies/props are

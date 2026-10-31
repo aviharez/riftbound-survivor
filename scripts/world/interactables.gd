@@ -125,9 +125,12 @@ func _ambient(ppos: Vector2) -> void:
 		return
 	_ambient_t = 0.0
 	var pp: Vector2 = portal["pos"]
-	if portal["state"] != "done" and pp.distance_to(ppos) < 300.0:
-		var a := randf() * TAU
-		game.vfx.motes(pp + Vector2.from_angle(a) * 22.0, Color(2.2, 0.3, 0.7), 1, 8.0, 0.8, 2.5, -30.0)
+	var live: bool = portal["state"] == "idle" or portal["state"] == "summoning"
+	if live and portal.get("fx", {}).is_empty():
+		portal["fx"] = game.vfx.play("portal", pp + Vector2(0, 10), 0.0, 0.5, Color(1.0, 0.75, 0.95))
+	elif not live and not portal.get("fx", {}).is_empty():
+		portal["fx"]["dead"] = true
+		portal["fx"] = {}
 	for s in shrines:
 		if not s["used"] and s["pos"].distance_to(ppos) < 220.0 and randf() < 0.3:
 			var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
@@ -223,10 +226,6 @@ func _draw_portal() -> void:
 	var st: String = portal["state"]
 	var t := _time
 	var col := Color(0.9, 0.15, 0.3) if st != "done" else Color(0.4, 0.4, 0.4)
-	for i in 3:
-		var r := 10.0 + i * 5.0 + sin(t * 3.0 + i) * 1.5
-		draw_arc(p, r, t * (1.5 + i), t * (1.5 + i) + PI * 1.4, 24, Color(col, 0.9 - i * 0.25), 2.0)
-	draw_circle(p, 7.0, Color(0.15, 0.0, 0.15))
 	draw_arc(p, PORTAL_RADIUS, 0, TAU, 48, Color(col, 0.35), 1.0)
 	if st == "idle" and portal["charge"] > 0.0:
 		draw_arc(p, PORTAL_RADIUS + 3, -PI / 2, -PI / 2 + TAU * portal["charge"] / GameData.PORTAL_CHARGE, 48, Color(1, 0.4, 0.4), 2.5)

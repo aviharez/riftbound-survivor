@@ -105,7 +105,9 @@ func _ready() -> void:
 	projectiles = _add(Projectiles.new())
 	weapons = _add(Weapons.new())
 	effects = _add(Effects.new())
+	var sprite_color: SpriteFxColor = _add(SpriteFxColor.new())
 	vfx = _add(Vfx.new())
+	vfx.color_node = sprite_color
 
 	camera = Camera2D.new()
 	camera.position_smoothing_enabled = true
@@ -319,7 +321,12 @@ func spawn_damage_number(pos: Vector2, amount: float, crit: bool) -> void:
 func on_enemy_killed(e) -> void:
 	kills += 1
 	if e.pos.distance_to(player.position) < 420.0:
-		vfx.death(e.pos, e.color, e.radius, e.elite)
+		if e.elite:
+			vfx.play("dark_explosion", e.pos, 0.0, 0.45)
+		elif vfx.sprites.size() < 100:
+			vfx.play("poof", e.pos + Vector2(0, e.radius * 0.5), 0.0, e.radius / 24.0, Color(e.color.lightened(0.5)))
+		else:
+			vfx.death(e.pos, e.color, e.radius, false)
 	if e.elite:
 		screen_fx.hitstop(0.05)
 		screen_fx.shake(0.3)
@@ -363,13 +370,8 @@ func on_pickup(kind: int, value: float) -> void:
 
 
 func _level_up_vfx() -> void:
-	var p := player.position
-	var gold_c := Color(2.4, 1.9, 0.7)
-	vfx.ring(p, gold_c, 46.0, 0.5, 3.0)
-	vfx.flash(p, Color(1.6, 1.3, 0.5), 40.0, 0.3)
-	for i in 14:
-		vfx.motes(p + Vector2(randf_range(-10, 10), randf_range(-4, 8)), gold_c, 1, 10.0, 0.9, 3.0, -90.0)
-	screen_fx.shockwave(p, 70.0, 0.6, 0.4)
+	vfx.play("level_up", player.position + Vector2(0, 6), 0.0, 0.5, Color.WHITE, 1.7, -1.0, player)
+	screen_fx.shockwave(player.position, 70.0, 0.5, 0.4)
 
 
 func on_pot_broken(pos: Vector2) -> void:
@@ -420,11 +422,7 @@ func open_chest(c: Dictionary) -> void:
 	items_owned[it["id"]] = int(items_owned.get(it["id"], 0)) + 1
 	# rarity beam: brighter and taller for rarer items
 	var rc: Color = GameData.RARITY_COLORS[rarity]
-	var hdr := Color(rc.r, rc.g, rc.b) * (1.4 + rarity * 0.6)
-	vfx.flash(c["pos"], hdr, 26.0 + rarity * 10.0, 0.4)
-	vfx.ring(c["pos"], hdr, 30.0 + rarity * 12.0, 0.45, 2.5)
-	for i in 8 + rarity * 6:
-		vfx.motes(c["pos"] + Vector2(randf_range(-6, 6), 0), hdr, 1, 8.0, 0.9 + rarity * 0.2, 2.5, -120.0)
+	vfx.play("loot_beam", c["pos"] + Vector2(0, 4), 0.0, 0.45 + rarity * 0.12, Color(rc.r, rc.g, rc.b), 1.4 + rarity * 0.4)
 	if rarity >= 2:
 		screen_fx.shockwave(c["pos"], 80.0, 0.8, 0.45)
 		screen_fx.hitstop(0.04)
@@ -515,9 +513,10 @@ func _apply_offer(opt: Dictionary) -> void:
 func on_shrine_activated(s: Dictionary) -> void:
 	shrines_used += 1
 	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
-	vfx.ring(s["pos"], sc * 2.2, 40.0, 0.5, 3.0)
-	vfx.flash(s["pos"], sc * 1.2, 22.0, 0.3)
-	vfx.motes(s["pos"], sc * 2.0, 16, 40.0, 1.0, 3.0, -60.0)
+	if s["type"] == "moon":
+		vfx.play("heal", player.position + Vector2(0, 6), 0.0, 0.7, Color.WHITE, 1.7, -1.0, player)
+	else:
+		vfx.play("mana_burst", s["pos"], 0.0, 0.35, Color(sc.r, sc.g, sc.b).lightened(0.2))
 	screen_fx.shockwave(s["pos"], 60.0, 0.6, 0.4)
 	match s["type"]:
 		"ley":
@@ -592,7 +591,7 @@ func on_portal_activated() -> void:
 
 func summon_boss(pos: Vector2) -> void:
 	boss_spawned = true
-	vfx.explosion(pos, Color(2.4, 0.3, 0.8), 40.0)
+	vfx.play("spawn_portal", pos + Vector2(0, 10), 0.0, 0.75)
 	screen_fx.shockwave(pos, 200.0, 1.6, 0.8)
 	screen_fx.shake(0.6)
 	screen_fx.chroma(0.8)
@@ -603,9 +602,8 @@ func summon_boss(pos: Vector2) -> void:
 
 func _on_boss_killed(pos: Vector2) -> void:
 	boss_killed = true
-	vfx.explosion(pos, Color(2.6, 0.5, 1.2), 60.0)
-	vfx.explosion(pos, Color(2.6, 2.0, 0.8), 30.0)
-	vfx.shards(pos, Color(2.0, 0.6, 1.4), 30, 240.0, 0.7)
+	vfx.play("big_explosion", pos + Vector2(0, 10), 0.0, 0.8)
+	vfx.play("dark_explosion", pos, 0.0, 0.6)
 	screen_fx.shockwave(pos, 260.0, 2.0, 0.9)
 	screen_fx.shake(0.8)
 	screen_fx.chroma(1.0)

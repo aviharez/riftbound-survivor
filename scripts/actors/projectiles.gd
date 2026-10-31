@@ -39,7 +39,10 @@ func _process(delta: float) -> void:
 			continue
 		var crit := randf() < float(player.stats["crit"])
 		game.enemies.damage(hit, p["dmg"] * (2.0 if crit else 1.0), crit)
-		game.vfx.hit(p["pos"], Color(0.7, 2.0, 2.6), crit)
+		if crit:
+			game.vfx.play("crit_hit", p["pos"], p["vel"].angle(), 0.26)
+		else:
+			game.vfx.play("hit_spark", p["pos"], p["vel"].angle(), 0.32)
 		if p["bounces"] > 0:
 			p["bounces"] -= 1
 			p["last"] = hit
@@ -53,13 +56,18 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
+var _anim_t := 0.0
+
+
 func _draw() -> void:
-	var tex: Texture2D = game.vfx.glow_tex
+	# arcane-orb's light layer as the bolt (additive node), tinted toward Astra's cyan
+	_anim_t += get_process_delta_time()
+	var def := Vfx.fx_def("arcane_orb")
+	if def.is_empty():
+		return
+	var region := Vfx.frame_region(def, _anim_t)
 	for p in list:
-		var s: float = p["size"]
-		var pos: Vector2 = p["pos"]
-		var back: Vector2 = p["vel"].normalized()
-		draw_texture_rect(tex, Rect2(pos - Vector2(10, 10) * s, Vector2(20, 20) * s), false, Color(0.3, 1.1, 1.6, 0.9))
-		draw_line(pos, pos - back * 9.0 * s, Color(0.5, 1.6, 2.2, 0.8), 2.5 * s)
-		draw_circle(pos, 2.4 * s, Color(1.0, 2.4, 2.8))
-		draw_circle(pos, 1.2 * s, Color(2.8, 2.8, 2.8))
+		var s: float = 0.16 * p["size"]
+		draw_set_transform(p["pos"], 0.0, Vector2(s, s))
+		draw_texture_rect_region(def["light"], Rect2(-def["pivot"], def["size"]), region, Color(1.4, 2.4, 2.8))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

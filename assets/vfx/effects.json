@@ -1,0 +1,257 @@
+{
+ "hit_spark": {
+  "source": "impacts/hit-spark",
+  "fps": 24,
+  "loop": false,
+  "frames": 11,
+  "columns": 11,
+  "frame_size": [
+   116,
+   68
+  ],
+  "pivot": [
+   30,
+   55
+  ]
+ },
+ "crit_hit": {
+  "source": "impacts/crit-hit",
+  "fps": 20,
+  "loop": false,
+  "frames": 15,
+  "columns": 12,
+  "frame_size": [
+   166,
+   124
+  ],
+  "pivot": [
+   70,
+   96
+  ]
+ },
+ "arcane_orb": {
+  "source": "arcane/arcane-orb",
+  "fps": 15,
+  "loop": true,
+  "frames": 19,
+  "columns": 19,
+  "frame_size": [
+   94,
+   105
+  ],
+  "pivot": [
+   47,
+   98
+  ]
+ },
+ "frost_nova": {
+  "source": "ice/frost-nova",
+  "fps": 15,
+  "loop": false,
+  "frames": 23,
+  "columns": 8,
+  "frame_size": [
+   253,
+   130
+  ],
+  "pivot": [
+   124,
+   92
+  ]
+ },
+ "spirit_flame": {
+  "source": "fire/spirit-flame",
+  "fps": 15,
+  "loop": true,
+  "frames": 19,
+  "columns": 19,
+  "frame_size": [
+   74,
+   96
+  ],
+  "pivot": [
+   37,
+   70
+  ]
+ },
+ "mana_burst": {
+  "source": "arcane/mana-burst",
+  "fps": 18,
+  "loop": false,
+  "frames": 20,
+  "columns": 11,
+  "frame_size": [
+   174,
+   145
+  ],
+  "pivot": [
+   91,
+   120
+  ]
+ },
+ "zap_hit": {
+  "source": "lightning/zap-hit",
+  "fps": 24,
+  "loop": false,
+  "frames": 15,
+  "columns": 15,
+  "frame_size": [
+   122,
+   94
+  ],
+  "pivot": [
+   75,
+   47
+  ]
+ },
+ "sword_slash": {
+  "source": "melee/sword-slash",
+  "fps": 30,
+  "loop": false,
+  "frames": 16,
+  "columns": 16,
+  "frame_size": [
+   125,
+   98
+  ],
+  "pivot": [
+   43,
+   89
+  ]
+ },
+ "poof": {
+  "source": "spawn/poof",
+  "fps": 20,
+  "loop": false,
+  "frames": 21,
+  "columns": 21,
+  "frame_size": [
+   85,
+   75
+  ],
+  "pivot": [
+   39,
+   64
+  ]
+ },
+ "dark_explosion": {
+  "source": "shadow/dark-explosion",
+  "fps": 15,
+  "loop": false,
+  "frames": 17,
+  "columns": 8,
+  "frame_size": [
+   246,
+   215
+  ],
+  "pivot": [
+   123,
+   177
+  ]
+ },
+ "big_explosion": {
+  "source": "explosions/big-explosion",
+  "fps": 12,
+  "loop": false,
+  "frames": 20,
+  "columns": 6,
+  "frame_size": [
+   298,
+   219
+  ],
+  "pivot": [
+   156,
+   192
+  ]
+ },
+ "spawn_portal": {
+  "source": "spawn/spawn-portal",
+  "fps": 12,
+  "loop": false,
+  "frames": 25,
+  "columns": 10,
+  "frame_size": [
+   192,
+   129
+  ],
+  "pivot": [
+   97,
+   103
+  ]
+ },
+ "portal": {
+  "source": "arcane/portal",
+  "fps": 15,
+  "loop": true,
+  "frames": 36,
+  "columns": 14,
+  "frame_size": [
+   146,
+   112
+  ],
+  "pivot": [
+   73,
+   103
+  ]
+ },
+ "level_up": {
+  "source": "ui/level-up",
+  "fps": 15,
+  "loop": false,
+  "frames": 23,
+  "columns": 13,
+  "frame_size": [
+   154,
+   135
+  ],
+  "pivot": [
+   77,
+   112
+  ]
+ },
+ "heal": {
+  "source": "holy/heal",
+  "fps": 20,
+  "loop": false,
+  "frames": 31,
+  "columns": 31,
+  "frame_size": [
+   46,
+   83
+  ],
+  "pivot": [
+   23,
+   72
+  ]
+ },
+ "loot_beam": {
+  "source": "pickups/loot-beam",
+  "fps": 15,
+  "loop": true,
+  "frames": 22,
+  "columns": 22,
+  "frame_size": [
+   63,
+   164
+  ],
+  "pivot": [
+   31,
+   156
+  ]
+ },
+ "blink_out": {
+  "source": "arcane/blink-out",
+  "fps": 24,
+  "loop": false,
+  "frames": 20,
+  "columns": 20,
+  "frame_size": [
+   96,
+   85
+  ],
+  "pivot": [
+   48,
+   71
+  ]
+ }
+}
