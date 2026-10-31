@@ -44,19 +44,94 @@
    9
   ]
  },
- "frost_nova": {
-  "source": "riftbound/frost-nova-td",
+ "ice_lance": {
+  "source": "ice/ice-lance",
   "fps": 20,
-  "loop": false,
-  "frames": 24,
-  "columns": 12,
+  "loop": true,
+  "frames": 16,
+  "columns": 14,
   "frame_size": [
-   163,
-   111
+   141,
+   40
   ],
   "pivot": [
-   86,
-   62
+   129,
+   20
+  ]
+ },
+ "thorn_seed": {
+  "source": "riftbound/thorn-seed",
+  "fps": 20,
+  "loop": true,
+  "frames": 8,
+  "columns": 8,
+  "frame_size": [
+   27,
+   8
+  ],
+  "pivot": [
+   20,
+   5
+  ]
+ },
+ "root_snare": {
+  "source": "nature/root-snare",
+  "fps": 15,
+  "loop": false,
+  "frames": 26,
+  "columns": 26,
+  "frame_size": [
+   69,
+   54
+  ],
+  "pivot": [
+   34,
+   39
+  ]
+ },
+ "meteor_strike": {
+  "source": "riftbound/meteor-strike",
+  "fps": 24,
+  "loop": false,
+  "frames": 27,
+  "columns": 23,
+  "frame_size": [
+   88,
+   171
+  ],
+  "pivot": [
+   44,
+   136
+  ]
+ },
+ "void_orb": {
+  "source": "shadow/void-orb",
+  "fps": 15,
+  "loop": true,
+  "frames": 48,
+  "columns": 15,
+  "frame_size": [
+   129,
+   139
+  ],
+  "pivot": [
+   64,
+   130
+  ]
+ },
+ "astral_blade": {
+  "source": "riftbound/astral-blade",
+  "fps": 20,
+  "loop": true,
+  "frames": 12,
+  "columns": 12,
+  "frame_size": [
+   36,
+   12
+  ],
+  "pivot": [
+   5,
+   6
   ]
  },
  "flame_orb": {
@@ -74,21 +149,6 @@
    10
   ]
  },
- "mana_burst": {
-  "source": "arcane/mana-burst",
-  "fps": 18,
-  "loop": false,
-  "frames": 20,
-  "columns": 11,
-  "frame_size": [
-   174,
-   145
-  ],
-  "pivot": [
-   91,
-   120
-  ]
- },
  "zap_hit": {
   "source": "lightning/zap-hit",
   "fps": 24,
@@ -102,21 +162,6 @@
   "pivot": [
    75,
    47
-  ]
- },
- "spin_slash": {
-  "source": "melee/spin-slash",
-  "fps": 30,
-  "loop": false,
-  "frames": 19,
-  "columns": 11,
-  "frame_size": [
-   182,
-   96
-  ],
-  "pivot": [
-   78,
-   78
   ]
  },
  "poof": {
@@ -226,10 +271,10 @@
  },
  "loot_beam": {
   "source": "pickups/loot-beam",
-  "fps": 15,
+  "fps": 12,
   "loop": true,
-  "frames": 22,
-  "columns": 22,
+  "frames": 29,
+  "columns": 29,
   "frame_size": [
    63,
    164

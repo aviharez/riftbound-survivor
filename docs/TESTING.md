@@ -17,31 +17,45 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Weapon baru** (jenis serangan mengikuti dokumen *Riftbound Weapon Attack Design*, set prototipe 8 weapon):
+
+| Weapon | Cara kerja |
+| --- | --- |
+| Arcane Bolt | bola sihir cyan ke musuh terdekat, memantul 1x |
+| Flame Orb | bola api yang memantul antar musuh (2x, +1 di Lv 3/5/7) |
+| Chain Lightning | petir melompat antar musuh |
+| Meteor Fall | lingkaran merah muncul di bawah musuh, 0,5 dtk kemudian meteor jatuh |
+| Astral Blades | pedang cahaya berputar mengelilingi karakter, meninggalkan jejak melingkar |
+| Void Well | lubang hitam ungu menarik musuh ke tengah, lalu meledak |
+| Frost Lance | tombak es menembus beberapa musuh dan memperlambat mereka |
+| Thornseed | biji yang tumbuh jadi akar berduri saat kena: musuh di dalamnya kena damage dan melambat |
+
+Frost Nova, Mana Burst, Spirit Blade dan orb api yang mengorbit sudah dihapus.
+
 **Karakter** (pilih di akademi, baris atas):
 
 | Karakter | Stat khusus | Weapon awal | Pasif per level |
 | --- | --- | --- | --- |
 | Astra (Mage) | HP 100, crit 5% | Arcane Bolt | +1% crit |
 | Lyra (Fire Mage) | HP 85, damage 12, area +10%, cepat | Flame Orb | +2% damage |
-| Kael (Knight) | HP 150, armor 10%, lambat | Spirit Blade | +1% armor (maks 50%) |
-| Nym (Healer) | HP 95, regen 0.6/dtk, luck 10, heal +50% | Frost Nova | +0.12 HP/dtk regen |
+| Kael (Knight) | HP 150, armor 10%, lambat | Astral Blades | +1% armor (maks 50%) |
+| Nym (Healer) | HP 95, regen 0.6/dtk, luck 10, heal +50% | Thornseed | +0.12 HP/dtk regen |
 
-- [ ] Tiap karakter terasa berbeda cara mainnya
-- [ ] Ada karakter yang jelas terlalu kuat atau terlalu lemah?
+- [ ] Tiap weapon terasa jelas jenis serangannya (pantul, tembus, area tertunda, tarik, orbit, akar)
+- [ ] Astral Blades terlihat seperti pedang (gagang ungu, bilah cyan), bukan garis cahaya
+- [ ] Meteor: lingkaran peringatan terlihat sebelum meteor jatuh
+- [ ] Semua weapon tetap menyerang sesuai attack speed walau tidak ada musuh
+- [ ] Ada weapon/karakter yang jelas terlalu kuat atau terlalu lemah?
 
-**VFX** (efek pixel art pixelfx; Frost Nova dan Arcane Bolt dibuat khusus untuk sudut pandang top-down):
-- [ ] Semua weapon menyerang terus sesuai attack speed, juga saat tidak ada musuh (Arcane Bolt ke arah hadap,
-      Mana Burst di depan karakter, Storm Chain zap ke depan)
-- [ ] Arcane Bolt: trail lurus di belakang kepala proyektil, ke segala arah
-- [ ] Frost Nova: cincin es di lantai di sekeliling karakter, kristal muncul melingkar
-- [ ] Spirit Blade: sekarang tebasan putar 360° (elips di lantai), mengenai semua arah
-- [ ] Flame Orb (Lyra): komet api yang mengorbit, ekornya mengikuti lintasan
-- [ ] Mana Burst dan Storm Chain masih terasa cocok untuk tampilan dari atas?
+**Shrine**:
+- [ ] Shrine yang belum dipakai memancarkan sinar lembut sesuai warnanya (terlihat dari dekat)
+- [ ] Sinarnya hilang begitu shrine diambil (atau saat trial dimulai)
+
+**VFX lain**:
 - [ ] Musuh mati jadi kepulan asap kecil; elite mati meledak gelap; boss muncul dari portal dan mati dengan ledakan besar
 - [ ] Rift Portal berputar ungu, level up, Moon Fountain (efek heal), dash (blink)
-- [ ] Shrine yang diaktifkan memberi sinar kecil sederhana sesuai warna shrine; chest tidak lagi meninggalkan efek
 - [ ] Efek terasa "pixel art", tidak ada kotak/tepi terpotong di sekitar efek
-- [ ] Performa saat banyak musuh mati sekaligus (Rift Surge, Final Swarm)
+- [ ] Performa saat banyak musuh dan efek sekaligus (Rift Surge, Final Swarm, banyak Void Well/meteor)
 
 **Grafik**: Astra, Lyra, Kael, Nym, dan boss Corrupted Guardian memakai sprite PixelLab 8 arah (boss digambar 2x). Musuh dan chest memakai pixel art buatan Claude.
 - [ ] Arah hadap karakter sesuai arah gerak

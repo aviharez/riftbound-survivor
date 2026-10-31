@@ -38,7 +38,7 @@ Orientasi sudah diset landscape, renderer `mobile`, resolusi internal 640×360 d
 | `scripts/world/interactables.gd` | Chest, shrine, pot, Rift Portal, Exit Portal |
 | `scripts/world/effects.gd` | Angka damage |
 | `scripts/actors/player.gd` | Gerak, dash, HP, stat, level tome/weapon |
-| `scripts/actors/weapons.gd` | Keenam weapon: Arcane Bolt, Frost Nova, Flame Orb, Mana Burst, Storm Chain, Spirit Blade |
+| `scripts/actors/weapons.gd` | Delapan weapon (desain: Riftbound Weapon Attack Design): Arcane Bolt, Flame Orb, Chain Lightning, Meteor Fall, Astral Blades, Void Well, Frost Lance, Thornseed |
 | `scripts/meta/save_data.gd` | Save permanen: resource akademi, level bangunan, riwayat run |
 | `scripts/ui/academy.gd` | Layar akademi: upgrade Library (slot tome) dan Training Ground (slot weapon), masuk Rift |
 | `scripts/actors/enemies.gd` | Musuh, elite, boss, peluru musuh (data-oriented, 1 node) |

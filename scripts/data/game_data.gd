@@ -115,29 +115,44 @@ const PCT_STATS := ["damage_pct", "attack_speed_pct", "area_pct", "speed_pct", "
 # (Tome of Multitude, Twin Sigil) adds to the count of weapons with uses_projectiles.
 const WEAPON_MAX_LEVEL := 8
 const WEAPONS := [
-	{"id": "bolt", "name": "Arcane Bolt", "starter": true, "weight": 8.0,
-		"desc": "Homing magic bolt at the nearest foe", "level_desc": "+20% damage, faster casts",
+	# Attack types follow docs "Riftbound Weapon Attack Design" (prototype set of 8).
+	# Projectile weapons: speed (px/s), life (s), hit_r (px), fx_scale; bounce / pierce add to the shot.
+	{"id": "bolt", "name": "Arcane Bolt", "weight": 8.0,
+		"desc": "Magic orb that seeks a foe and ricochets", "level_desc": "+20% damage, faster casts, more bolts at Lv 4/7",
 		"cd": 0.8, "dmg": 1.0, "range": 220.0, "count": 1, "count_at": [4, 7], "uses_projectiles": true,
+		"speed": 260.0, "life": 1.2, "hit_r": 4.0, "fx_scale": 0.6, "bounce": 1,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
-	{"id": "nova", "name": "Frost Nova", "weight": 7.0,
-		"desc": "Pulse that hits all nearby foes", "level_desc": "+20% damage, wider, faster",
-		"cd": 3.0, "dmg": 0.8, "radius": 60.0,
-		"lvl_dmg": 0.2, "lvl_cd": 0.06, "lvl_area": 0.06},
-	{"id": "orb", "name": "Flame Orb", "weight": 7.0,
-		"desc": "Fire orbs circle you and burn what they touch", "level_desc": "+20% damage, more orbs at Lv 3/5/7",
-		"cd": 0.5, "dmg": 0.45, "radius": 34.0, "count": 2, "count_at": [3, 5, 7], "uses_projectiles": true,
-		"spin": 3.2, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
-	{"id": "burst", "name": "Mana Burst", "weight": 7.0,
-		"desc": "Explosion on a random foe nearby", "level_desc": "+20% damage, bigger blast",
-		"cd": 2.4, "dmg": 2.2, "radius": 38.0, "range": 200.0,
-		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.08},
-	{"id": "chain", "name": "Storm Chain", "weight": 7.0,
+	{"id": "flame", "name": "Flame Orb", "weight": 7.0,
+		"desc": "Fireball that ricochets between foes", "level_desc": "+20% damage, +1 ricochet at Lv 3/5/7",
+		"cd": 1.0, "dmg": 1.2, "range": 220.0, "count": 1, "count_at": [6], "uses_projectiles": true,
+		"speed": 210.0, "life": 1.4, "hit_r": 6.0, "fx_scale": 0.75, "bounce": 2, "bounce_at": [3, 5, 7],
+		"lvl_dmg": 0.2, "lvl_cd": 0.04, "lvl_area": 0.04},
+	{"id": "chain", "name": "Chain Lightning", "weight": 7.0,
 		"desc": "Lightning that jumps between foes", "level_desc": "+20% damage, more jumps at Lv 3/5/7",
 		"cd": 1.6, "dmg": 0.9, "range": 180.0, "jump_range": 90.0, "count": 3, "count_at": [3, 5, 7], "uses_projectiles": true,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
-	{"id": "blade", "name": "Spirit Blade", "weight": 7.0,
-		"desc": "Spinning slash that hits all around you", "level_desc": "+20% damage, longer reach",
-		"cd": 1.2, "dmg": 1.2, "radius": 46.0,
+	{"id": "meteor", "name": "Meteor Fall", "weight": 7.0,
+		"desc": "Marks foes, then meteors crash onto the marks", "level_desc": "+20% damage, bigger blast, more meteors at Lv 4/7",
+		"cd": 2.6, "dmg": 2.4, "radius": 30.0, "range": 210.0, "count": 1, "count_at": [4, 7], "delay": 0.5,
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
+	{"id": "blades", "name": "Astral Blades", "weight": 7.0,
+		"desc": "Spectral swords circle you and cut what they touch", "level_desc": "+20% damage, more blades at Lv 3/5/7",
+		"cd": 0.5, "dmg": 0.5, "radius": 9.0, "blade_len": 22.0, "count": 2, "count_at": [3, 5, 7], "uses_projectiles": true,
+		"spin": 4.0, "lvl_dmg": 0.2, "lvl_cd": 0.0, "lvl_area": 0.05},
+	{"id": "void", "name": "Void Well", "weight": 6.0,
+		"desc": "A singularity pulls foes in, then detonates", "level_desc": "+20% damage, wider pull, faster casts",
+		"cd": 4.0, "dmg": 2.0, "radius": 46.0, "range": 160.0, "pull": 70.0, "duration": 1.3, "tick_dmg": 0.25,
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.07},
+	{"id": "lance", "name": "Frost Lance", "weight": 7.0,
+		"desc": "Ice spear that pierces foes and leaves shards", "level_desc": "+20% damage, +1 pierce at Lv 3/5/7",
+		"cd": 1.4, "dmg": 1.6, "range": 240.0, "count": 1, "count_at": [6], "uses_projectiles": true,
+		"speed": 330.0, "life": 1.0, "hit_r": 5.0, "fx_scale": 0.42, "pierce": 3, "pierce_at": [3, 5, 7],
+		"slow": 1.2, "lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.0},
+	{"id": "seed", "name": "Thornseed", "weight": 7.0,
+		"desc": "Seeds that burst into thorny roots on hit", "level_desc": "+20% damage, bigger root patch, more seeds at Lv 4/7",
+		"cd": 1.3, "dmg": 0.8, "range": 200.0, "count": 1, "count_at": [4, 7], "uses_projectiles": true,
+		"speed": 200.0, "life": 1.2, "hit_r": 5.0, "fx_scale": 0.8,
+		"root_r": 20.0, "root_time": 1.6, "tick_dmg": 0.3, "slow": 0.6,
 		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
 ]
 
@@ -147,6 +162,15 @@ static func weapon_by_id(id: String) -> Dictionary:
 		if w["id"] == id:
 			return w
 	return {}
+
+
+## +1 per level threshold reached in w[key] (e.g. "bounce_at", "pierce_at").
+static func weapon_bonus(w: Dictionary, key: String, lv: int) -> int:
+	var n := 0
+	for at in w.get(key, []):
+		if lv >= int(at):
+			n += 1
+	return n
 
 
 static func weapon_count(w: Dictionary, lv: int, extra_projectiles: int) -> int:
@@ -168,20 +192,22 @@ const CHARACTERS := [
 		"base": {"max_hp": 100.0, "speed": 90.0, "damage": 10.0, "crit": 0.05},
 		"passive": "Arcane Focus", "passive_desc": "+1% crit chance per level", "per_level": [["crit", 0.01]],
 		"colors": {"robe": Color(0.12, 0.18, 0.4), "hair": Color(0.85, 0.88, 0.95), "accent": Color(0.4, 1.0, 1.0)}},
-	{"id": "lyra", "name": "Lyra", "role": "Fire Mage", "starter": "orb",
+	{"id": "lyra", "name": "Lyra", "role": "Fire Mage", "starter": "flame",
 		"base": {"max_hp": 85.0, "speed": 96.0, "damage": 12.0, "area_pct": 0.10},
 		"passive": "Kindling", "passive_desc": "+2% damage per level", "per_level": [["damage_pct", 0.02]],
 		"colors": {"robe": Color(0.55, 0.08, 0.12), "hair": Color(1.0, 0.55, 0.7), "accent": Color(1.0, 0.6, 0.2)}},
-	{"id": "kael", "name": "Kael", "role": "Knight", "starter": "blade",
+	{"id": "kael", "name": "Kael", "role": "Knight", "starter": "blades",
 		"base": {"max_hp": 150.0, "speed": 82.0, "damage": 10.0, "armor": 0.10},
 		"passive": "Bulwark", "passive_desc": "+1% damage reduction per level (max 50%)", "per_level": [["armor", 0.01]],
 		"colors": {"robe": Color(0.16, 0.2, 0.42), "hair": Color(0.15, 0.2, 0.45), "accent": Color(0.85, 0.88, 0.95)}},
-	{"id": "nym", "name": "Nym", "role": "Healer", "starter": "nova",
+	{"id": "nym", "name": "Nym", "role": "Healer", "starter": "seed",
 		"base": {"max_hp": 95.0, "speed": 92.0, "damage": 9.0, "regen": 0.6, "luck": 10.0, "heal_pct": 0.5},
 		"passive": "Verdant Grace", "passive_desc": "+0.12 HP/s regen per level; all healing +50%", "per_level": [["regen", 0.12]],
 		"colors": {"robe": Color(0.9, 0.95, 0.9), "hair": Color(0.55, 1.0, 0.8), "accent": Color(0.3, 0.9, 0.45)}},
 ]
 const ARMOR_CAP := 0.5
+# Speed multiplier of a slowed enemy (Frost Lance, Thornseed roots).
+const SLOW_MULT := 0.5
 # Hero sprites are drawn so the whole sprite canvas is this many world pixels tall
 # (~2x a slime), whatever size the source art is (48 or 64 px).
 # canvas_items stretch renders at the phone's native resolution, so this stays crisp.

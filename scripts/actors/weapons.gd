@@ -1,19 +1,20 @@
 class_name Weapons
 extends Node2D
-## Fires every weapon the player owns. Numbers come from GameData.WEAPONS;
-## this file holds each weapon's behaviour; visuals are pixelfx sprite effects
-## played through game.vfx.
+## Fires every weapon the player owns. Attack types follow the "Riftbound Weapon Attack
+## Design" doc (prototype set): Arcane Bolt, Flame Orb, Chain Lightning, Meteor Fall,
+## Astral Blades, Void Well, Frost Lance, Thornseed. Numbers come from GameData.WEAPONS;
+## this file holds each weapon's behaviour. Shots fly in Projectiles; ground effects
+## (meteor strikes, roots, void wells) are plain dictionaries updated here.
+## Every weapon fires on its own cooldown (attack speed), with or without a target.
+
+const MAX_ROOTS := 14   # live Thornseed root patches (oldest dropped first)
 
 var game: Node
 var _cd := {}            # weapon id -> seconds until next use
 var _time := 0.0
-var _orbs: Array = []    # Flame Orb world positions this frame
-var _orb_trail_t := 0.0
-var _bursts: Array = []  # pending Mana Burst detonations {pos, t, delay, r, dmg}
-
-
-func _ready() -> void:
-	pass
+var _strikes: Array = [] # pending meteor impacts {pos, t, delay, r, dmg}
+var _zones: Array = []   # roots / void wells {kind, pos, r, t, life, dmg, tick_dmg, ...}
+var _blade_fx: Array = [] # looping astral-blade instances, one per blade
 
 
 func level_damage(w: Dictionary, lv: int) -> float:
@@ -34,29 +35,29 @@ func count_of(w: Dictionary, lv: int) -> int:
 
 func _process(delta: float) -> void:
 	_time += delta
-	_orbs.clear()
 	var p: Player = game.player
 	for id in p.weapon_levels:
 		var w: Dictionary = GameData.weapon_by_id(id)
 		var lv: int = p.weapon_levels[id]
-		if id == "orb":
-			_flame_orb(w, lv, delta)
+		if id == "blades":
+			_astral_blades(w, lv, delta)
 			continue
 		_cd[id] = float(_cd.get(id, 0.3)) - delta
 		if _cd[id] > 0.0:
 			continue
-		var fired := false
 		match id:
-			"bolt": fired = _arcane_bolt(w, lv)
-			"nova": fired = _frost_nova(w, lv)
-			"burst": fired = _mana_burst(w, lv)
-			"chain": fired = _storm_chain(w, lv)
-			"blade": fired = _spirit_blade(w, lv)
-		# every weapon fires on its own rhythm (attack speed), with or without a target
+			"bolt": _arcane_bolt(w, lv)
+			"flame": _flame_orb(w, lv)
+			"chain": _chain_lightning(w, lv)
+			"meteor": _meteor_fall(w, lv)
+			"void": _void_well(w, lv)
+			"lance": _frost_lance(w, lv)
+			"seed": _thornseed(w, lv)
 		_cd[id] = level_cooldown(w, lv)
-	_update_bursts(delta)
-	if not p.weapon_levels.has("orb") and not _orb_fx.is_empty():
-		clear_orbs()
+	_update_strikes(delta)
+	_update_zones(delta)
+	if not p.weapon_levels.has("blades") and not _blade_fx.is_empty():
+		clear_blades()
 
 
 func _hit(e, amount: float, color: Color) -> void:
@@ -68,102 +69,84 @@ func _hit(e, amount: float, color: Color) -> void:
 		game.vfx.sparks(e.pos, color, 3, 70.0, 0.18, 1.0)
 
 
-# ------------------------------------------------------------------ weapons
-# Visuals are pixelfx sprite effects played through game.vfx (see assets/vfx).
-
-func _arcane_bolt(w: Dictionary, lv: int) -> bool:
+## Aim at the nearest foe in range, or straight ahead when there is none.
+func _aim(range_px: float) -> Vector2:
 	var p: Player = game.player
-	var target = game.enemies.nearest(p.position, float(w["range"]), null)
-	var count := count_of(w, lv)
-	var base_dir: Vector2 = (target.pos - p.position).normalized() if target != null else p.facing
-	for i in count:
-		var spread: float = 0.0 if count == 1 else lerp(-0.18 * (count - 1), 0.18 * (count - 1), float(i) / (count - 1))
-		game.projectiles.fire(p.position, base_dir.rotated(spread), level_damage(w, lv), int(p.stats["bounce"]), p.area())
-	return true
+	var target = game.enemies.nearest(p.position, range_px, null)
+	return (target.pos - p.position).normalized() if target != null else p.facing
 
 
-func _frost_nova(w: Dictionary, lv: int) -> bool:
-	var p: Player = game.player
-	var r: float = float(w["radius"]) * level_size(w, lv)
-	for e in game.enemies.query_radius(p.position, r):
-		_hit(e, level_damage(w, lv), Color(0.7, 1.6, 2.4))
-	# riftbound/frost-nova-td: the ring lies on the floor round the feet and reaches 60 px at scale 1
-	game.vfx.play("frost_nova", p.position + Vector2(0, 5), 0.0, r / 60.0, Color.WHITE, 1.6, -1.0, p)
-	game.screen_fx.shockwave(p.position, r * 1.3, 0.7, 0.4)
-	game.screen_fx.shake(0.08)
-	return true
-
-
-var _orb_fx: Array = []   # looping flame-orb instances, one per orb
-
-
-func _flame_orb(w: Dictionary, lv: int, delta: float) -> void:
+## count shots fanned round dir.
+func _fan(kind: String, w: Dictionary, lv: int, dir: Vector2, step: float, bounces: int, pierce: int) -> void:
 	var p: Player = game.player
 	var count := count_of(w, lv)
-	var r: float = float(w["radius"]) * level_size(w, lv)
-	var hit_r: float = 6.0 * level_size(w, lv)
-	var rehit := level_cooldown(w, lv)
-	while _orb_fx.size() < count:
-		var inst: Dictionary = game.vfx.play("flame_orb", p.position, 0.0, 0.9 * level_size(w, lv), Color.WHITE, 1.6)
-		if inst.is_empty():
-			break
-		_orb_fx.append(inst)
-	_orb_trail_t -= delta
-	var emit := _orb_trail_t <= 0.0
-	if emit:
-		_orb_trail_t = 0.05
 	for i in count:
-		var a: float = _time * float(w["spin"]) + TAU * i / count
-		var pos := p.position + Vector2.from_angle(a) * r
-		_orbs.append(pos)
-		if i < _orb_fx.size():
-			# the comet faces its direction of travel: the orbit's tangent
-			_orb_fx[i]["pos"] = pos
-			_orb_fx[i]["rot"] = a + PI * 0.5
-			_orb_fx[i]["scale"] = 0.9 * level_size(w, lv)
-			_orb_fx[i]["t"] = fmod(_orb_fx[i]["t"], 100.0)
-		for e in game.enemies.query_radius(pos, hit_r):
-			if _time - e.orb_hit_at >= rehit:
-				e.orb_hit_at = _time
-				_hit(e, level_damage(w, lv), Color(2.4, 1.0, 0.3))
+		var spread: float = 0.0 if count == 1 else lerp(-step * (count - 1), step * (count - 1), float(i) / (count - 1))
+		game.projectiles.fire(kind, p.position, dir.rotated(spread), level_damage(w, lv), w, bounces, pierce, p.area())
 
 
-func _mana_burst(w: Dictionary, lv: int) -> bool:
-	var p: Player = game.player
-	var foes: Array = game.enemies.query_radius(p.position, float(w["range"]))
-	var center: Vector2
-	if foes.is_empty():
-		# nothing in range: burst ahead of the player
-		center = p.position + p.facing * float(w["range"]) * randf_range(0.3, 0.6)
-	else:
-		center = foes[randi() % foes.size()].pos
-	var r: float = float(w["radius"]) * level_size(w, lv)
-	# the effect gathers for ~0.25 s, then bursts: damage lands with the burst
-	game.vfx.play("mana_burst", center, 0.0, r / 55.0)
-	_bursts.append({"pos": center, "t": 0.0, "delay": 0.25, "r": r, "dmg": level_damage(w, lv)})
-	return true
+# ------------------------------------------------------------------ projectile weapons
+
+## Arcane Bolt: a cyan orb that seeks a foe and ricochets a limited number of times.
+func _arcane_bolt(w: Dictionary, lv: int) -> void:
+	var b: int = int(w.get("bounce", 0)) + int(game.player.stats["bounce"])
+	_fan("bolt", w, lv, _aim(float(w["range"])), 0.18, b, 0)
 
 
-func _update_bursts(delta: float) -> void:
-	for b in _bursts:
-		b["t"] += delta
-		if b["t"] >= b["delay"] and not b.get("done", false):
-			b["done"] = true
-			for e in game.enemies.query_radius(b["pos"], b["r"]):
-				_hit(e, b["dmg"], Color(1.6, 0.7, 2.6))
-			game.screen_fx.shockwave(b["pos"], b["r"] * 1.6, 1.0, 0.45)
-			game.screen_fx.shake(0.12)
-	_bursts = _bursts.filter(func(b): return not b.get("done", false))
+## Flame Orb (Lyra): a fireball that ricochets between foes; ricochets grow with level.
+func _flame_orb(w: Dictionary, lv: int) -> void:
+	var b: int = int(w.get("bounce", 0)) + GameData.weapon_bonus(w, "bounce_at", lv) + int(game.player.stats["bounce"])
+	_fan("flame", w, lv, _aim(float(w["range"])), 0.22, b, 0)
 
 
-func _storm_chain(w: Dictionary, lv: int) -> bool:
+## Frost Lance: an ice spear that pierces through several foes, chilling them and leaving shards.
+func _frost_lance(w: Dictionary, lv: int) -> void:
+	var pierce: int = int(w.get("pierce", 0)) + GameData.weapon_bonus(w, "pierce_at", lv) + int(game.player.stats["bounce"])
+	_fan("lance", w, lv, _aim(float(w["range"])), 0.12, 0, pierce)
+
+
+## Thornseed (Nym): seeds that burst into a patch of thorny roots where they land.
+func _thornseed(w: Dictionary, lv: int) -> void:
+	_fan("seed", w, lv, _aim(float(w["range"])), 0.3, 0, 0)
+
+
+## Called by Projectiles when a shot hits a foe (enemy set) or a wall (seed only).
+func on_projectile_hit(shot: Dictionary, pos: Vector2, enemy = null) -> void:
+	var w: Dictionary = shot["w"]
+	match shot["kind"]:
+		"flame":
+			game.vfx.sparks(pos, Color(2.6, 1.3, 0.35), 6, 110.0, 0.25, 1.4)
+			game.vfx.flash(pos, Color(2.0, 0.9, 0.3), 10.0, 0.12)
+		"lance":
+			if enemy != null:
+				enemy.slow_t = maxf(enemy.slow_t, float(w.get("slow", 1.0)))
+			game.vfx.shards(pos, Color(0.9, 1.8, 2.4), 5, 90.0, 0.5)
+			game.vfx.motes(pos, Color(0.6, 1.2, 1.6), 2, 12.0, 0.6, 3.0, -8.0)
+		"seed":
+			_spawn_roots(w, game.player.weapon_levels.get("seed", 1), pos)
+
+
+func _spawn_roots(w: Dictionary, lv: int, pos: Vector2) -> void:
+	var roots := _zones.filter(func(z): return z["kind"] == "roots")
+	if roots.size() >= MAX_ROOTS:
+		roots[0]["t"] = roots[0]["life"]
+	var r: float = float(w["root_r"]) * level_size(w, lv)
+	# nature/root-snare: the root tangle spans ~56 px at scale 1, pivot on the ground
+	game.vfx.play("root_snare", pos + Vector2(0, 3), 0.0, r / 28.0)
+	_zones.append({"kind": "roots", "pos": pos, "r": r, "t": 0.0, "life": float(w["root_time"]),
+		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"]), "slow": float(w["slow"])})
+
+
+# ------------------------------------------------------------------ Chain Lightning
+
+func _chain_lightning(w: Dictionary, lv: int) -> void:
 	var p: Player = game.player
 	var cur = game.enemies.nearest(p.position, float(w["range"]), null)
 	if cur == null:
 		# nothing in range: a lone zap strikes the ground ahead
 		var spot: Vector2 = p.position + p.facing * float(w["range"]) * 0.4
 		game.vfx.play("zap_hit", spot, p.facing.angle(), 0.6)
-		return true
+		return
 	var prev: Vector2 = p.position + Vector2(0, -6)
 	var done: Array = []
 	var jumps := count_of(w, lv)
@@ -188,21 +171,142 @@ func _storm_chain(w: Dictionary, lv: int) -> bool:
 			break
 		cur = best
 	game.screen_fx.chroma(0.15)
-	return true
 
 
-func _spirit_blade(w: Dictionary, lv: int) -> bool:
+# ------------------------------------------------------------------ Meteor Fall
+
+## Marks foes in range (different ones when there are enough), then meteors land on the marks.
+func _meteor_fall(w: Dictionary, lv: int) -> void:
 	var p: Player = game.player
 	var r: float = float(w["radius"]) * level_size(w, lv)
-	for e in game.enemies.query_radius(p.position, r):
-		_hit(e, level_damage(w, lv), Color(0.9, 2.4, 1.9))
-	# spin-slash: an ellipse on the ground plane around the hero, ~85 px half-width at scale 1
-	game.vfx.play("spin_slash", p.position + Vector2(0, 2), 0.0, r / 80.0, Color(0.85, 1.15, 1.0), 1.7, -1.0, p, true)
-	game.screen_fx.shake(0.05)
-	return true
+	var foes: Array = game.enemies.query_radius(p.position, float(w["range"]))
+	foes.shuffle()
+	for i in count_of(w, lv):
+		var spot: Vector2
+		if i < foes.size():
+			spot = foes[i].pos
+		else:
+			spot = p.position + p.facing.rotated(randf_range(-0.8, 0.8)) * float(w["range"]) * randf_range(0.25, 0.6)
+		# riftbound/meteor-strike: warning ring, the rock lands at 0.5 s, fire ring reaches 38 px at scale 1
+		game.vfx.play("meteor_strike", spot, 0.0, r / 38.0)
+		_strikes.append({"pos": spot, "t": -0.08 * i, "delay": float(w["delay"]), "r": r, "dmg": level_damage(w, lv)})
 
 
-func clear_orbs() -> void:
-	for inst in _orb_fx:
+func _update_strikes(delta: float) -> void:
+	for s in _strikes:
+		s["t"] += delta
+		if s["t"] >= s["delay"] and not s.get("done", false):
+			s["done"] = true
+			for e in game.enemies.query_radius(s["pos"], s["r"]):
+				_hit(e, s["dmg"], Color(2.6, 1.2, 0.3))
+			game.screen_fx.shockwave(s["pos"], s["r"] * 1.6, 1.0, 0.45)
+			game.screen_fx.shake(0.12)
+	_strikes = _strikes.filter(func(s): return not s.get("done", false))
+
+
+# ------------------------------------------------------------------ Void Well
+
+## Opens a singularity on the densest nearby spot (a random foe): it drags foes in, nibbling at
+## them, then detonates.
+func _void_well(w: Dictionary, lv: int) -> void:
+	var p: Player = game.player
+	var foes: Array = game.enemies.query_radius(p.position, float(w["range"]))
+	var center: Vector2 = foes[randi() % foes.size()].pos if not foes.is_empty() \
+		else p.position + p.facing * float(w["range"]) * 0.4
+	var r: float = float(w["radius"]) * level_size(w, lv)
+	# shadow/void-orb: the swirl with its pulse ring is ~50 px in radius at scale 1
+	var fx: Dictionary = game.vfx.play("void_orb", center, 0.0, r / 50.0, Color.WHITE, 1.6, -1.0, null, true)
+	_zones.append({"kind": "void", "pos": center, "r": r, "t": 0.0, "life": float(w["duration"]), "fx": fx,
+		"pull": float(w["pull"]) * level_size(w, lv), "dmg": level_damage(w, lv),
+		"tick_dmg": level_damage(w, lv) * float(w["tick_dmg"]) / float(w["dmg"])})
+
+
+# ------------------------------------------------------------------ zones (roots, void wells)
+
+func _update_zones(delta: float) -> void:
+	for z in _zones:
+		z["t"] += delta
+		if z["kind"] == "roots":
+			for e in game.enemies.query_radius(z["pos"], z["r"]):
+				e.slow_t = maxf(e.slow_t, 0.3)
+				if _time - e.root_hit_at >= 0.45:
+					e.root_hit_at = _time
+					_hit(e, z["tick_dmg"], Color(0.8, 2.0, 0.6))
+		elif z["kind"] == "void":
+			var reach: float = z["r"] * 1.5
+			for e in game.enemies.query_radius(z["pos"], reach):
+				if e.boss:
+					continue
+				var to: Vector2 = z["pos"] - e.pos
+				if to.length() > 3.0:
+					e.pos = game.world.move(e.pos, to.normalized() * z["pull"] * delta, e.radius * 0.6)
+				if _time - e.root_hit_at >= 0.4:
+					e.root_hit_at = _time
+					_hit(e, z["tick_dmg"], Color(1.6, 0.6, 2.6))
+			if randf() < 0.5:
+				game.vfx.suck(z["pos"], reach, Color(1.4, 0.6, 2.4))
+			if z["t"] >= z["life"]:
+				_detonate(z)
+	_zones = _zones.filter(func(z): return z["t"] < z["life"])
+
+
+func _detonate(z: Dictionary) -> void:
+	if not z["fx"].is_empty():
+		z["fx"]["dead"] = true
+	for e in game.enemies.query_radius(z["pos"], z["r"]):
+		_hit(e, z["dmg"], Color(1.8, 0.7, 2.8))
+	game.vfx.play("dark_explosion", z["pos"], 0.0, z["r"] / 90.0)
+	game.vfx.ring(z["pos"], Color(1.6, 0.7, 2.6), z["r"], 0.35, 2.0)
+	game.screen_fx.shockwave(z["pos"], z["r"] * 1.8, 1.0, 0.45)
+	game.screen_fx.shake(0.14)
+
+
+# ------------------------------------------------------------------ Astral Blades
+
+## Kael's spectral swords: they orbit the hero pointing outward, cutting what they touch, each
+## trailing a curved streak of starlight (spawned along the orbit, so it follows the circle).
+func _astral_blades(w: Dictionary, lv: int, delta: float) -> void:
+	var p: Player = game.player
+	var count := count_of(w, lv)
+	var size := level_size(w, lv)
+	var r: float = float(w["radius"]) * size
+	var blen: float = float(w["blade_len"]) * size
+	var fx_scale: float = blen / 26.0   # riftbound/astral-blade: 26 px from guard to tip at scale 1
+	var hit_r: float = 5.0 * size
+	var rehit := level_cooldown(w, lv)
+	while _blade_fx.size() < count:
+		var inst: Dictionary = game.vfx.play("astral_blade", p.position, 0.0, fx_scale, Color.WHITE, 0.8)
+		if inst.is_empty():
+			break
+		_blade_fx.append(inst)
+	while _blade_fx.size() > count:
+		_blade_fx.pop_back()["dead"] = true
+	var spin: float = float(w["spin"])
+	for i in count:
+		var a: float = _time * spin + TAU * i / count
+		var out := Vector2.from_angle(a)
+		var hilt := p.position + out * r
+		if i < _blade_fx.size():
+			_blade_fx[i]["pos"] = hilt
+			_blade_fx[i]["rot"] = a
+			_blade_fx[i]["scale"] = fx_scale
+			_blade_fx[i]["t"] = fmod(_blade_fx[i]["t"], 100.0)
+		# circular trail: motes behind the outer half of the blade, left on the orbit as it sweeps
+		game.vfx.trail(hilt + out * blen * 0.9, Color(0.45, 1.0, 1.5, 0.8), 1.8, 0.2)
+		game.vfx.trail(hilt + out * blen * 0.6, Color(0.6, 0.5, 1.4, 0.6), 1.4, 0.14)
+		# the cut runs from the hero's centre to the tip, so foes pressed against the hero are hit too
+		var tip := hilt + out * blen
+		for e in game.enemies.query_radius(p.position, r + blen + hit_r):
+			if _time - e.blade_hit_at < rehit:
+				continue
+			var q := Geometry2D.get_closest_point_to_segment(e.pos, p.position, tip)
+			if q.distance_to(e.pos) <= hit_r + e.radius:
+				e.blade_hit_at = _time
+				_hit(e, level_damage(w, lv), Color(0.9, 1.8, 2.6))
+				game.vfx.play("hit_spark", e.pos, a + PI * 0.5, 0.28, Color(0.7, 0.95, 1.0))
+
+
+func clear_blades() -> void:
+	for inst in _blade_fx:
 		inst["dead"] = true
-	_orb_fx.clear()
+	_blade_fx.clear()

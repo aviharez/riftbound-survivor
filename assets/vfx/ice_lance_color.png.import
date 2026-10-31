@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://brdhkmj5ejqw1"
-path="res://.godot/imported/spin_slash_light.png-eb0911ee88b35374d2f400ac06a6ab00.ctex"
+uid="uid://driigoo1a0jmq"
+path="res://.godot/imported/ice_lance_color.png-5508ab0b3abef3cb36d3f67ba6216288.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/spin_slash_light.png"
-dest_files=["res://.godot/imported/spin_slash_light.png-eb0911ee88b35374d2f400ac06a6ab00.ctex"]
+source_file="res://assets/vfx/ice_lance_color.png"
+dest_files=["res://.godot/imported/ice_lance_color.png-5508ab0b3abef3cb36d3f67ba6216288.ctex"]
 
 [params]
 

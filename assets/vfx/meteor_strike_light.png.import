@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ch2qe3asab7s2"
-path="res://.godot/imported/frost_nova_light.png-b628486f6aeb0c91d0720f2a29cdd030.ctex"
+uid="uid://bimc126ov1a8m"
+path="res://.godot/imported/meteor_strike_light.png-f6061463cb75045f5aa484afbc76fa1b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/frost_nova_light.png"
-dest_files=["res://.godot/imported/frost_nova_light.png-b628486f6aeb0c91d0720f2a29cdd030.ctex"]
+source_file="res://assets/vfx/meteor_strike_light.png"
+dest_files=["res://.godot/imported/meteor_strike_light.png-f6061463cb75045f5aa484afbc76fa1b.ctex"]
 
 [params]
 

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://blge000a5bdop"
-path="res://.godot/imported/mana_burst_light.png-6eff089abf0ab33cbeff4d1c10b1464f.ctex"
+uid="uid://dukqr5bf5c6hm"
+path="res://.godot/imported/root_snare_color.png-9da1aeee48f5c1686d6238439e2cc00d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/mana_burst_light.png"
-dest_files=["res://.godot/imported/mana_burst_light.png-6eff089abf0ab33cbeff4d1c10b1464f.ctex"]
+source_file="res://assets/vfx/root_snare_color.png"
+dest_files=["res://.godot/imported/root_snare_color.png-9da1aeee48f5c1686d6238439e2cc00d.ctex"]
 
 [params]
 

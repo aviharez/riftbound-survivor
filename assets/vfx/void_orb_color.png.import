@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dic4mimnsoidj"
-path="res://.godot/imported/mana_burst_color.png-30b8e9f8a07dcd92c9223bfc857406ff.ctex"
+uid="uid://bf4ct5j5lp7ni"
+path="res://.godot/imported/void_orb_color.png-02c169a09e09f423a669fe3f962a015c.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/mana_burst_color.png"
-dest_files=["res://.godot/imported/mana_burst_color.png-30b8e9f8a07dcd92c9223bfc857406ff.ctex"]
+source_file="res://assets/vfx/void_orb_color.png"
+dest_files=["res://.godot/imported/void_orb_color.png-02c169a09e09f423a669fe3f962a015c.ctex"]
 
 [params]
 

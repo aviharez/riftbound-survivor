@@ -25,7 +25,9 @@ class Enemy:
 	var spawn_t := 0.0
 	var flash := 0.0
 	var shoot_t := 2.0
-	var orb_hit_at := -100.0  # Flame Orb re-hit timer
+	var blade_hit_at := -100.0  # Astral Blades re-hit timer
+	var root_hit_at := -100.0   # Thornseed roots / Void Well tick timer
+	var slow_t := 0.0           # seconds of slow left (roots, frost)
 	var alive := true
 	# boss state machine
 	var state := "idle"
@@ -181,6 +183,7 @@ func _process(delta: float) -> void:
 		if not e.alive:
 			continue
 		e.flash = max(0.0, e.flash - delta)
+		e.slow_t = max(0.0, e.slow_t - delta)
 		if e.spawn_t > 0.0:
 			e.spawn_t -= delta
 			continue
@@ -225,7 +228,7 @@ func _walk(e: Enemy, target: Vector2, delta: float, speed_mult: float) -> void:
 			var d2 := diff.length_squared()
 			if d2 > 0.01 and d2 < min_d * min_d:
 				push += diff / sqrt(d2)
-	var v := (dir + push * 0.6) * e.speed * speed_mult
+	var v := (dir + push * 0.6) * e.speed * speed_mult * (GameData.SLOW_MULT if e.slow_t > 0.0 else 1.0)
 	e.pos = game.world.move(e.pos, v * delta, e.radius * 0.6)
 
 

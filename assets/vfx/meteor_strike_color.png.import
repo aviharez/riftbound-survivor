@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://h2yk8mrf1222"
-path="res://.godot/imported/spin_slash_color.png-47d5a6320bb770971e5d177d72b44bd0.ctex"
+uid="uid://c6grhiy66ceae"
+path="res://.godot/imported/meteor_strike_color.png-57a12979bfc942b4c04e87cd286067f8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/spin_slash_color.png"
-dest_files=["res://.godot/imported/spin_slash_color.png-47d5a6320bb770971e5d177d72b44bd0.ctex"]
+source_file="res://assets/vfx/meteor_strike_color.png"
+dest_files=["res://.godot/imported/meteor_strike_color.png-57a12979bfc942b4c04e87cd286067f8.ctex"]
 
 [params]
 

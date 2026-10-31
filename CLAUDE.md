@@ -10,7 +10,9 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 
 ## Rules
 - All tunable numbers and content tables live in `scripts/data/game_data.gd`. Never hardcode balance numbers elsewhere.
-- Weapon behaviour lives in `scripts/actors/weapons.gd`; its numbers in `GameData.WEAPONS`.
+- Weapon behaviour lives in `scripts/actors/weapons.gd` (shots in `projectiles.gd`); its numbers in `GameData.WEAPONS`.
+  Attack types follow the uploaded "Riftbound Weapon Attack Design" doc (prototype set of 8 weapons).
+  `--weapons=meteor,void` gives extra weapons in an autotest run (for screenshots).
 - Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
 - VFX: weapon/event effects are pixelfx sprite effects (https://github.com/patch-gg/pixelfx, MIT), exported by
   `node tools/pixelfx_export.mjs <pixelfx clone> assets/vfx` into a colour sheet + a light sheet per effect and

@@ -176,6 +176,14 @@ func trail(pos: Vector2, color: Color, size := 2.5, life := 0.25) -> void:
 	_spawn(pos, Vector2(randf_range(-6, 6), randf_range(-6, 6)), life, size, color, Color(color, 0.0), Shape.GLOW, 1.0, -0.6)
 
 
+## One mote spawned on a circle of radius r that streams into center (Void Well pull).
+func suck(center: Vector2, r: float, color: Color) -> void:
+	var off := Vector2.from_angle(randf() * TAU) * r * randf_range(0.6, 1.0)
+	off.y *= 0.65  # the floor is seen at a slant
+	var life := 0.45
+	_spawn(center + off, -off / life * 1.2, life, randf_range(1.5, 2.5), Color(color, 0.0), color, Shape.GLOW, 0.0, -0.4)
+
+
 # ------------------------------------------------------------------ presets
 
 func hit(pos: Vector2, color: Color, crit := false) -> void:

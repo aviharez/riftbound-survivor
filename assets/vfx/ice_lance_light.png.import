@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://nb6q6ggs7a3r"
-path="res://.godot/imported/frost_nova_color.png-67026601c59759567c097585b0df9032.ctex"
+uid="uid://cw03h0hekujds"
+path="res://.godot/imported/ice_lance_light.png-096ffd7bf3459f14ed7069fac6154955.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/frost_nova_color.png"
-dest_files=["res://.godot/imported/frost_nova_color.png-67026601c59759567c097585b0df9032.ctex"]
+source_file="res://assets/vfx/ice_lance_light.png"
+dest_files=["res://.godot/imported/ice_lance_light.png-096ffd7bf3459f14ed7069fac6154955.ctex"]
 
 [params]
 

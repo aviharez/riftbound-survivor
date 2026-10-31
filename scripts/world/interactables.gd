@@ -131,10 +131,20 @@ func _ambient(ppos: Vector2) -> void:
 	elif not live and not portal.get("fx", {}).is_empty():
 		portal["fx"]["dead"] = true
 		portal["fx"] = {}
+	# unused shrines near the hero show a soft beam in their colour (an "available" marker);
+	# it goes out the moment the shrine is taken or its trial starts
 	for s in shrines:
-		if not s["used"] and s["pos"].distance_to(ppos) < 220.0 and randf() < 0.3:
+		var ready: bool = not s["used"] and s["state"] != "trial" and s["pos"].distance_to(ppos) < 260.0
+		var fx: Dictionary = s.get("fx", {})
+		if ready and fx.is_empty():
 			var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
-			game.vfx.motes(s["pos"] + Vector2(randf_range(-6, 6), -10), sc * 1.8, 1, 6.0, 0.9, 1.8, -25.0)
+			s["fx"] = game.vfx.play("loot_beam", s["pos"] + Vector2(0, 4), 0.0, 0.3, Color(sc.r, sc.g, sc.b), 0.9)
+		elif not ready and not fx.is_empty():
+			fx["dead"] = true
+			s["fx"] = {}
+		if ready and randf() < 0.3:
+			var mc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
+			game.vfx.motes(s["pos"] + Vector2(randf_range(-6, 6), -10), mc * 1.8, 1, 6.0, 0.9, 1.8, -25.0)
 	if exit_portal["active"]:
 		game.vfx.motes(exit_portal["pos"] + Vector2.from_angle(randf() * TAU) * 12.0, Color(0.6, 2.0, 2.4), 1, 10.0, 0.7, 2.5, -40.0)
 

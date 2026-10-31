@@ -4,6 +4,7 @@ extends Node2D
 ## the boss portal and the win / lose flow.
 ##
 ## Command-line (after `--`): --seed=123  --slots=4  --autotest  --autotest-die  --autotest-late  --shot=/tmp/shot.png
+##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1, autotest only)
 
 var seed_value := 0
 var rng := RandomNumberGenerator.new()
@@ -68,6 +69,7 @@ var _shot_times: Array = [3.0, 160.0]
 var _finishing := false
 var _choice_shot_done := false
 var _auto_portal_at := 240.0
+var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
 
 
 func _ready() -> void:
@@ -101,6 +103,9 @@ func _ready() -> void:
 	enemies = _add(Enemies.new())
 	player = _add(Player.new())
 	player.setup_character(GameData.character_by_id(character_id))
+	for id in _extra_weapons:
+		if _auto and not GameData.weapon_by_id(id).is_empty():
+			player.weapon_levels[id] = 1
 	player.position = world.cell_center(map["spawn"])
 	projectiles = _add(Projectiles.new())
 	weapons = _add(Weapons.new())
@@ -155,6 +160,8 @@ func _parse_args() -> void:
 		elif a == "--autotest-late":
 			_auto = true
 			_auto_portal_at = 640.0
+		elif a.begins_with("--weapons="):
+			_extra_weapons = Array(a.get_slice("=", 1).split(","))
 		elif a.begins_with("--char="):
 			character_id = a.get_slice("=", 1)
 		elif a.begins_with("--slots="):
@@ -510,9 +517,9 @@ func _apply_offer(opt: Dictionary) -> void:
 
 func on_shrine_activated(s: Dictionary) -> void:
 	shrines_used += 1
+	# the shrine's idle beam goes out (Interactables._ambient); just a small puff where it stood
 	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
-	# a simple, short beam of light in the shrine's colour
-	vfx.play("loot_beam", s["pos"] + Vector2(0, 4), 0.0, 0.35, Color(sc.r, sc.g, sc.b), 1.0, -1.0, null)
+	vfx.motes(s["pos"] + Vector2(0, -6), Color(sc.r, sc.g, sc.b) * 1.6, 6, 30.0, 0.6, 2.5, -30.0)
 	if s["type"] == "moon":
 		vfx.play("heal", player.position + Vector2(0, 6), 0.0, 0.7, Color.WHITE, 1.7, -1.0, player)
 	match s["type"]:

@@ -1,17 +1,25 @@
 class_name Projectiles
 extends Node2D
-## Player magic bolts. A bolt that hits with bounces left jumps to the nearest other enemy.
+## Player projectiles for every shooting weapon (Arcane Bolt, Flame Orb, Frost Lance, Thornseed).
+## Each shot carries its weapon id; the look is that weapon's pixelfx effect (faces right, rotated to
+## the flight direction). A shot with bounces left ricochets to the nearest other foe; a shot with
+## pierce left flies on through. On-hit extras (shards, roots) are handed back to Weapons.
 
-const SPEED := 260.0
-const LIFE := 1.2
 const BOUNCE_RANGE := 140.0
-const HIT_RADIUS := 4.0
+
+## weapon id -> [pixelfx effect, impact effect, impact tint, spark colour]
+const LOOKS := {
+	"bolt": ["arcane_bolt", "hit_spark", Color(1, 1, 1), Color(0.6, 1.6, 2.0)],
+	"flame": ["flame_orb", "hit_spark", Color(1.0, 0.6, 0.25), Color(2.4, 1.1, 0.3)],
+	"lance": ["ice_lance", "hit_spark", Color(0.6, 0.95, 1.0), Color(0.8, 1.7, 2.4)],
+	"seed": ["thorn_seed", "hit_spark", Color(0.6, 1.0, 0.4), Color(0.8, 2.0, 0.6)],
+}
 
 var game: Node
-var list: Array = []  # {pos, vel, dmg, bounces, life, size, last, trail}
-
+var list: Array = []  # {kind, pos, vel, dmg, bounces, pierce, life, life0, hit_r, scale, hit: Array}
 
 var _light: Node2D   # additive child that draws the light layer on top
+var _anim_t := 0.0
 
 
 func _ready() -> void:
@@ -23,8 +31,12 @@ func _ready() -> void:
 	add_child(_light)
 
 
-func fire(from: Vector2, dir: Vector2, damage_amount: float, bounces: int, size: float) -> void:
-	list.append({"pos": from, "vel": dir * SPEED, "dmg": damage_amount, "bounces": bounces, "life": LIFE, "size": size, "last": null, "trail": 0.0})
+## Fires one shot of weapon w. size scales hit radius and sprite (player area).
+func fire(kind: String, from: Vector2, dir: Vector2, damage_amount: float, w: Dictionary, bounces: int, pierce: int, size: float) -> void:
+	var life := float(w.get("life", 1.2))
+	list.append({"kind": kind, "pos": from, "vel": dir.normalized() * float(w.get("speed", 260.0)), "dmg": damage_amount,
+		"bounces": bounces, "pierce": pierce, "life": life, "life0": life, "hit_r": float(w.get("hit_r", 4.0)) * size,
+		"scale": float(w.get("fx_scale", 0.6)) * size, "hit": [], "w": w})
 
 
 func _process(delta: float) -> void:
@@ -32,33 +44,50 @@ func _process(delta: float) -> void:
 	for p in list:
 		p["pos"] += p["vel"] * delta
 		p["life"] -= delta
+		var look: Array = LOOKS[p["kind"]]
 		if game.world.is_solid_at(p["pos"]):
 			p["life"] = 0.0
-			game.vfx.sparks(p["pos"], Color(0.6, 1.6, 2.0), 4, 70.0, 0.2, 1.0)
+			game.vfx.sparks(p["pos"], look[3], 4, 70.0, 0.2, 1.0)
+			if p["kind"] == "seed":
+				game.weapons.on_projectile_hit(p, p["pos"])
 			continue
-		var hit = game.enemies.nearest(p["pos"], HIT_RADIUS * p["size"] + 2.0, p["last"])
+		var hit = _first_hit(p)
 		if hit == null:
 			continue
+		p["hit"].append(hit)
 		var crit := randf() < float(player.stats["crit"])
 		game.enemies.damage(hit, p["dmg"] * (2.0 if crit else 1.0), crit)
 		if crit:
 			game.vfx.play("crit_hit", p["pos"], p["vel"].angle(), 0.26)
 		else:
-			game.vfx.play("hit_spark", p["pos"], p["vel"].angle(), 0.32)
-		if p["bounces"] > 0:
+			game.vfx.play(look[1], p["pos"], p["vel"].angle(), 0.32, look[2])
+		game.weapons.on_projectile_hit(p, hit.pos, hit)
+		if p["pierce"] > 0:
+			p["pierce"] -= 1
+		elif p["bounces"] > 0:
 			p["bounces"] -= 1
-			p["last"] = hit
-			p["life"] = LIFE
+			p["life"] = p["life0"]
 			var nxt = game.enemies.nearest(p["pos"], BOUNCE_RANGE, hit)
 			if nxt != null:
-				p["vel"] = (nxt.pos - p["pos"]).normalized() * SPEED
+				p["vel"] = (nxt.pos - p["pos"]).normalized() * p["vel"].length()
 		else:
 			p["life"] = 0.0
 	list = list.filter(func(p): return p["life"] > 0.0)
 	queue_redraw()
 
 
-var _anim_t := 0.0
+## Nearest foe touching the shot that it has not hit yet (pierce) / did not just bounce off.
+func _first_hit(p: Dictionary):
+	var best = null
+	var best_d := INF
+	for e in game.enemies.query_radius(p["pos"], p["hit_r"] + 8.0):
+		if e in p["hit"] and (p["pierce"] > 0 or p["kind"] == "lance" or e == p["hit"].back()):
+			continue
+		var d: float = e.pos.distance_to(p["pos"]) - e.radius
+		if d <= p["hit_r"] and d < best_d:
+			best_d = d
+			best = e
+	return best
 
 
 func _draw() -> void:
@@ -67,15 +96,15 @@ func _draw() -> void:
 	_light.queue_redraw()
 
 
-## The arcane-bolt effect faces right; rotating it to the velocity keeps the trail straight behind the head.
+## Every look faces right; rotating it to the velocity keeps the trail straight behind the head.
 func _draw_layer(ci: CanvasItem, layer: String) -> void:
-	var def := Vfx.fx_def("arcane_bolt")
-	if def.is_empty():
-		return
-	var region := Vfx.frame_region(def, _anim_t)
 	var tint := Color(1.6, 1.6, 1.6) if layer == "light" else Color.WHITE
 	for p in list:
-		var s: float = 0.6 * p["size"]
+		var def := Vfx.fx_def(LOOKS[p["kind"]][0])
+		if def.is_empty():
+			continue
+		var region := Vfx.frame_region(def, _anim_t)
+		var s: float = p["scale"]
 		ci.draw_set_transform(p["pos"], p["vel"].angle(), Vector2(s, s))
 		ci.draw_texture_rect_region(def[layer], Rect2(-def["pivot"], def["size"]), region, tint)
 	ci.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
