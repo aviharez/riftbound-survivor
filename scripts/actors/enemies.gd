@@ -303,7 +303,8 @@ func _draw() -> void:
 			draw_line(e.pos + Vector2(-e.radius, 0) * k, e.pos + Vector2(e.radius, 0) * k, Color(0.9, 0.3, 1.0), 2.0)
 			continue
 		var col: Color = Color.WHITE if e.flash > 0.0 else e.color
-		draw_circle(e.pos + Vector2(0, e.radius * 0.7), e.radius * 0.9, Color(0, 0, 0, 0.25))
+		if not e.boss:
+			draw_circle(e.pos + Vector2(0, e.radius * 0.7), e.radius * 0.9, Color(0, 0, 0, 0.25))
 		if e.boss:
 			_draw_boss(e, col)
 			continue
@@ -357,8 +358,12 @@ func _draw_boss(b: Enemy, col: Color) -> void:
 	var tex := CharacterArt.texture("boss", CharacterArt.dir_for(game.player.position - b.pos))
 	if tex != null:
 		draw_texture_rect(game.vfx.glow_tex, Rect2(b.pos - Vector2(40, 40), Vector2(80, 80)), false, Color(1.2, 0.1, 0.6, 0.35))
-		var sz := Vector2(tex.get_width(), tex.get_height())
-		draw_texture_rect(tex, Rect2(b.pos + Vector2(-sz.x * 0.5, b.radius - sz.y * 0.85), sz), false, Color(2.2, 1.6, 1.6) if b.flash > 0.0 else Color.WHITE)
+		var sz := Vector2(tex.get_width(), tex.get_height()) * float(GameData.BOSS["sprite_scale"])
+		var feet := b.pos + Vector2(0, b.radius * 0.8)
+		draw_set_transform(feet, 0.0, Vector2(1.0, 0.35))
+		draw_circle(Vector2.ZERO, b.radius * 1.3, Color(0, 0, 0, 0.4))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		draw_texture_rect(tex, Rect2(feet + Vector2(-sz.x * 0.5, -sz.y), sz), false, Color(2.2, 1.6, 1.6) if b.flash > 0.0 else Color.WHITE)
 		return
 	draw_circle(b.pos, b.radius, col)
 	draw_arc(b.pos, b.radius, 0, TAU, 32, Color(0.9, 0.2, 0.3), 2.0)

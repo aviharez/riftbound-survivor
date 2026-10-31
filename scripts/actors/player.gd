@@ -119,7 +119,8 @@ func _draw() -> void:
 		# 48 px sprite, feet at the shadow; slight squash on each step
 		var sz := Vector2(tex.get_width(), tex.get_height())
 		var squash := 1.0 + bob * 0.02
-		var rect := Rect2(Vector2(-sz.x * 0.5, 8.0 - sz.y * 0.82 + bob), Vector2(sz.x, sz.y * squash))
+		# sprite feet sit on the last pixel row; anchor them on the shadow
+		var rect := Rect2(Vector2(-sz.x * 0.5, 7.0 - sz.y * squash + bob), Vector2(sz.x, sz.y * squash))
 		draw_texture_rect(tex, rect, false, tint)
 		return
 	_draw_placeholder(bob, tint)

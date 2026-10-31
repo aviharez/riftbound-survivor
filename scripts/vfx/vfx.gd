@@ -68,7 +68,9 @@ func motes(pos: Vector2, color: Color, count: int, speed: float, life := 0.6, si
 
 ## Big short-lived light: sells every impact and explosion with bloom.
 func flash(pos: Vector2, color: Color, radius: float, life := 0.18) -> void:
-	_spawn(pos, Vector2.ZERO, life, radius, color, Color(color, 0.0), Shape.GLOW, 0.0, 0.6)
+	# kept translucent so a flash lights the scene without hiding the sprites under it
+	var c := Color(color.r, color.g, color.b, 0.45)
+	_spawn(pos, Vector2.ZERO, life, radius * 0.8, c, Color(c, 0.0), Shape.GLOW, 0.0, 0.5)
 
 
 func ring(pos: Vector2, color: Color, radius: float, life := 0.35, width := 2.0) -> void:

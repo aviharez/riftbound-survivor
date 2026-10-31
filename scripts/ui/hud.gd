@@ -199,9 +199,15 @@ func _draw_view() -> void:
 func _draw_player_panel() -> void:
 	var p: Player = game.player
 	view.draw_rect(Rect2(6, 6, 30, 30), NAVY)
+	var face := CharacterArt.portrait(p.character["id"])
+	if face != null:
+		# head and shoulders: top-centre 28x28 of the south-facing sprite
+		var w := float(face.get_width())
+		view.draw_texture_rect_region(face, Rect2(7, 7, 28, 28), Rect2(w * 0.5 - 14.0, 0, 28, 28))
+	else:
+		view.draw_circle(Vector2(21, 22), 8, Color(0.98, 0.86, 0.78))
+		view.draw_rect(Rect2(12, 11, 18, 6), Color(p.character["colors"]["hair"]))
 	view.draw_rect(Rect2(6, 6, 30, 30), GOLD, false, 1.0)
-	view.draw_circle(Vector2(21, 22), 8, Color(0.98, 0.86, 0.78))
-	view.draw_rect(Rect2(12, 11, 18, 6), Color(0.85, 0.88, 0.95))
 	_text(Vector2(30, 44), "Lv %d" % game.level, IVORY, 8, true)
 	_bar(Rect2(40, 8, 120, 8), p.hp / p.stats["max_hp"], Color(0.9, 0.25, 0.3))
 	_text(Vector2(100, 15), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)

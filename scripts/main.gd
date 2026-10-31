@@ -147,6 +147,9 @@ func _parse_args() -> void:
 		elif a == "--autotest-die":
 			_auto = true
 			_auto_die = true
+		elif a == "--autotest-boss":
+			_auto = true
+			_auto_portal_at = 12.0
 		elif a == "--autotest-late":
 			_auto = true
 			_auto_portal_at = 640.0
@@ -513,7 +516,7 @@ func on_shrine_activated(s: Dictionary) -> void:
 	shrines_used += 1
 	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
 	vfx.ring(s["pos"], sc * 2.2, 40.0, 0.5, 3.0)
-	vfx.flash(s["pos"], sc * 1.6, 30.0, 0.35)
+	vfx.flash(s["pos"], sc * 1.2, 22.0, 0.3)
 	vfx.motes(s["pos"], sc * 2.0, 16, 40.0, 1.0, 3.0, -60.0)
 	screen_fx.shockwave(s["pos"], 60.0, 0.6, 0.4)
 	match s["type"]:

@@ -16,7 +16,7 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
   screen effects (shockwave/chroma/vignette shader, shake, hit-stop) in `scripts/vfx/screen_fx.gd`,
   shaders in `shaders/`. Quality switches: `GameData.VFX_*`.
 - Art: character sprites in `assets/characters/<id>/<direction>.png` (see its README); enemies/props are
-  hand-authored grids in `scripts/meta/pixel_sprites.gd`. The cloud workspace cannot download from
+  hand-authored grids in `scripts/meta/pixel_sprites.gd`. `--autotest-boss` summons the boss at ~25 s (for boss screenshots). The cloud workspace cannot download from
   PixelLab; Syifa uploads the PNGs and Claude commits them. Do not route downloads through CI.
 - Android APK: `.github/workflows/android.yml` builds on every push and publishes the `latest-build`
   pre-release. CI logs are not readable from the workspace; failures show up as a `ci-log-tail`
@@ -37,6 +37,7 @@ godot --headless --path . --fixed-fps 60 -- --autotest --seed=565590 --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77
 godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77 --char=kael
 godot --headless --path . --fixed-fps 60 -- --autotest-late --seed=99 --slots=4
+godot --headless --path . --fixed-fps 60 -- --autotest-boss --seed=31337 --char=lyra
 ```
 The main scene is the academy; any `--autotest*` flag makes it jump straight into a run.
 Autotests never read or write the player's save (`SaveData`); without `--slots` they use the base 2 + 2 slots.

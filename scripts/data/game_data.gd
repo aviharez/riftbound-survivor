@@ -275,7 +275,7 @@ const ELITE_AFFIXES := ["swift", "warded", "splitter"]
 const ELITE_GOLD := 8
 
 const BOSS := {
-	"name": "Corrupted Guardian", "hp": 2500.0, "radius": 20.0, "speed": 35.0, "dmg": 20.0,
+	"name": "Corrupted Guardian", "hp": 2500.0, "radius": 28.0, "sprite_scale": 2.0, "speed": 35.0, "dmg": 20.0,
 	"ring_bullets": 16, "bullet_speed": 90.0, "bullet_dmg": 10.0,
 	"dash_telegraph": 0.8, "dash_speed": 400.0, "dash_time": 0.5, "summon": 6,
 	"gap": 1.6, "gap_enraged": 0.9,

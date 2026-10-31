@@ -37,7 +37,10 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 - [ ] Retakan Rift ungu di tanah berpendar
 - [ ] Performa: tetap lancar saat Rift Surge dan Final Swarm? Kalau patah-patah, sebutkan model HP-mu
 
-**Grafik**: musuh dan chest sekarang pixel art (slime, kelelawar, golem, penyihir bertudung). Sprite karakter dari PixelLab menyusul setelah file-nya masuk repo.
+**Grafik**: Astra, Lyra, Kael, Nym, dan boss Corrupted Guardian memakai sprite PixelLab 8 arah (boss digambar 2x). Musuh dan chest memakai pixel art buatan Claude.
+- [ ] Arah hadap karakter sesuai arah gerak
+- [ ] Ukuran karakter (48 px) terasa pas, tidak terlalu besar dibanding musuh
+- [ ] Boss terasa besar dan mengancam
 
 ## Yang perlu dicek di build sekarang
 
