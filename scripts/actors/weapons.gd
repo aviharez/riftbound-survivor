@@ -94,7 +94,7 @@ func _frost_nova(w: Dictionary, lv: int) -> bool:
 	return true
 
 
-var _orb_fx: Array = []   # looping spirit-flame instances, one per orb
+var _orb_fx: Array = []   # looping flame-orb instances, one per orb
 
 
 func _flame_orb(w: Dictionary, lv: int, delta: float) -> void:
@@ -104,7 +104,7 @@ func _flame_orb(w: Dictionary, lv: int, delta: float) -> void:
 	var hit_r: float = 6.0 * level_size(w, lv)
 	var rehit := level_cooldown(w, lv)
 	while _orb_fx.size() < count:
-		var inst: Dictionary = game.vfx.play("spirit_flame", p.position, 0.0, 0.22 * level_size(w, lv), Color.WHITE, 1.8)
+		var inst: Dictionary = game.vfx.play("flame_orb", p.position, 0.0, 0.9 * level_size(w, lv), Color.WHITE, 1.6)
 		if inst.is_empty():
 			break
 		_orb_fx.append(inst)
@@ -113,13 +113,15 @@ func _flame_orb(w: Dictionary, lv: int, delta: float) -> void:
 	if emit:
 		_orb_trail_t = 0.05
 	for i in count:
-		var pos := p.position + Vector2.from_angle(_time * float(w["spin"]) + TAU * i / count) * r
+		var a: float = _time * float(w["spin"]) + TAU * i / count
+		var pos := p.position + Vector2.from_angle(a) * r
 		_orbs.append(pos)
 		if i < _orb_fx.size():
-			_orb_fx[i]["pos"] = pos + Vector2(0, 6)
+			# the comet faces its direction of travel: the orbit's tangent
+			_orb_fx[i]["pos"] = pos
+			_orb_fx[i]["rot"] = a + PI * 0.5
+			_orb_fx[i]["scale"] = 0.9 * level_size(w, lv)
 			_orb_fx[i]["t"] = fmod(_orb_fx[i]["t"], 100.0)
-		if emit:
-			game.vfx.trail(pos, Color(2.2, 0.8, 0.2), 2.0, 0.25)
 		for e in game.enemies.query_radius(pos, hit_r):
 			if _time - e.orb_hit_at >= rehit:
 				e.orb_hit_at = _time

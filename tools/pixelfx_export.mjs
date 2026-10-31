@@ -37,7 +37,7 @@ const EFFECTS = [
   { name: "crit_hit", id: "impacts/crit-hit", fps: 20, max: 0.7 },
   { name: "arcane_bolt", id: "riftbound/arcane-bolt", fps: 30 },
   { name: "frost_nova", id: "riftbound/frost-nova-td", fps: 20 },
-  { name: "spirit_flame", id: "fire/spirit-flame", fps: 15, max: 1.2, opts: { palette: ["#2a0802", "#6e1a04", "#c2410c", "#f97316", "#fdba74", "#fff4d6"] } },
+  { name: "flame_orb", id: "riftbound/flame-orb", fps: 30 },
   { name: "mana_burst", id: "arcane/mana-burst", fps: 18, max: 1.1 },
   { name: "zap_hit", id: "lightning/zap-hit", fps: 24, max: 0.6 },
   { name: "spin_slash", id: "melee/spin-slash", fps: 30, max: 0.6 },

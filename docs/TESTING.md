@@ -35,9 +35,11 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 - [ ] Arcane Bolt: trail lurus di belakang kepala proyektil, ke segala arah
 - [ ] Frost Nova: cincin es di lantai di sekeliling karakter, kristal muncul melingkar
 - [ ] Spirit Blade: sekarang tebasan putar 360° (elips di lantai), mengenai semua arah
-- [ ] Mana Burst, Storm Chain, Flame Orb masih terasa cocok untuk tampilan dari atas?
+- [ ] Flame Orb (Lyra): komet api yang mengorbit, ekornya mengikuti lintasan
+- [ ] Mana Burst dan Storm Chain masih terasa cocok untuk tampilan dari atas?
 - [ ] Musuh mati jadi kepulan asap kecil; elite mati meledak gelap; boss muncul dari portal dan mati dengan ledakan besar
-- [ ] Rift Portal berputar ungu, level up, chest (sinar sesuai rarity), Moon Fountain (efek heal), dash (blink)
+- [ ] Rift Portal berputar ungu, level up, Moon Fountain (efek heal), dash (blink)
+- [ ] Shrine yang diaktifkan memberi sinar kecil sederhana sesuai warna shrine; chest tidak lagi meninggalkan efek
 - [ ] Efek terasa "pixel art", tidak ada kotak/tepi terpotong di sekitar efek
 - [ ] Performa saat banyak musuh mati sekaligus (Rift Surge, Final Swarm)
 

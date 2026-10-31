@@ -420,9 +420,7 @@ func open_chest(c: Dictionary) -> void:
 	var it: Dictionary = pool[rng.randi_range(0, pool.size() - 1)]
 	player.apply_mods(it["mods"])
 	items_owned[it["id"]] = int(items_owned.get(it["id"], 0)) + 1
-	# rarity beam: brighter and taller for rarer items
-	var rc: Color = GameData.RARITY_COLORS[rarity]
-	vfx.play("loot_beam", c["pos"] + Vector2(0, 4), 0.0, 0.45 + rarity * 0.12, Color(rc.r, rc.g, rc.b), 1.4 + rarity * 0.4)
+	# no lingering effect on chests (Syifa: not important); only rare+ items get a short punch
 	if rarity >= 2:
 		screen_fx.shockwave(c["pos"], 80.0, 0.8, 0.45)
 		screen_fx.hitstop(0.04)
@@ -513,11 +511,10 @@ func _apply_offer(opt: Dictionary) -> void:
 func on_shrine_activated(s: Dictionary) -> void:
 	shrines_used += 1
 	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
+	# a simple, short beam of light in the shrine's colour
+	vfx.play("loot_beam", s["pos"] + Vector2(0, 4), 0.0, 0.35, Color(sc.r, sc.g, sc.b), 1.0, -1.0, null)
 	if s["type"] == "moon":
 		vfx.play("heal", player.position + Vector2(0, 6), 0.0, 0.7, Color.WHITE, 1.7, -1.0, player)
-	else:
-		vfx.play("mana_burst", s["pos"], 0.0, 0.35, Color(sc.r, sc.g, sc.b).lightened(0.2))
-	screen_fx.shockwave(s["pos"], 60.0, 0.6, 0.4)
 	match s["type"]:
 		"ley":
 			var boons: Array = GameData.BOONS.duplicate()

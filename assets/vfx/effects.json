@@ -59,19 +59,19 @@
    62
   ]
  },
- "spirit_flame": {
-  "source": "fire/spirit-flame",
-  "fps": 15,
+ "flame_orb": {
+  "source": "riftbound/flame-orb",
+  "fps": 30,
   "loop": true,
-  "frames": 19,
-  "columns": 19,
+  "frames": 15,
+  "columns": 15,
   "frame_size": [
-   74,
-   96
+   32,
+   20
   ],
   "pivot": [
-   37,
-   70
+   22,
+   10
   ]
  },
  "mana_burst": {

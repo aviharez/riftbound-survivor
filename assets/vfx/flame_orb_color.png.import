@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d1gqs8ldh2ia8"
-path="res://.godot/imported/spirit_flame_light.png-9eade180891d48f7454458e5f6c3a1cd.ctex"
+uid="uid://dl70wj43fim0d"
+path="res://.godot/imported/flame_orb_color.png-ba0bc351f4a3b7163378aaf13478d6d1.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/vfx/spirit_flame_light.png"
-dest_files=["res://.godot/imported/spirit_flame_light.png-9eade180891d48f7454458e5f6c3a1cd.ctex"]
+source_file="res://assets/vfx/flame_orb_color.png"
+dest_files=["res://.godot/imported/flame_orb_color.png-ba0bc351f4a3b7163378aaf13478d6d1.ctex"]
 
 [params]
 
