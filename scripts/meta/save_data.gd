@@ -4,10 +4,11 @@ extends RefCounted
 ## Autotests never write here; tests/test_academy.gd uses its own path.
 
 const DEFAULT_PATH := "user://riftbound_save.json"
-const VERSION := 4
+const VERSION := 5
 # v1 -> v2: "lessons" (Staff Room permanent upgrades, id -> rank); new buildings start at 0 (handled generally).
 # v2 -> v3: "shards" (Arcane Shards) and "characters" (id -> {exp, passive, weapon}: level EXP and enhance ranks).
 # v3 -> v4: equipment ("items" inventory, "equipped" char -> slot -> uid, "next_uid") and "essence" (location -> n).
+# v4 -> v5: character "bond" EXP, "dorm" (resident ids), "talked" (id -> date of the last talk), "expeditions".
 const RESOURCES := ["gold", "materials", "aether", "exp", "shards"]
 const ENHANCE_TRACKS := ["passive", "weapon"]
 
@@ -28,6 +29,7 @@ static func defaults() -> Dictionary:
 		"lessons": {},
 		"characters": {},
 		"items": [], "next_uid": 1, "equipped": {}, "essence": {},
+		"dorm": [], "talked": {}, "expeditions": [],
 	}
 
 
@@ -66,6 +68,7 @@ static func load_data() -> Dictionary:
 		for k in d["characters"][id]:
 			d["characters"][id][k] = int(st.get(k, 0))
 	_clean_equipment(d)
+	_clean_dorm(d)
 	d["version"] = VERSION
 	# a locked (or unknown) selected character falls back to Astra
 	if not character_unlocked(d, String(d["character"])):
@@ -187,7 +190,7 @@ static func lesson_mods(d: Dictionary) -> Array:
 # ------------------------------------------------------------------ characters: level + enhance
 
 static func _char_defaults() -> Dictionary:
-	return {"exp": 0, "passive": 0, "weapon": 0}
+	return {"exp": 0, "passive": 0, "weapon": 0, "bond": 0}
 
 
 ## The character's saved progress (created on first use).
@@ -236,8 +239,137 @@ static func enhance(d: Dictionary, id: String, track: String) -> bool:
 static func char_run_bonus(d: Dictionary, id: String) -> Dictionary:
 	var st := char_state(d, id)
 	var lv := char_level(d, id)
-	return {"level": lv, "mods": GameData.char_level_mods(lv) + equip_mods(d, id),
-		"passive": int(st["passive"]), "weapon": int(st["weapon"])}
+	return {"level": lv, "mods": GameData.char_level_mods(lv) + equip_mods(d, id) + GameData.bond_mods(bond_level(d, id)),
+		"passive": int(st["passive"]), "weapon": int(st["weapon"]), "bond": bond_level(d, id)}
+
+
+# ------------------------------------------------------------------ bond, dormitory, expeditions
+
+static func _clean_dorm(d: Dictionary) -> void:
+	if typeof(d["dorm"]) != TYPE_ARRAY:
+		d["dorm"] = []
+	if typeof(d["talked"]) != TYPE_DICTIONARY:
+		d["talked"] = {}
+	if typeof(d["expeditions"]) != TYPE_ARRAY:
+		d["expeditions"] = []
+	var dorm: Array = []
+	for id in d["dorm"]:
+		if character_unlocked(d, String(id)) and not String(id) in dorm and dorm.size() < dorm_rooms(d):
+			dorm.append(String(id))
+	d["dorm"] = dorm
+	var exps: Array = []
+	for e in d["expeditions"]:
+		if typeof(e) == TYPE_DICTIONARY and not GameData.expedition_by_id(String(e.get("mission", ""))).is_empty():
+			exps.append({"char": String(e["char"]), "mission": String(e["mission"]), "start": int(e["start"]), "end": int(e["end"])})
+	d["expeditions"] = exps
+
+
+static func bond_level(d: Dictionary, id: String) -> int:
+	return GameData.bond_level_for(int(char_state(d, id)["bond"]))
+
+
+static func add_bond(d: Dictionary, id: String, amount: int) -> void:
+	var st := char_state(d, id)
+	st["bond"] = mini(int(st["bond"]) + amount, GameData.BOND_EXP[GameData.BOND_MAX])
+
+
+static func dorm_rooms(d: Dictionary) -> int:
+	return GameData.DORM_ROOMS[mini(building_level(d, "dormitory"), GameData.DORM_ROOMS.size() - 1)]
+
+
+static func move_in(d: Dictionary, id: String) -> bool:
+	if not character_unlocked(d, id) or id in d["dorm"] or d["dorm"].size() >= dorm_rooms(d):
+		return false
+	d["dorm"].append(id)
+	return true
+
+
+static func move_out(d: Dictionary, id: String) -> void:
+	d["dorm"].erase(id)
+
+
+## Today's date as "YYYY-MM-DD" (local time): one talk per character per day.
+static func today() -> String:
+	var t := Time.get_date_dict_from_system()
+	return "%04d-%02d-%02d" % [t["year"], t["month"], t["day"]]
+
+
+static func can_talk(d: Dictionary, id: String, day: String) -> bool:
+	return id in d["dorm"] and String(d["talked"].get(id, "")) != day and not is_away(d, id)
+
+
+static func talk(d: Dictionary, id: String, day: String) -> bool:
+	if not can_talk(d, id, day):
+		return false
+	d["talked"][id] = day
+	add_bond(d, id, GameData.BOND_TALK)
+	return true
+
+
+## Expedition slots = Dormitory level.
+static func expedition_slots(d: Dictionary) -> int:
+	return building_level(d, "dormitory")
+
+
+static func is_away(d: Dictionary, id: String) -> bool:
+	for e in d["expeditions"]:
+		if e["char"] == id:
+			return true
+	return false
+
+
+## Sends a character out (not the one selected for the Rift). `now` = unix seconds.
+static func start_expedition(d: Dictionary, id: String, mission: String, now: int) -> bool:
+	var m := GameData.expedition_by_id(mission)
+	if m.is_empty() or not character_unlocked(d, id) or is_away(d, id) or id == String(d["character"]):
+		return false
+	if d["expeditions"].size() >= expedition_slots(d):
+		return false
+	d["expeditions"].append({"char": id, "mission": mission, "start": now, "end": now + int(float(m["hours"]) * 3600.0)})
+	return true
+
+
+## Rewards of a mission for a character level (items = number of equipment pieces).
+static func expedition_rewards(mission: String, char_lv: int) -> Dictionary:
+	var m := GameData.expedition_by_id(mission)
+	var k := 1.0 + GameData.EXPEDITION_LEVEL_BONUS * (char_lv - 1)
+	var out := {}
+	for key in m["rewards"]:
+		out[key] = int(m["rewards"][key]) if key == "items" else int(round(int(m["rewards"][key]) * k))
+	return out
+
+
+## Collects a finished expedition: pays its rewards (+ bond) and frees the slot. Returns what was given
+## ({} if not finished yet). Essence goes to the first location; items are rolled with `rng`.
+static func collect_expedition(d: Dictionary, index: int, now: int, rng: RandomNumberGenerator) -> Dictionary:
+	if index < 0 or index >= d["expeditions"].size():
+		return {}
+	var e: Dictionary = d["expeditions"][index]
+	if now < int(e["end"]):
+		return {}
+	var got := expedition_rewards(e["mission"], char_level(d, e["char"]))
+	var items: Array = []
+	for i in int(got.get("items", 0)):
+		var it := GameData.roll_item(rng, GameData.roll_gear_rarity(rng))
+		if add_item(d, it) >= 0:
+			items.append(it)
+	got["items"] = items
+	for key in got:
+		if key in RESOURCES:
+			d[key] = int(d[key]) + int(got[key])
+		elif key == "essence":
+			var loc: String = GameData.LOCATIONS[0]["id"]
+			d["essence"][loc] = essence(d, loc) + int(got[key])
+	add_bond(d, e["char"], GameData.BOND_EXPEDITION)
+	d["expeditions"].remove_at(index)
+	got["char"] = e["char"]
+	return got
+
+
+## Calls a character back early: no rewards.
+static func cancel_expedition(d: Dictionary, index: int) -> void:
+	if index >= 0 and index < d["expeditions"].size():
+		d["expeditions"].remove_at(index)
 
 
 # ------------------------------------------------------------------ equipment + crafting
@@ -382,6 +514,7 @@ static func bank_run(d: Dictionary, rewards: Dictionary, summary: Dictionary) ->
 		d[k] = int(d[k]) + int(rewards.get(k, 0))
 	if summary.has("character") and rewards.has("char_exp"):
 		add_char_exp(d, String(summary["character"]), int(rewards["char_exp"]))
+		add_bond(d, String(summary["character"]), GameData.BOND_RUN + (GameData.BOND_VICTORY if summary.get("victory", false) else 0))
 	var ess: Dictionary = rewards.get("essence", {})
 	for loc in ess:
 		d["essence"][loc] = essence(d, loc) + int(ess[loc])

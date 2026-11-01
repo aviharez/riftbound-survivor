@@ -1,7 +1,8 @@
 class_name CharacterPanel
 extends RefCounted
 ## Academy overlay for one character, in tabs: level / character EXP with the two enhance tracks (passive
-## trait, signature weapon), and equipment (three slots filled from the shared inventory).
+## trait, signature weapon), equipment (three slots filled from the shared inventory) and bond (level,
+## bonus and the story scenes it unlocks).
 
 var save: Dictionary
 var char_id := ""
@@ -17,6 +18,11 @@ var _picker: Control  # inventory picker overlay
 var _picker_list: VBoxContainer
 var _picker_title: Label
 var _picker_slot := ""
+var _bond: Label
+var _scene_rows: Array = []   # [label, button] per bond level
+var _reader: Control
+var _reader_title: Label
+var _reader_text: Label
 
 
 func _init(parent: Control, change_cb: Callable) -> void:
@@ -30,7 +36,7 @@ func _init(parent: Control, change_cb: Callable) -> void:
 	_header = UiKit.label("", 11, UiKit.GOLD)
 	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(_header)
-	for t in [["level", "Level & Enhance"], ["gear", "Equipment"]]:
+	for t in [["level", "Level & Enhance"], ["gear", "Equipment"], ["bond", "Bond"]]:
 		var b := UiKit.button(t[1], Vector2(96, 22), _show_tab.bind(t[0]))
 		head.add_child(b)
 		_tabs[t[0]] = {"button": b}
@@ -78,6 +84,24 @@ func _init(parent: Control, change_cb: Callable) -> void:
 		r.add_child(remove)
 		_slots[slot] = {"label": lab, "change": change, "remove": remove}
 
+	# --- bond
+	var bond_box := VBoxContainer.new()
+	bond_box.add_theme_constant_override("separation", 4)
+	box.add_child(bond_box)
+	_tabs["bond"]["box"] = bond_box
+	_bond = UiKit.label("", 8, UiKit.IVORY)
+	_bond.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bond_box.add_child(_bond)
+	for lv in range(1, GameData.BOND_MAX + 1):
+		var r := HBoxContainer.new()
+		bond_box.add_child(r)
+		var lab := UiKit.label("", 8, UiKit.IVORY)
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(lab)
+		var b := UiKit.button("Read", Vector2(60, 22), _read_scene.bind(lv))
+		r.add_child(b)
+		_scene_rows.append([lab, b])
+
 	# --- inventory picker (on top of the panel)
 	var p := UiKit.overlay(parent, 520)
 	_picker = p[0]
@@ -96,6 +120,20 @@ func _init(parent: Control, change_cb: Callable) -> void:
 	_picker_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_picker_list.add_theme_constant_override("separation", 3)
 	sc.add_child(_picker_list)
+	# --- story scene reader
+	var rd := UiKit.overlay(parent, 440)
+	_reader = rd[0]
+	var rbox: VBoxContainer = rd[1]
+	var rhead := HBoxContainer.new()
+	rbox.add_child(rhead)
+	_reader_title = UiKit.label("", 11, UiKit.GOLD)
+	_reader_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rhead.add_child(_reader_title)
+	rhead.add_child(UiKit.button("Back", Vector2(56, 22), func(): _reader.visible = false))
+	_reader_text = UiKit.label("", 9, UiKit.IVORY)
+	_reader_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_reader_text.custom_minimum_size = Vector2(420, 0)
+	rbox.add_child(_reader_text)
 	_show_tab("level")
 
 
@@ -109,6 +147,7 @@ func open(d: Dictionary, id: String, tab := "level") -> void:
 func close() -> void:
 	root.visible = false
 	_picker.visible = false
+	_reader.visible = false
 
 
 func is_open() -> bool:
@@ -130,6 +169,7 @@ func refresh() -> void:
 	_header.text = "%s  ·  %s" % [c["name"], c["role"]]
 	_refresh_level(c)
 	_refresh_gear()
+	_refresh_bond(c)
 	if _picker.visible:
 		_fill_picker()
 
@@ -173,6 +213,36 @@ func _refresh_level(c: Dictionary) -> void:
 			var ok := SaveData.can_afford(save, cost)
 			btn.text = ("Enhance\n" if ok else "Not enough\n") + UiKit.cost_text(cost)
 			btn.disabled = not ok
+
+
+func _refresh_bond(c: Dictionary) -> void:
+	var exp := int(SaveData.char_state(save, char_id)["bond"])
+	var blv := SaveData.bond_level(save, char_id)
+	var next := "MAX" if blv >= GameData.BOND_MAX else "%d / %d to Lv %d" % [exp - GameData.BOND_EXP[blv],
+		GameData.BOND_EXP[blv + 1] - GameData.BOND_EXP[blv], blv + 1]
+	var bonus: Array = []
+	for m in GameData.bond_mods(blv):
+		if float(m[1]) > 0.0:
+			bonus.append(GameData.mod_text(m[0], float(m[1])))
+	_bond.text = "Bond Lv %d / %d   ·   %s\nBond bonus: %s\nBond grows from runs with %s (+%d, +%d on victory), expeditions (+%d) and a daily talk in the Dormitory (+%d)." % [
+		blv, GameData.BOND_MAX, next, ", ".join(bonus) if not bonus.is_empty() else "none yet", c["name"],
+		GameData.BOND_RUN, GameData.BOND_VICTORY, GameData.BOND_EXPEDITION, GameData.BOND_TALK]
+	for i in _scene_rows.size():
+		var lv := i + 1
+		var sc := BondScenes.scene(char_id, lv)
+		var open := blv >= lv and not sc.is_empty()
+		_scene_rows[i][0].text = ("Story %d · %s" % [lv, sc[0]]) if open else "Story %d · (reach bond Lv %d)" % [lv, lv]
+		_scene_rows[i][0].add_theme_color_override("font_color", UiKit.IVORY if open else Color(UiKit.IVORY, 0.5))
+		_scene_rows[i][1].disabled = not open
+
+
+func _read_scene(lv: int) -> void:
+	var sc := BondScenes.scene(char_id, lv)
+	if sc.is_empty():
+		return
+	_reader_title.text = "%s · %s" % [GameData.character_by_id(char_id)["name"], sc[0]]
+	_reader_text.text = sc[1]
+	_reader.visible = true
 
 
 func _refresh_gear() -> void:

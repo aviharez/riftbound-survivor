@@ -67,8 +67,18 @@ Read it before starting any phase.**
 - Android APK: `.github/workflows/android.yml` builds on every push and publishes the `latest-build`
   pre-release. CI logs are not readable from the workspace; failures show up as a `ci-log-tail`
   annotation (GitHub API: check-runs/<job id>/annotations).
-- Meta progression (resources, academy buildings, lessons) is saved by `scripts/meta/save_data.gd` to `user://riftbound_save.json`
-  (VERSION 2 added `lessons`). Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes;
+- Meta progression is saved by `scripts/meta/save_data.gd` to `user://riftbound_save.json`: resources (+ Arcane
+  `shards`), buildings, lessons (v2), per-character `characters` {exp, passive, weapon, bond} (v3), equipment
+  `items`/`equipped`/`next_uid` + location `essence` (v4), `dorm`/`talked`/`expeditions` (v5). Phase 2 meta systems
+  (numbers in `game_data.gd`: CHAR_*, ENHANCE_*, EQUIP_*/GEAR_RARITY_*/CRAFT_COST, BOND_*, DORM_ROOMS, EXPEDITIONS):
+  character level from character EXP (= run EXP), enhance (passive = `Player.trait_power` scaling every trait via
+  `Weapons._tk()`, signature = starter weapon + its evolution in `level_damage`/`level_cooldown`), equipment
+  (3 slots, rolled substats, run drops, Workshop crafting/salvage), bond (levels give mods + a story scene in
+  `scripts/data/bond_scenes.gd`), Dormitory rooms + daily talk, real-time expeditions (`now` passed in, so tests
+  fake time). All of it reaches a run through `SaveData.char_run_bonus()` in `main._apply_lessons()`.
+  Academy panels: `scripts/ui/{ui_kit,character_panel,workshop_panel,dorm_panel}.gd`; screenshot flags
+  `--academy-character/-gear/-bond/-workshop/-dorm/-expedition` (with `--academy-demo`). Autotest flags
+  `--char-level=15 --enhance=3,3 --gear=robe:4,wand:2`; the summary prints `char_level= enhance= max_hp= shards= equipment=`. Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes;
   `tests/test_academy.gd` loads a hand-written v1 save to check the migration.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
@@ -122,8 +132,10 @@ Note: in the cloud workspace the Godot binary is not preinstalled; download the 
 ## Status and next up (as of 2026-11-01)
 Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, Rift Surges, boss, Final Swarm
 (swarm level per minute, wraiths, threat meter), academy (Library, Training Ground, Staff Room, 6 character
-buildings), **all 13 characters** with v3 sprites + walk/idle animations and mechanical traits (phase 1 of
-`docs/game_design.md` done; next is phase 2, meta systems), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+buildings + Workshop + Dormitory), **all 13 characters** with v3 sprites + walk/idle animations and mechanical
+traits (phase 1 done), **phase 2 meta systems** (character level, enhance, equipment + crafting, bond with 65 story
+scenes, dormitory, expeditions; next is phase 3, UI reskin + navigation bar; some walk/idle directions still need
+revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
 The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
 Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).

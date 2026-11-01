@@ -850,7 +850,11 @@ func _end_run(won: bool) -> void:
 		var lv0 := SaveData.char_level(before, character_id)
 		SaveData.add_char_exp(before, character_id, exp_gain)
 		var lv1 := SaveData.char_level(before, character_id)
-		lv_line = "\n%s Lv %d%s" % [char_name, lv1, ("  (LEVEL UP from %d!)" % lv0) if lv1 > lv0 else ""]
+		var b0 := SaveData.bond_level(before, character_id)
+		SaveData.add_bond(before, character_id, GameData.BOND_RUN + (GameData.BOND_VICTORY if won else 0))
+		var b1 := SaveData.bond_level(before, character_id)
+		lv_line = "\n%s Lv %d%s   ·   Bond +%d%s" % [char_name, lv1, ("  (LEVEL UP from %d!)" % lv0) if lv1 > lv0 else "",
+			GameData.BOND_RUN + (GameData.BOND_VICTORY if won else 0), ("  (Bond Lv %d: new story!)" % b1) if b1 > b0 else ""]
 	var t := int(elapsed)
 	var tome_list: Array = []
 	for id in player.tomes:

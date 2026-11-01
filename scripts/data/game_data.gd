@@ -444,7 +444,9 @@ const BUILDINGS := [
 		"costs": [{"gold": 700, "materials": 140, "aether": 10}]},
 	{"id": "alchemy_lab", "name": "Alchemy Lab", "unlocks": "character", "character": "noah",
 		"desc": "Cauldrons bubble again: Noah, the alchemy student, returns",
-		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},	{"id": "workshop", "name": "Workshop", "unlocks": "workshop", "desc": "Forges and looms: craft equipment from materials + Rift Essence",
+		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},	{"id": "dormitory", "name": "Dormitory", "unlocks": "dorm", "desc": "Rooms for the returned students and teachers; expedition slots",
+		"costs": [{"gold": 300, "materials": 70, "aether": 0}, {"gold": 1000, "materials": 200, "aether": 15}, {"gold": 2200, "materials": 420, "aether": 40}]},
+	{"id": "workshop", "name": "Workshop", "unlocks": "workshop", "desc": "Forges and looms: craft equipment from materials + Rift Essence",
 		"costs": [{"gold": 450, "materials": 120, "aether": 0}, {"gold": 1200, "materials": 260, "aether": 20}, {"gold": 2400, "materials": 480, "aether": 45}]},
 	{"id": "bell_tower", "name": "Bell Tower", "unlocks": "character", "character": "raika",
 		"desc": "The storm bell rings again: Raika of the Weather Club returns",
@@ -644,6 +646,49 @@ static func mod_text(stat: String, v: float) -> String:
 	if label == "xp": label = "XP"
 	if label == "pickup": label = "pickup radius"
 	return "+%d%% %s" % [int(round(v * 100)), label]
+
+
+# --- Bond, Dormitory, Expeditions (saved per character / in SaveData "dorm", "talked", "expeditions") ---
+# Bond EXP comes from runs with the character, expeditions and a daily talk in the dorm. Each bond level gives
+# a small passive bonus (BOND_LEVEL_MODS per level) and unlocks a short story scene (BondScenes).
+const BOND_MAX := 5
+const BOND_EXP := [0, 60, 160, 320, 540, 820]     # total bond EXP for bond level 0..5
+const BOND_RUN := 12                                # per run played
+const BOND_VICTORY := 8                             # extra on a victory
+const BOND_TALK := 15                               # once per day per character living in the dorm
+const BOND_EXPEDITION := 20                         # per finished expedition
+const BOND_LEVEL_MODS := [["damage_pct", 0.01], ["max_hp", 3.0]]
+# Dormitory: rooms per level (residents can be talked to); expedition slots = Dormitory level.
+const DORM_ROOMS := [0, 4, 8, 13]
+# Expeditions (real time; run while the game is closed). Rewards grow +EXPEDITION_LEVEL_BONUS per character level.
+const EXPEDITION_LEVEL_BONUS := 0.03
+const EXPEDITIONS := [
+	{"id": "scout", "name": "Scout the Courtyard", "hours": 1.0, "rewards": {"gold": 120, "materials": 25}, "desc": "A quick patrol of the ruined grounds."},
+	{"id": "herbs", "name": "Gather Rift Herbs", "hours": 2.0, "rewards": {"materials": 70, "essence": 3}, "desc": "Collect plants that grew on Rift energy."},
+	{"id": "crystals", "name": "Crystal Survey", "hours": 4.0, "rewards": {"aether": 20, "shards": 2, "gold": 150}, "desc": "Chart the corrupted crystals around the academy."},
+	{"id": "relics", "name": "Relic Hunt", "hours": 8.0, "rewards": {"gold": 400, "shards": 4, "items": 1}, "desc": "Search the deep ruins for lost academy gear."},
+]
+
+
+static func bond_level_for(exp: int) -> int:
+	var lv := 0
+	while lv < BOND_MAX and exp >= BOND_EXP[lv + 1]:
+		lv += 1
+	return lv
+
+
+static func bond_mods(level: int) -> Array:
+	var out: Array = []
+	for m in BOND_LEVEL_MODS:
+		out.append([m[0], float(m[1]) * level])
+	return out
+
+
+static func expedition_by_id(id: String) -> Dictionary:
+	for e in EXPEDITIONS:
+		if e["id"] == id:
+			return e
+	return {}
 
 
 static func lesson_cost(rank: int) -> Dictionary:

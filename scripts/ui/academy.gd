@@ -8,7 +8,8 @@ extends Control
 ## --academy-demo uses an in-memory sample save (never written) with some buildings restored, for screenshots;
 ## --academy-lessons opens the Staff Room lessons; --academy-scroll scrolls both strips to their end;
 ## --academy-character / --academy-gear open the selected character's panel (level / equipment tab);
-## --academy-workshop opens the Workshop.
+## --academy-workshop opens the Workshop; --academy-bond the bond tab; --academy-dorm / --academy-expedition
+## the Dormitory tabs.
 
 const NAVY := Color(0.06, 0.08, 0.18, 0.94)
 const GOLD := Color(0.86, 0.7, 0.32)
@@ -31,6 +32,7 @@ var _lessons_header: Label
 var _char_panel: CharacterPanel
 var _char_btn: Button
 var _workshop: WorkshopPanel
+var _dorm: DormPanel
 
 
 func _ready() -> void:
@@ -60,6 +62,13 @@ func _ready() -> void:
 			SaveData.add_item(save, GameData.roll_item(rng, r))
 		SaveData.equip(save, "selene", int(save["items"][0]["uid"]))
 		SaveData.equip(save, "selene", int(save["items"][1]["uid"]))
+		save["buildings"]["dormitory"] = 2
+		for id in ["astra", "lyra", "selene", "nym"]:
+			SaveData.move_in(save, id)
+		SaveData.add_bond(save, "selene", GameData.BOND_EXP[3] + 30)
+		var now := int(Time.get_unix_time_from_system())
+		SaveData.start_expedition(save, "lyra", "crystals", now - 3 * 3600)
+		SaveData.start_expedition(save, "kael", "scout", now - 7200)
 		_demo = true
 	_build()
 	_refresh()
@@ -71,6 +80,12 @@ func _ready() -> void:
 		_char_panel.open(save, String(save.get("character", "astra")), "gear")
 	if "--academy-workshop" in args:
 		_on_open_workshop()
+	if "--academy-bond" in args:
+		_char_panel.open(save, String(save.get("character", "astra")), "bond")
+	if "--academy-dorm" in args:
+		_dorm.open(save, "rooms")
+	if "--academy-expedition" in args:
+		_dorm.open(save, "exp")
 	if "--academy-scroll" in args:
 		await get_tree().process_frame
 		for sc in find_children("*", "ScrollContainer", true, false):
@@ -129,7 +144,7 @@ func _build() -> void:
 	_char_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_char_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_row.add_child(_char_detail)
-	_char_btn = _button("Level · Enhance\nEquipment", Vector2(110, 30), _on_open_character)
+	_char_btn = _button("Level · Enhance\nEquipment · Bond", Vector2(116, 30), _on_open_character)
 	detail_row.add_child(_char_btn)
 
 	var spacer := Control.new()
@@ -164,6 +179,9 @@ func _build() -> void:
 		_persist()
 		_refresh())
 	_workshop = WorkshopPanel.new(self, func():
+		_persist()
+		_refresh())
+	_dorm = DormPanel.new(self, func():
 		_persist()
 		_refresh())
 
@@ -260,6 +278,9 @@ func _building_card(b: Dictionary) -> Control:
 	elif b["unlocks"] == "workshop":
 		extra = _button("Craft", Vector2(64, 20), _on_open_workshop)
 		buttons.add_child(extra)
+	elif b["unlocks"] == "dorm":
+		extra = _button("Open", Vector2(64, 20), func(): _dorm.open(save))
+		buttons.add_child(extra)
 	_cards[b["id"]] = {"state": state, "effect": effect, "cost": cost, "button": btn, "extra": extra}
 	return panel
 
@@ -282,7 +303,9 @@ func _refresh() -> void:
 		var c := GameData.character_by_id(id)
 		var open := SaveData.character_unlocked(save, id)
 		var on: bool = id == sel
-		if open:
+		if open and SaveData.is_away(save, id):
+			btn.text = "%s  Lv %d\nOn expedition" % [c["name"], SaveData.char_level(save, id)]
+		elif open:
 			btn.text = "%s  Lv %d\n%s" % [c["name"], SaveData.char_level(save, id), c["school"]]
 		else:
 			btn.text = "%s\nLocked" % c["name"]
@@ -297,6 +320,8 @@ func _refresh() -> void:
 		_char_panel.refresh()
 	if _workshop != null and _workshop.is_open():
 		_workshop.refresh()
+	if _dorm != null and _dorm.is_open():
+		_dorm.refresh()
 	for b in GameData.BUILDINGS:
 		var id: String = b["id"]
 		var c: Dictionary = _cards[id]
@@ -345,6 +370,11 @@ func _building_effect(b: Dictionary, lv: int, maxed: bool) -> String:
 		"character":
 			var c := GameData.character_by_id(b["character"])
 			return "%s has returned" % c["name"] if lv >= 1 else "Brings back %s (%s)" % [c["name"], c["school"]]
+		"dorm":
+			var rooms := SaveData.dorm_rooms(save)
+			if maxed:
+				return "Rooms %d, expedition slots %d (max)" % [rooms, lv]
+			return "Rooms %d > %d, expedition slots %d > %d" % [rooms, GameData.DORM_ROOMS[lv + 1], lv, lv + 1]
 		"workshop":
 			if maxed:
 				return "Crafts up to %s (max)" % GameData.GEAR_RARITY_NAMES[lv]
@@ -387,6 +417,9 @@ func _on_buy_lesson(id: String) -> void:
 
 
 func _on_pick_character(id: String) -> void:
+	if SaveData.is_away(save, id):
+		_char_detail.text = "%s is on an expedition. Collect or recall them in the Dormitory first." % GameData.character_by_id(id)["name"]
+		return
 	if not SaveData.character_unlocked(save, id):
 		# show who they are and where they live instead of selecting them
 		var c := GameData.character_by_id(id)

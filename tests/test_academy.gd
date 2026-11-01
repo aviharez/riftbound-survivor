@@ -170,6 +170,51 @@ func _init() -> void:
 		SaveData.add_item(loaded, GameData.roll_item(rng, 0))
 	check(loaded["items"].size() == GameData.INVENTORY_CAP and SaveData.add_item(loaded, GameData.roll_item(rng, 0)) == -1, "inventory cap")
 
+	# --- bond, dormitory, expeditions
+	d = SaveData.reset()
+	check(GameData.bond_level_for(0) == 0 and GameData.bond_level_for(GameData.BOND_EXP[2]) == 2, "bond levels")
+	for c in GameData.CHARACTERS:
+		for lv in range(1, GameData.BOND_MAX + 1):
+			check(BondScenes.scene(c["id"], lv).size() == 2, "%s has bond scene %d" % [c["id"], lv])
+	SaveData.bank_run(d, {"char_exp": 10}, {"victory": true, "kills": 1, "character": "nym"})
+	check(int(SaveData.char_state(d, "nym")["bond"]) == GameData.BOND_RUN + GameData.BOND_VICTORY, "a run gives bond")
+	check(SaveData.dorm_rooms(d) == 0 and not SaveData.move_in(d, "astra"), "no rooms while the dormitory is in ruins")
+	check(SaveData.expedition_slots(d) == 0 and not SaveData.start_expedition(d, "lyra", "scout", 1000), "no expeditions without a dormitory")
+	d["gold"] = 10000
+	d["materials"] = 5000
+	d["aether"] = 500
+	check(SaveData.upgrade(d, "dormitory"), "dormitory Lv1")
+	check(SaveData.move_in(d, "astra") and not SaveData.move_in(d, "astra"), "move in once")
+	check(not SaveData.move_in(d, "selene"), "locked character cannot move in")
+	check(SaveData.talk(d, "astra", "2026-11-01") and not SaveData.talk(d, "astra", "2026-11-01"), "one talk per day")
+	check(SaveData.talk(d, "astra", "2026-11-02"), "talk again the next day")
+	check(int(SaveData.char_state(d, "astra")["bond"]) == GameData.BOND_TALK * 2, "talks give bond")
+	check(not SaveData.talk(d, "lyra", "2026-11-02"), "non-residents cannot be talked to")
+	d["character"] = "astra"
+	check(not SaveData.start_expedition(d, "astra", "scout", 1000), "the Rift character cannot leave")
+	check(not SaveData.start_expedition(d, "lyra", "nonsense", 1000), "unknown mission refused")
+	check(SaveData.start_expedition(d, "lyra", "relics", 1000), "lyra leaves")
+	check(SaveData.is_away(d, "lyra") and not SaveData.start_expedition(d, "kael", "scout", 1000), "one slot at dormitory Lv1")
+	var r2 := RandomNumberGenerator.new()
+	r2.seed = 5
+	check(SaveData.collect_expedition(d, 0, 1000 + 3600, r2).is_empty(), "cannot collect early")
+	var gold0: int = d["gold"]
+	var got := SaveData.collect_expedition(d, 0, 1000 + 8 * 3600, r2)
+	check(not got.is_empty() and got["char"] == "lyra" and got["items"].size() == 1, "relic hunt brings a piece")
+	check(d["gold"] == gold0 + int(GameData.EXPEDITIONS[3]["rewards"]["gold"]) and not SaveData.is_away(d, "lyra"), "expedition rewards paid, lyra is back")
+	check(int(SaveData.char_state(d, "lyra")["bond"]) == GameData.BOND_EXPEDITION, "expedition gives bond")
+	check(SaveData.expedition_rewards("scout", 11)["gold"] > SaveData.expedition_rewards("scout", 1)["gold"], "higher level, better rewards")
+	SaveData.start_expedition(d, "kael", "herbs", 5000)
+	SaveData.cancel_expedition(d, 0)
+	check(not SaveData.is_away(d, "kael") and d["expeditions"].is_empty(), "recall frees the slot")
+	SaveData.start_expedition(d, "kael", "herbs", 5000)
+	SaveData.save_data(d)
+	loaded = SaveData.load_data()
+	check(loaded["dorm"] == ["astra"] and loaded["expeditions"].size() == 1 and typeof(loaded["expeditions"][0]["end"]) == TYPE_INT, "dorm and expeditions survive save/load")
+	check(SaveData.bond_level(loaded, "astra") == GameData.bond_level_for(GameData.BOND_TALK * 2), "bond survives save/load")
+	var bonus_mods: Array = SaveData.char_run_bonus(loaded, "astra")["mods"]
+	check(bonus_mods.size() == GameData.CHAR_LEVEL_MODS.size() + GameData.BOND_LEVEL_MODS.size(), "bond mods reach the run bonus")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveData.path))
 	print("academy tests: ", "PASS" if failures == 0 else "%d FAILED" % failures)
 	quit(1 if failures > 0 else 0)
