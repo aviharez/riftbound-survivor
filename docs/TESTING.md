@@ -17,6 +17,17 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Tahap 5a: tingkat danger + pilih lokasi.**
+- Halaman Rift: tab lokasi 1–5 (yang terkunci abu-abu) dan tombol **DANGER 1–5**. Hijau = sudah dimenangkan,
+  merah = belum, abu-abu = terkunci.
+- Menang Danger N membuka Danger N+1. Menang Danger 1 sebuah lokasi membuka lokasi berikutnya.
+- Danger lebih tinggi: musuh lebih tebal, lebih sakit, lebih banyak, elite lebih sering, hadiah dikali (lihat
+  chip hadiah "x2.2"). Ada chip **Rec. Lv** (merah kalau level karaktermu di bawah rekomendasi).
+- Lokasi 2–5 untuk sementara masih memakai peta dan musuh Courtyard (konten aslinya menyusul di 5b–5e).
+- Workshop: crafting Rare butuh Sylvan Essence (Whispering Forest), Epic butuh Ink Essence (Forgotten Library).
+- [ ] Danger 2–3 terasa lebih susah tapi masih adil?
+- [ ] Hadiah terasa sepadan dengan kesulitannya?
+
 **Tahap 4 selesai: waktu pembangunan + iklan berhadiah (placeholder).**
 - Membangun / upgrade bangunan sekarang **butuh waktu nyata**. Biaya dibayar di awal, levelnya naik saat timer
   habis. Level 1 = 5 menit, Lv 2 = 30 menit, Lv 3 = 2 jam, Lv 4 = 8 jam. Bangunan karakter 30–60 menit.

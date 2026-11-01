@@ -37,6 +37,7 @@ var _rift_char: Control
 var _reset_btn: Button
 var _armed := false
 var _toast: Label
+var _rift_sub: Label
 var _toast_t := 0.0
 
 
@@ -118,6 +119,8 @@ func _demo_save() -> Dictionary:
 	SaveData.start_expedition(d, "kael", "scout", now - 7200)
 	d["runs"] = 6
 	d["victories"] = 2
+	d["progress"] = {"courtyard": 2}
+	d["danger"] = 3
 	d["best_kills"] = 812
 	d["last_run"] = {"victory": true, "kills": 640, "gold": 420, "materials": 90, "aether": 25, "character": "selene"}
 	return d
@@ -312,7 +315,8 @@ func _build_home_hud() -> void:
 	var big := UiKit.title("ENTER THE RIFT", 12, UiKit.GOLD)
 	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gt.add_child(big)
-	var sub := UiKit.label("%s · Danger 1" % GameData.LOCATIONS[0]["name"], 10, Color("e8d9b8"))
+	var sub := UiKit.label("", 10, Color("e8d9b8"))
+	_rift_sub = sub
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gt.add_child(sub)
 	rift.add_child(go)
@@ -475,6 +479,7 @@ func _refresh_home() -> void:
 	for b in GameData.BUILDINGS:
 		total += SaveData.building_level(save, b["id"])
 	_avatar_lv.text = "Lv %d  ·  Academy Lv %d" % [SaveData.char_level(save, c["id"]), 1 + total]
+	_rift_sub.text = "%s · Danger %d" % [GameData.location_by_id(String(save["location"]))["name"], int(save["danger"])]
 	UiKit.refresh_portrait(_avatar)
 	UiKit.refresh_portrait(_rift_char)
 	for ch in _quests.get_children():
@@ -540,8 +545,14 @@ func quests() -> Array:
 		if SaveData.can_talk(save, id, day):
 			out.append({"text": "Talk to the residents (Dormitory)", "ready": true, "go": func(): dorm.open(save)})
 			break
-	if int(save["victories"]) == 0:
-		out.append({"text": "Win a run in the %s" % GameData.LOCATIONS[0]["name"], "go": show_page.bind("rift")})
+	# the next step in the Rift: the first location / danger not won yet
+	for l in GameData.LOCATIONS:
+		if not SaveData.location_unlocked(save, l["id"]):
+			break
+		var won := SaveData.cleared(save, l["id"])
+		if won < GameData.DANGERS.size():
+			out.append({"text": "Win %s, Danger %d" % [l["name"], won + 1], "go": show_page.bind("rift")})
+			break
 	return out.slice(0, 4)
 
 

@@ -4,12 +4,13 @@ extends RefCounted
 ## Autotests never write here; tests/test_academy.gd uses its own path.
 
 const DEFAULT_PATH := "user://riftbound_save.json"
-const VERSION := 6
+const VERSION := 7
 # v1 -> v2: "lessons" (Staff Room permanent upgrades, id -> rank); new buildings start at 0 (handled generally).
 # v2 -> v3: "shards" (Arcane Shards) and "characters" (id -> {exp, passive, weapon}: level EXP and enhance ranks).
 # v3 -> v4: equipment ("items" inventory, "equipped" char -> slot -> uid, "next_uid") and "essence" (location -> n).
 # v4 -> v5: character "bond" EXP, "dorm" (resident ids), "talked" (id -> date of the last talk), "expeditions".
 # v5 -> v6: "construction" (buildings being built: {id, end, total}) and "ads" ({day, count}: rewarded ads today).
+# v6 -> v7: "progress" (location id -> highest danger won), selected "location" and "danger".
 const RESOURCES := ["gold", "materials", "aether", "exp", "shards"]
 const ENHANCE_TRACKS := ["passive", "weapon"]
 
@@ -32,6 +33,7 @@ static func defaults() -> Dictionary:
 		"items": [], "next_uid": 1, "equipped": {}, "essence": {},
 		"dorm": [], "talked": {}, "expeditions": [],
 		"construction": [], "ads": {"day": "", "count": 0},
+		"progress": {}, "location": "courtyard", "danger": 1,
 	}
 
 
@@ -72,6 +74,7 @@ static func load_data() -> Dictionary:
 	_clean_equipment(d)
 	_clean_dorm(d)
 	_clean_construction(d)
+	_clean_progress(d)
 	d["version"] = VERSION
 	# a locked (or unknown) selected character falls back to Astra
 	if not character_unlocked(d, String(d["character"])):
@@ -137,6 +140,48 @@ static func upgrade(d: Dictionary, id: String) -> bool:
 		d[k] = int(d[k]) - int(cost[k])
 	d["buildings"][id] = building_level(d, id) + 1
 	return true
+
+
+# ------------------------------------------------------------------ locations and danger
+
+static func _clean_progress(d: Dictionary) -> void:
+	if typeof(d["progress"]) != TYPE_DICTIONARY:
+		d["progress"] = {}
+	for k in d["progress"].keys():
+		d["progress"][k] = clampi(int(d["progress"][k]), 0, GameData.DANGERS.size())
+	d["danger"] = int(d["danger"])
+	if not location_unlocked(d, String(d["location"])):
+		d["location"] = "courtyard"
+	if not danger_unlocked(d, String(d["location"]), int(d["danger"])):
+		d["danger"] = 1
+
+
+## Highest danger won in a location (0 = none).
+static func cleared(d: Dictionary, loc: String) -> int:
+	return int(d["progress"].get(loc, 0))
+
+
+static func location_unlocked(d: Dictionary, loc: String) -> bool:
+	var i := GameData.location_index(loc)
+	if GameData.LOCATIONS[i]["id"] != loc:
+		return false
+	return i == 0 or cleared(d, GameData.LOCATIONS[i - 1]["id"]) >= 1
+
+
+static func danger_unlocked(d: Dictionary, loc: String, danger: int) -> bool:
+	return location_unlocked(d, loc) and danger >= 1 and danger <= GameData.DANGERS.size() and danger <= cleared(d, loc) + 1
+
+
+## A victory at `danger` in `loc`; returns what it opened ("" , "danger" or "location").
+static func record_victory(d: Dictionary, loc: String, danger: int) -> String:
+	if danger <= cleared(d, loc):
+		return ""
+	var first := cleared(d, loc) == 0
+	d["progress"][loc] = danger
+	var i := GameData.location_index(loc)
+	if first and i + 1 < GameData.LOCATIONS.size():
+		return "location"
+	return "danger" if danger < GameData.DANGERS.size() else ""
 
 
 # ------------------------------------------------------------------ construction (real-time timers)
@@ -600,6 +645,11 @@ static func craft_rarity_cap(d: Dictionary) -> int:
 	return lv if lv > 0 else -1
 
 
+## Location whose essence a craft (or salvage) of `rarity` uses.
+static func craft_loc(rarity: int) -> String:
+	return GameData.CRAFT_ESSENCE[clampi(rarity, 0, GameData.CRAFT_ESSENCE.size() - 1)]
+
+
 static func can_craft(d: Dictionary, rarity: int, loc: String) -> bool:
 	if rarity < 0 or rarity > craft_rarity_cap(d) or d["items"].size() >= GameData.INVENTORY_CAP:
 		return false
@@ -648,5 +698,6 @@ static func bank_run(d: Dictionary, rewards: Dictionary, summary: Dictionary) ->
 	d["runs"] = int(d["runs"]) + 1
 	if summary.get("victory", false):
 		d["victories"] = int(d["victories"]) + 1
+		record_victory(d, String(summary.get("location", "courtyard")), int(summary.get("danger", 1)))
 	d["best_kills"] = max(int(d["best_kills"]), int(summary.get("kills", 0)))
 	d["last_run"] = summary

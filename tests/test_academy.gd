@@ -250,6 +250,27 @@ func _init() -> void:
 	SaveData.bank_bonus(d, {"gold": 100, "essence": {"courtyard": 3}})
 	check(d["gold"] == g0 + 100 and SaveData.essence(d, "courtyard") == 3, "double rewards add the resources again")
 
+	# --- v7: locations and danger ---
+	d = SaveData.defaults()
+	check(SaveData.location_unlocked(d, "courtyard") and not SaveData.location_unlocked(d, "forest"), "only the courtyard at first")
+	check(SaveData.danger_unlocked(d, "courtyard", 1) and not SaveData.danger_unlocked(d, "courtyard", 2), "danger 1 only")
+	SaveData.bank_run(d, {}, {"victory": false, "location": "courtyard", "danger": 1})
+	check(SaveData.cleared(d, "courtyard") == 0, "a defeat opens nothing")
+	SaveData.bank_run(d, {}, {"victory": true, "location": "courtyard", "danger": 1})
+	check(SaveData.danger_unlocked(d, "courtyard", 2) and SaveData.location_unlocked(d, "forest"), "winning danger 1 opens danger 2 and the next location")
+	check(not SaveData.danger_unlocked(d, "forest", 2) and not SaveData.location_unlocked(d, "library"), "the forest starts at danger 1")
+	check(SaveData.record_victory(d, "courtyard", 1) == "", "winning again opens nothing new")
+	var m1 := GameData.run_mods("courtyard", 1)
+	var m5 := GameData.run_mods("nexus", 5)
+	check(is_equal_approx(float(m1["hp"]), 1.0) and float(m5["hp"]) > float(m1["hp"]) * 10.0 and float(m5["reward"]) > float(m1["reward"]), "later locations and dangers are harder and pay more")
+	check(GameData.recommended_level("nexus", 5) > GameData.recommended_level("forest", 1), "recommended level grows")
+	d["location"] = "nexus"
+	d["danger"] = 4
+	SaveData.save_data(d)
+	loaded = SaveData.load_data()
+	check(loaded["location"] == "courtyard" and loaded["danger"] == 1, "a locked selection falls back on load")
+	check(SaveData.craft_loc(0) == "courtyard" and SaveData.craft_loc(2) == "forest", "higher rarities use later essences")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveData.path))
 	print("academy tests: ", "PASS" if failures == 0 else "%d FAILED" % failures)
 	quit(1 if failures > 0 else 0)

@@ -603,8 +603,42 @@ const INVENTORY_CAP := 60
 const EQUIP_DROP_BOSS := 1
 const EQUIP_DROP_ELITE_CHANCE := 0.15
 const EQUIP_DROP_VICTORY := 1
-# Rift Essence: one kind per location (only the Ruined Courtyard exists so far).
-const LOCATIONS := [{"id": "courtyard", "name": "Ruined Courtyard", "essence": "Courtyard Essence"}]
+# --- Locations and danger (design doc section 6) ---
+# Five locations in order; each has its own enemies, boss, tileset (`tiles`) and Rift Essence. `tier` scales
+# enemy HP / damage (LOCATION_HP_PER_TIER...) and rewards (LOCATION_REWARD_PER_TIER) on top of the danger level.
+# Winning danger 1 of a location opens the next location; winning danger N opens N + 1 there.
+const LOCATIONS := [
+	{"id": "courtyard", "name": "Ruined Courtyard", "essence": "Courtyard Essence", "tier": 0,
+		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "courtyard",
+		"desc": "The ruined grounds where the Rift first opened."},
+	{"id": "forest", "name": "Whispering Forest", "essence": "Sylvan Essence", "tier": 1,
+		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "forest",
+		"desc": "The academy's old herb woods, where the trees whisper back."},
+	{"id": "library", "name": "Forgotten Library", "essence": "Ink Essence", "tier": 2,
+		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "library",
+		"desc": "Sealed stacks under the academy. The books still bite."},
+	{"id": "cavern", "name": "Crystal Cavern", "essence": "Prism Essence", "tier": 3,
+		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "cavern",
+		"desc": "Glowing caves where the Rift grows crystals like weeds."},
+	{"id": "nexus", "name": "Rift Nexus", "essence": "Rift Essence", "tier": 4,
+		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "nexus",
+		"desc": "The heart of the Rift. Nothing here was ever an academy."},
+]
+const LOCATION_HP_PER_TIER := 0.9       # enemy HP x (1 + this x tier)
+const LOCATION_DMG_PER_TIER := 0.35
+const LOCATION_REWARD_PER_TIER := 0.6   # rewards x (1 + this x tier)
+# Danger 1..5: enemy HP / damage / spawn rate multipliers, elites come `elite` times as often, rewards x `reward`.
+const DANGERS := [
+	{"hp": 1.0, "dmg": 1.0, "spawn": 1.0, "elite": 1.0, "reward": 1.0},
+	{"hp": 1.6, "dmg": 1.3, "spawn": 1.15, "elite": 1.3, "reward": 1.5},
+	{"hp": 2.5, "dmg": 1.6, "spawn": 1.3, "elite": 1.6, "reward": 2.2},
+	{"hp": 4.0, "dmg": 2.0, "spawn": 1.45, "elite": 2.0, "reward": 3.2},
+	{"hp": 6.0, "dmg": 2.6, "spawn": 1.6, "elite": 2.5, "reward": 4.5},
+]
+const REC_LEVEL_PER_TIER := 5     # recommended character level = 1 + tier x this + (danger - 1) x the next
+const REC_LEVEL_PER_DANGER := 1
+# Workshop crafting takes the essence of the location for that rarity (Legendary only drops).
+const CRAFT_ESSENCE := ["courtyard", "courtyard", "forest", "library", "cavern"]
 const ESSENCE_PER_KILLS := 40      # +1 essence per this many kills
 const ESSENCE_BOSS := 5
 # Workshop crafting: Workshop level L crafts up to rarity L (0 = Common ... Lv 3 = Epic); Legendary only drops.
@@ -733,6 +767,32 @@ static func build_time(b: Dictionary, lv: int) -> int:
 	if b["unlocks"] == "character":
 		return int(float(b["costs"][lv]["gold"]) * BUILD_TIME_PER_GOLD)
 	return int(BUILD_TIMES[mini(lv, BUILD_TIMES.size() - 1)])
+
+
+static func location_by_id(id: String) -> Dictionary:
+	for l in LOCATIONS:
+		if l["id"] == id:
+			return l
+	return LOCATIONS[0]
+
+
+static func location_index(id: String) -> int:
+	for i in LOCATIONS.size():
+		if LOCATIONS[i]["id"] == id:
+			return i
+	return 0
+
+
+## Enemy HP, damage, spawn, elite and reward multipliers for a location + danger (1..5).
+static func run_mods(loc_id: String, danger: int) -> Dictionary:
+	var tier := float(location_by_id(loc_id)["tier"])
+	var d: Dictionary = DANGERS[clampi(danger, 1, DANGERS.size()) - 1]
+	return {"hp": float(d["hp"]) * (1.0 + LOCATION_HP_PER_TIER * tier), "dmg": float(d["dmg"]) * (1.0 + LOCATION_DMG_PER_TIER * tier),
+		"spawn": float(d["spawn"]), "elite": float(d["elite"]), "reward": float(d["reward"]) * (1.0 + LOCATION_REWARD_PER_TIER * tier)}
+
+
+static func recommended_level(loc_id: String, danger: int) -> int:
+	return 1 + int(location_by_id(loc_id)["tier"]) * REC_LEVEL_PER_TIER + (danger - 1) * REC_LEVEL_PER_DANGER
 
 
 static func building_by_id(id: String) -> Dictionary:

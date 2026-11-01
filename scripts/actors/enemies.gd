@@ -297,7 +297,7 @@ func _back_to_idle(b: Enemy, enraged: bool) -> void:
 
 
 func _shoot(from: Vector2, vel: Vector2, dmg_amount: float) -> void:
-	bullets.append({"pos": from, "vel": vel, "dmg": dmg_amount, "life": 5.0})
+	bullets.append({"pos": from, "vel": vel, "dmg": dmg_amount * float(game.run_mods["dmg"]), "life": 5.0})
 
 
 func _update_bullets(delta: float, player: Player) -> void:

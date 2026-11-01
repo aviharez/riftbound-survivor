@@ -115,6 +115,11 @@ Read it before starting any phase.**
   (`Home.watch_ad`, `AD_SPEEDUP_SEC` / `AD_SPEEDUP_SHARE`), one revive per run (`main.on_player_died` ->
   `Hud.show_revive`, `AD_REVIVE_HP`), double run rewards on the result screen (`SaveData.bank_bonus`, resources
   only). Never in autotests. Android notifications for finished timers need a plugin: not done yet.
+- Locations + danger (phase 5, design doc section 6): `GameData.LOCATIONS` (5 rows: enemies, boss, tiles, essence,
+  tier) and `DANGERS` (5 rows); `GameData.run_mods(loc, danger)` gives hp/dmg/spawn/elite/reward multipliers used in
+  `main` (`run_mods`), `recommended_level`. Save v7: `progress` (loc -> highest danger won), selected `location` /
+  `danger`; `SaveData.location_unlocked` / `danger_unlocked` / `record_victory` (called by `bank_run`). Crafting
+  uses the essence of `CRAFT_ESSENCE[rarity]`. Autotests: `--loc=forest --danger=3` (summary prints `loc= danger=`).
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.

@@ -45,6 +45,9 @@ var evolutions: Array = []      # evolved weapon ids, in the order they happened
 var _evo_announced := {}        # base weapon id -> true once "ready to evolve" was shown
 var shrines_used := 0
 var difficulty := 1.0
+var location_id := "courtyard"
+var danger := 1
+var run_mods := {"hp": 1.0, "dmg": 1.0, "spawn": 1.0, "elite": 1.0, "reward": 1.0}   # GameData.run_mods(location, danger)
 var final_swarm := false
 var final_swarm_t := 0.0
 var boss_spawned := false
@@ -77,6 +80,7 @@ var _shot_times: Array = [3.0, 160.0]
 var _finishing := false
 var _choice_shot_done := false
 var _revived := false
+var _loc_forced := false
 var _auto_portal_at := 240.0
 var _swarm_at := -1.0  # --swarm-at=30: start the Final Swarm early (autotest only)
 var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
@@ -109,8 +113,12 @@ func _ready() -> void:
 		weapon_slots = SaveData.slots_for(save, "weapon")
 		if character_id == "":
 			character_id = String(save.get("character", "astra"))
+		if not _loc_forced:
+			location_id = String(save["location"])
+			danger = int(save["danger"])
 	if character_id == "":
 		character_id = "astra"
+	run_mods = GameData.run_mods(location_id, danger)
 
 	var t0 := Time.get_ticks_msec()
 	var map := MapGenerator.new().generate(seed_value)
@@ -248,6 +256,12 @@ func _parse_args() -> void:
 				_shot_times.append(float(t))
 		elif a.begins_with("--shot="):
 			_shot_path = a.get_slice("=", 1)
+		elif a.begins_with("--loc="):
+			location_id = GameData.location_by_id(a.get_slice("=", 1))["id"]
+			_loc_forced = true
+		elif a.begins_with("--danger="):
+			danger = clampi(int(a.get_slice("=", 1)), 1, GameData.DANGERS.size())
+			_loc_forced = true
 
 
 # ------------------------------------------------------------------ main loop
@@ -307,7 +321,7 @@ func swarm_level() -> int:
 
 
 func hp_mult() -> float:
-	var m := (1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0) * difficulty
+	var m := (1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0) * difficulty * float(run_mods["hp"])
 	if final_swarm:
 		m *= 1.0 + GameData.FINAL_SWARM_HP_PER_LEVEL * swarm_progress()
 	return m
@@ -321,7 +335,7 @@ func speed_mult() -> float:
 
 
 func dmg_mult() -> float:
-	return 1.0 + GameData.FINAL_SWARM_DMG_PER_LEVEL * swarm_progress()
+	return (1.0 + GameData.FINAL_SWARM_DMG_PER_LEVEL * swarm_progress()) * float(run_mods["dmg"])
 
 
 ## Threat step for the HUD difficulty meter: one step per two minutes of the run, plus curse
@@ -341,7 +355,7 @@ func threat_name() -> String:
 func _update_timeline(delta: float) -> void:
 	# Elites every 60 s
 	if elapsed >= _next_elite:
-		_next_elite += GameData.ELITE_INTERVAL
+		_next_elite += GameData.ELITE_INTERVAL / float(run_mods["elite"])
 		_spawn_elite()
 		hud.toast("An Elite has appeared!", Color(1, 0.55, 0.2))
 	# Rift Surges
@@ -383,7 +397,7 @@ func _update_spawning(delta: float) -> void:
 		rate = lerp(GameData.SPAWN_RATE_START, GameData.SPAWN_RATE_END, clamp(elapsed / GameData.RUN_TIME, 0.0, 1.0))
 		if surge_active():
 			rate *= _surge_mult
-	rate *= difficulty
+	rate *= difficulty * float(run_mods["spawn"])
 	if enemies.boss != null:
 		rate *= GameData.BOSS_ALIVE_SPAWN_MULT
 	_spawn_accum += rate * delta
@@ -403,9 +417,10 @@ func _spawn_point() -> Vector2:
 func _pick_type() -> String:
 	var keys: Array = []
 	var weights: Array = []
+	var allowed: Array = GameData.location_by_id(location_id)["enemies"]
 	for k in GameData.ENEMY_TYPES:
 		var d: Dictionary = GameData.ENEMY_TYPES[k]
-		if d.get("swarm_only", false):
+		if d.get("swarm_only", false) or not k in allowed:
 			continue
 		if elapsed >= float(d["min_time"]):
 			keys.append(k)
@@ -546,7 +561,7 @@ func _double_rewards(rewards: Dictionary) -> void:
 	var save := SaveData.load_data()
 	if not SaveData.use_ad(save, SaveData.today()):
 		return
-	var loc: String = GameData.LOCATIONS[0]["id"]
+	var loc := location_id
 	var r := rewards.duplicate()
 	r["essence"] = {loc: int(rewards.get("essence", 0))}
 	SaveData.bank_bonus(save, r)
@@ -821,7 +836,8 @@ func summon_boss(pos: Vector2) -> void:
 	screen_fx.shake(0.6)
 	screen_fx.chroma(0.8)
 	screen_fx.hitstop(0.12)
-	enemies.spawn_boss(pos, 1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0)
+	var b := enemies.spawn_boss(pos, (1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0) * float(run_mods["hp"]))
+	b.dmg *= float(run_mods["dmg"])
 	hud.banner("%s has emerged!" % GameData.BOSS["name"], Color(1, 0.3, 0.35), 3.0)
 
 
@@ -853,13 +869,13 @@ func _end_run(won: bool) -> void:
 		return
 	run_over = true
 	victory = won
-	var share := 1.0 if won else GameData.DEFEAT_REWARD_SHARE
+	var share := (1.0 if won else GameData.DEFEAT_REWARD_SHARE) * float(run_mods["reward"])
 	var academy_gold := int((gold_collected * 2.0 + kills * 0.5) * share)
 	var materials := int(kills / 5.0 * share)
-	var aether := int((25 if boss_killed else 0) + final_swarm_t / 10.0)
+	var aether := int(((25 if boss_killed else 0) + final_swarm_t / 10.0) * float(run_mods["reward"]))
 	var exp_gain := int((level * 20 + kills * 0.2) * share)
 	# Arcane Shards are kept in full on defeat (they come from hard fights, not from the clock)
-	var shards := (GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD
+	var shards := (GameData.SHARDS_BOSS * danger if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD
 	# equipment drops and Rift Essence (kept on defeat too: they were found, not earned by the clock)
 	var drop_rng := RandomNumberGenerator.new()
 	drop_rng.seed = seed_value * 7919 + kills
@@ -870,8 +886,8 @@ func _end_run(won: bool) -> void:
 			n_drops += 1
 	for i in n_drops:
 		drops.append(GameData.roll_item(drop_rng, GameData.roll_gear_rarity(drop_rng)))
-	var loc: String = GameData.LOCATIONS[0]["id"]
-	var essence := kills / GameData.ESSENCE_PER_KILLS + (GameData.ESSENCE_BOSS if boss_killed else 0)
+	var loc := location_id
+	var essence := kills / GameData.ESSENCE_PER_KILLS + (GameData.ESSENCE_BOSS * danger if boss_killed else 0)
 	equipment_dropped = drops.size()
 	var drop_names: Array = []
 	for it in drops:
@@ -899,13 +915,14 @@ func _end_run(won: bool) -> void:
 		"VICTORY" if won else "DEFEAT", kills, t / 60, t % 60, level, chests_opened, shrines_used,
 		int(fog.explored_ratio() * 100), ", ".join(weapon_list), ", ".join(tome_list) if not tome_list.is_empty() else "-", int(player.damage_dealt), int(final_swarm_t),
 		" (sent to the academy)" if won else " (50% on defeat, sent to the academy)", academy_gold, materials, aether, exp_gain, shards,
-		GameData.LOCATIONS[0]["essence"], essence, ", ".join(drop_names) if not drop_names.is_empty() else "none", lv_line, seed_value]
+		GameData.location_by_id(loc)["essence"], essence, ", ".join(drop_names) if not drop_names.is_empty() else "none", lv_line, seed_value]
 	print("[run] END ", text.replace("\n", " | "))
 	if not _auto:
 		var save := SaveData.load_data()
 		SaveData.bank_run(save, {"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain,
 			"shards": shards, "char_exp": exp_gain, "essence": {loc: essence}, "items": drops},
 			{"victory": won, "kills": kills, "time": t, "level": level, "seed": seed_value, "character": character_id,
+			"location": location_id, "danger": danger,
 			"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain, "shards": shards})
 		SaveData.save_data(save)
 	hud.show_result({"won": won, "kills": kills, "time": t, "level": level, "chests": chests_opened, "shrines": shrines_used,
@@ -951,9 +968,9 @@ func _autotest_step(delta: float) -> void:
 		if _shot_path != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
-		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s char=%s trait_procs=%d lessons=%s char_level=%d enhance=%d,%d max_hp=%d shards=%d equipment=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions,
+		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s char=%s trait_procs=%d lessons=%s char_level=%d enhance=%d,%d max_hp=%d shards=%d equipment=%d loc=%s danger=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions,
 			character_id, weapons.trait_procs, _lessons_applied, char_bonus["level"], char_bonus["passive"], char_bonus["weapon"], int(player.stats["max_hp"]),
-			(GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD, equipment_dropped])
+			(GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD, equipment_dropped, location_id, danger])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s swarm_t=%.0f swarm_lv=%d threat=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm, final_swarm_t, swarm_level(), threat_name()])
 		get_tree().quit()

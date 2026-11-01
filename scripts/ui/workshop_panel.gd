@@ -119,8 +119,9 @@ func is_open() -> bool:
 	return root.visible
 
 
+## Essence for the picked craft rarity (CRAFT_ESSENCE: higher rarities need later locations).
 func _loc() -> String:
-	return GameData.LOCATIONS[0]["id"]
+	return SaveData.craft_loc(_rarity)
 
 
 func refresh() -> void:
@@ -129,7 +130,9 @@ func refresh() -> void:
 		ch.queue_free()
 	_header.add_child(UiKit.title("Lv %d" % SaveData.building_level(save, "workshop"), 12, UiKit.CYAN))
 	_header.add_child(UiKit.chip("materials", str(int(save["materials"]))))
-	_header.add_child(UiKit.chip("essence", str(SaveData.essence(save, _loc()))))
+	var ess := UiKit.chip("essence", str(SaveData.essence(save, _loc())))
+	ess.tooltip_text = GameData.location_by_id(_loc())["essence"]
+	_header.add_child(ess)
 	_header.add_child(UiKit.chip("chest", "%d / %d" % [save["items"].size(), GameData.INVENTORY_CAP]))
 	for i in _rarity_buttons.size():
 		var b: Button = _rarity_buttons[i]
@@ -141,6 +144,7 @@ func refresh() -> void:
 		_cost.add_child(UiKit.label("Restore the Workshop to craft.", 10, UiKit.RED))
 	else:
 		_cost.add_child(UiKit.label("Cost", 10, Color("d8d2ee")))
+		_cost.tooltip_text = "Essence: " + GameData.location_by_id(_loc())["essence"]
 		_cost.add_child(UiKit.cost_chips(GameData.CRAFT_COST[_rarity], {"materials": save["materials"], "essence": SaveData.essence(save, _loc())}))
 	var ok := SaveData.can_craft(save, _rarity, _loc())
 	for id in _craft_rows:
@@ -215,7 +219,7 @@ func _on_salvage(uid: int) -> void:
 	_armed_uid = -1
 	var it := SaveData.item_by_uid(save, uid)
 	var name := GameData.item_name(it)
-	if SaveData.salvage(save, uid, _loc()):
+	if SaveData.salvage(save, uid, SaveData.craft_loc(int(it["rarity"]))):
 		_last.text = "Salvaged %s." % name
 		on_change.call()
 	refresh()
