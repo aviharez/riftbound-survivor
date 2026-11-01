@@ -2,6 +2,8 @@
 
 Godot 4 (tested on 4.7.2) prototype of the Rift combat run for *Riftbound: Arcane Academy*.
 Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact 9BGeNePKAHEbQSCny4Voxm).
+**Agreed game design (roster, meta systems, locations/danger, economy, monetization, phases): `docs/game_design.md`.
+Read it before starting any phase.**
 
 ## Roles
 - Claude writes all code, runs the automated tests, and pushes.
@@ -30,10 +32,8 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
   academy, with a school/element, a role and a home building). Each has a mechanical `trait` (`GameData.TRAITS`,
   code in `weapons.gd` "character traits": Astra arcane_echo, Lyra kindling, Kael retaliation, Nym thornheal,
   Selene frostbite in `Enemies.damage`, Noah plague) plus small `per_level` stat growth, and `unlock`: the building
-  whose restoration brings them back ("" = from the start). Agreed roster plan (later phases, not built yet):
-  Rai (Chain Lightning, Bell Tower), Nox (Void Well, Forbidden Archive), Wren (Arcane Familiar, Library max),
-  teachers: Spellblade Instructor (Crescent Slash, Duel Hall), Astronomy Professor (Meteor Fall, Observatory),
-  Rune Master (Chakram/Mine, Rune Workshop), Aether Researcher (Aether Beam, Arcana Lab). A character without
+  whose restoration brings them back ("" = from the start). Full roster (13: mostly cute girls, Kael and Noah
+  the boys) with roles, outfits and home buildings is in `docs/game_design.md` section 3. A character without
   sprite files falls back to the coloured placeholder.
 - Academy buildings (`GameData.BUILDINGS`): `unlocks` = tome / weapon (slots), character (Lv 1 brings back
   `character`), lessons (Staff Room: teachers sell permanent upgrades `GameData.LESSONS`, bought with EXP + gold,
@@ -139,5 +139,7 @@ stays under the bloom threshold (only the rim blooms); Void Well detonates with 
 effects); Thornseed uses the custom thorn-patch (snare ring, vines, thorns; `fx["speed"]` stretches a one-shot
 to the zone's life) and snared foes are tinted `ROOTED_TINT`.
 Feedback to remember: VFX must read as top-down; heavy but not blinding (she asked to dim only the
-Astral Blades tips, not the whole trail); characters cute/chibi; every weapon fires on cooldown even
-with no enemy; PixelLab art is generated and uploaded by Syifa.
+Astral Blades tips, not the whole trail); characters cute/chibi, more girls with cute outfits; every weapon
+fires on cooldown even with no enemy; Claude generates PixelLab art itself (Syifa's account, Tier 1 = 2000
+generations/month, up to 8 jobs at once) and reports credit use each phase; Syifa provides the big anime
+illustrations.
