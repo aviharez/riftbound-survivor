@@ -119,7 +119,8 @@ static func upgrade(d: Dictionary, id: String) -> bool:
 static func character_unlocked(d: Dictionary, id: String) -> bool:
 	for c in GameData.CHARACTERS:
 		if c["id"] == id:
-			return c["unlock"] == "" or building_level(d, c["unlock"]) >= 1
+			# unlock_level: the building level that brings them back (Wren: Library at max level)
+			return c["unlock"] == "" or building_level(d, c["unlock"]) >= int(c.get("unlock_level", 1))
 	return false
 
 

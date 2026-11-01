@@ -110,6 +110,9 @@ func damage(e: Enemy, amount: float, crit := false) -> void:
 	if tr == "frostbite" and (e.slow_t > 0.0 or e.freeze_t > 0.0):
 		amount *= float(GameData.TRAITS["frostbite"]["mult"])   # Selene: slowed / frozen foes take more
 		game.weapons.trait_procs += 1
+	if tr == "duelist" and (e.elite or e.boss):
+		amount *= float(GameData.TRAITS["duelist"]["mult"])   # Sera: elites and bosses take more
+		game.weapons.trait_procs += 1
 	e.hp -= amount
 	e.flash = 0.08
 	game.player.damage_dealt += amount
@@ -117,6 +120,8 @@ func damage(e: Enemy, amount: float, crit := false) -> void:
 	if crit and tr == "arcane_echo" and e.alive:
 		game.weapons.trait_echo(e, amount)   # Astra: crits arc to a nearby foe
 	if e.hp <= 0.0:
+		if tr == "overflow" and e.alive:
+			game.weapons.trait_overflow(e, -e.hp)   # Lumi: overkill refracts to the nearest foe
 		_kill(e)
 
 

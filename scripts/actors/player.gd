@@ -71,6 +71,9 @@ func try_dash() -> void:
 func take_damage(amount: float) -> void:
 	if iframes > 0.0 or is_dashing() or hp <= 0.0:
 		return
+	if game.weapons.trait_block():   # Wren's Page Guard swallows the hit
+		iframes = HURT_IFRAMES
+		return
 	game.weapons.trait_on_hurt()   # Kael's Retaliation (before god mode, so autotests exercise it)
 	if god_mode:
 		iframes = HURT_IFRAMES
@@ -109,19 +112,31 @@ func _process(delta: float) -> void:
 
 
 var _walk_t := 0.0
+var _anim_t := 0.0
 
 
 func _draw() -> void:
 	var blink := iframes > 0.0 and int(iframes * 20.0) % 2 == 0
 	if blink:
 		return
-	_walk_t += get_process_delta_time() * (1.0 if move_dir.length() > 0.1 else 0.0)
+	var moving := move_dir.length() > 0.1
+	_walk_t += get_process_delta_time() * (1.0 if moving else 0.0)
+	_anim_t += get_process_delta_time()
 	var bob := -absf(sin(_walk_t * 11.0)) * 1.5
 	draw_set_transform(Vector2(0, 6), 0.0, Vector2(1.0, 0.45))
 	draw_circle(Vector2.ZERO, 6, Color(0, 0, 0, 0.35))  # shadow
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var tint := Color(2.2, 0.8, 0.8) if hurt_flash > 0.0 else Color.WHITE
-	var tex := CharacterArt.texture(character["id"], CharacterArt.dir_for(facing))
+	var cid: String = character["id"]
+	var dir_name := CharacterArt.dir_for(facing)
+	var anim := "walk" if moving else "idle"
+	var anim_frames := CharacterArt.frames(cid, anim, dir_name)
+	var tex: Texture2D = CharacterArt.texture(cid, dir_name)
+	if not anim_frames.is_empty():
+		# animated sprite: the frames carry the step motion, so no procedural bob / squash
+		var fps := GameData.CHARACTER_WALK_FPS if moving else GameData.CHARACTER_IDLE_FPS
+		tex = anim_frames[int((_walk_t if moving else _anim_t) * fps) % anim_frames.size()]
+		bob = 0.0
 	if tex != null:
 		# 48 px sprite, feet at the shadow; slight squash on each step
 		var sz := Vector2(tex.get_width(), tex.get_height()) * (GameData.CHARACTER_SPRITE_HEIGHT / tex.get_height())

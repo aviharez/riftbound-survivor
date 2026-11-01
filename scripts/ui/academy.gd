@@ -348,8 +348,11 @@ func _on_pick_character(id: String) -> void:
 		var c := GameData.character_by_id(id)
 		var home := ""
 		for b in GameData.BUILDINGS:
-			if b.get("character", "") == id:
+			if b["id"] == c["unlock"]:
 				home = b["name"]
+		var need := int(c.get("unlock_level", 1))
+		if need > 1:
+			home += " to Lv %d" % need
 		_char_detail.text = "%s, %s (%s) is locked.\nRestore the %s to bring %s back to the academy." % [c["name"], c["role"], c["school"], home, c["name"]]
 		return
 	save["character"] = id

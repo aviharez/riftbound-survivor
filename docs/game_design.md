@@ -36,16 +36,20 @@ anime characters many people like); Kael and Noah stay as the two boys.
 | Astra | new student (protagonist) | Arcana | Arcane Bolt | start | navy robe with gold trim, silver hair, crystal staff |
 | Lyra | Duel Club champion | Pyromancy | Flame Orb | start | pink twin-tails, red uniform with ribbon |
 | Kael (m) | academy guard | Spellblade | Astral Blades | start | silver knight armour, dark blue hair |
-| Nym | infirmary healer | Herbology | Thornseed | start | green elf-like hair, white robe with leaf accents |
+| Nym | infirmary healer | Herbology | Thornseed | start | long leaf-green hair, elf ears, white nurse outfit with nurse cap, flower crown |
 | Selene | Student Council President | Cryomancy | Frost Lance | Frost Tower | done (silver hair, pale blue uniform, ice spear) |
 | Noah (m) | alchemy student | Alchemy | Venom Bloom | Alchemy Lab | done (green hair, goggles, lab coat, flask) |
 | Raika | weather club member | Tempestas (lightning) | Chain Lightning | Bell Tower | yellow twin-tails, raincoat capelet, lightning hairclips |
 | Vesper | mysterious student of the forbidden wing | Gravimancy (void) | Void Well | Forbidden Archive | dark purple gothic dress, sleepy, hugs a plush |
 | Wren | library assistant | Summoning | Arcane Familiar | Library (max) | round glasses, oversized cardigan, floating book |
-| Sera | Spellblade instructor (teacher) | Spellblade | Crescent Slash | Duel Hall | young teacher, ponytail, knightly coat |
+| Sera | Spellblade instructor (teacher) | Spellblade | Crescent Slash | Duel Hall | young teacher, short black hair with side braid, teal instructor uniform + cape, rapier |
 | Celeste | astronomy professor (teacher) | Astromancy | Meteor Fall | Observatory | star-patterned witch hat, always sleepy |
 | Runa | rune master (teacher) | Runecraft | Rune Chakram / Arcane Mine | Rune Workshop | tiny genius in an oversized robe |
 | Lumi | aether researcher (teacher) | Aether | Aether Beam | Arcana Lab | lab coat, prism earrings |
+
+Designs must not resemble well-known game / anime characters (a first Nym looked like Genshin's Nahida and a
+first Sera like Fairy Tail's Erza; both were replaced). Sprites: v3 64 px with walk + idle animations
+(see `assets/characters/README.md`).
 
 Each character has a mechanical trait (`GameData.TRAITS`) plus small per-level growth. Names of the new ones
 are proposals Syifa may change.

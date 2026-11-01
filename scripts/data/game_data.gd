@@ -356,6 +356,41 @@ const CHARACTERS := [
 		"trait": "plague", "passive": "Plague", "passive_desc": "Poisoned foes that die may spread a small poison cloud. +1% area per level",
 		"per_level": [["area_pct", 0.01]],
 		"colors": {"robe": Color(0.25, 0.3, 0.2), "hair": Color(0.35, 0.55, 0.25), "accent": Color(0.6, 1.0, 0.35)}},
+	{"id": "raika", "name": "Raika", "role": "Weather Club Member", "school": "Tempestas", "starter": "chain", "unlock": "bell_tower",
+		"base": {"max_hp": 85.0, "speed": 98.0, "damage": 10.0, "attack_speed_pct": 0.05},
+		"trait": "static_charge", "passive": "Static Charge", "passive_desc": "Every 8 kills release a lightning bolt that jumps through 4 foes. +1% attack speed per level",
+		"per_level": [["attack_speed_pct", 0.01]],
+		"colors": {"robe": Color(0.95, 0.75, 0.2), "hair": Color(1.0, 0.85, 0.35), "accent": Color(0.6, 0.85, 1.0)}},
+	{"id": "vesper", "name": "Vesper", "role": "Forbidden Wing Student", "school": "Gravimancy", "starter": "void", "unlock": "forbidden_archive",
+		"base": {"max_hp": 95.0, "speed": 86.0, "damage": 11.0, "area_pct": 0.10},
+		"trait": "gravity_pull", "passive": "Gravity Pull", "passive_desc": "Foes you kill may collapse, dragging and hurting the foes around them. +1% area per level",
+		"per_level": [["area_pct", 0.01]],
+		"colors": {"robe": Color(0.2, 0.12, 0.3), "hair": Color(0.3, 0.2, 0.45), "accent": Color(0.75, 0.45, 1.0)}},
+	{"id": "wren", "name": "Wren", "role": "Library Assistant", "school": "Summoning", "starter": "familiar", "unlock": "library", "unlock_level": 2,
+		"base": {"max_hp": 90.0, "speed": 92.0, "damage": 9.0, "xp_pct": 0.10},
+		"trait": "page_guard", "passive": "Page Guard", "passive_desc": "A paper ward blocks one hit every 6 s. +2% XP gain per level",
+		"per_level": [["xp_pct", 0.02]],
+		"colors": {"robe": Color(0.8, 0.68, 0.5), "hair": Color(0.45, 0.28, 0.2), "accent": Color(0.5, 0.85, 1.0)}},
+	{"id": "sera", "name": "Sera", "role": "Spellblade Instructor", "school": "Spellblade", "starter": "slash", "unlock": "duel_hall",
+		"base": {"max_hp": 120.0, "speed": 94.0, "damage": 11.0, "armor": 0.05},
+		"trait": "duelist", "passive": "Duelist", "passive_desc": "Elites and bosses take +30% damage. +1.5% damage per level",
+		"per_level": [["damage_pct", 0.015]],
+		"colors": {"robe": Color(0.2, 0.55, 0.55), "hair": Color(0.12, 0.12, 0.16), "accent": Color(0.6, 1.0, 0.95)}},
+	{"id": "celeste", "name": "Celeste", "role": "Astronomy Professor", "school": "Astromancy", "starter": "meteor", "unlock": "observatory",
+		"base": {"max_hp": 85.0, "speed": 84.0, "damage": 12.0, "luck": 10.0},
+		"trait": "stargazer", "passive": "Stargazer", "passive_desc": "Every 5 s a falling star strikes a nearby foe. +1 Luck per level",
+		"per_level": [["luck", 1.0]],
+		"colors": {"robe": Color(0.15, 0.17, 0.35), "hair": Color(0.65, 0.78, 0.95), "accent": Color(1.0, 0.9, 0.5)}},
+	{"id": "runa", "name": "Runa", "role": "Rune Master", "school": "Runecraft", "starter": "chakram", "unlock": "rune_workshop",
+		"base": {"max_hp": 80.0, "speed": 96.0, "damage": 10.0, "pickup_pct": 0.20},
+		"trait": "rune_ward", "passive": "Rune Ward", "passive_desc": "Foes you kill may leave a rune that explodes under the next foe. +1% attack speed per level",
+		"per_level": [["attack_speed_pct", 0.01]],
+		"colors": {"robe": Color(0.35, 0.18, 0.15), "hair": Color(0.92, 0.9, 0.9), "accent": Color(1.0, 0.6, 0.25)}},
+	{"id": "lumi", "name": "Lumi", "role": "Aether Researcher", "school": "Aether", "starter": "beam", "unlock": "arcana_lab",
+		"base": {"max_hp": 90.0, "speed": 90.0, "damage": 11.0, "crit": 0.03},
+		"trait": "overflow", "passive": "Overflow", "passive_desc": "Overkill damage refracts into the nearest foe. +1% crit per level",
+		"per_level": [["crit", 0.01]],
+		"colors": {"robe": Color(0.92, 0.94, 0.96), "hair": Color(0.75, 0.6, 0.9), "accent": Color(0.5, 1.0, 0.95)}},
 ]
 # Character traits (mechanical passives). Damage values are multiples of the player's damage.
 const TRAITS := {
@@ -365,6 +400,13 @@ const TRAITS := {
 	"thornheal": {"heal": 1.0},                                         # snared foe dies -> heal
 	"frostbite": {"mult": 1.25},                                        # slowed / frozen foes take more
 	"plague": {"chance": 0.5, "poisoned_window": 1.0, "radius": 18.0, "duration": 1.6, "tick": 0.4, "dmg": 0.3},
+	"static_charge": {"kills": 8, "jumps": 4, "range": 70.0, "jump_range": 60.0, "dmg": 1.5},   # every N kills -> chain bolt
+	"gravity_pull": {"chance": 0.2, "radius": 40.0, "pull": 14.0, "dmg": 0.6},              # kill -> small implosion
+	"page_guard": {"cooldown": 6.0},                                                        # blocks one hit per cooldown
+	"duelist": {"mult": 1.3},                                                               # elites / bosses take more
+	"stargazer": {"interval": 5.0, "range": 150.0, "radius": 22.0, "delay": 0.55, "dmg": 1.6},  # timed falling star
+	"rune_ward": {"chance": 0.15, "radius": 28.0, "trigger": 12.0, "arm": 0.4, "life": 7.0, "dmg": 1.3, "max": 4},
+	"overflow": {"min": 1.0, "range": 60.0},                                                # overkill -> nearest foe
 }
 const ARMOR_CAP := 0.5
 # Speed multiplier of a slowed enemy (Frost Lance, Thornseed roots).
@@ -373,6 +415,9 @@ const SLOW_MULT := 0.5
 # (~2x a slime), whatever size the source art is (48 or 64 px).
 # canvas_items stretch renders at the phone's native resolution, so this stays crisp.
 const CHARACTER_SPRITE_HEIGHT := 33.0
+# Sprite animation speeds (frames per second) for the walk / idle strips in assets/characters/<id>/<anim>/.
+const CHARACTER_WALK_FPS := 10.0
+const CHARACTER_IDLE_FPS := 5.0
 
 
 static func character_by_id(id: String) -> Dictionary:
@@ -399,7 +444,24 @@ const BUILDINGS := [
 		"costs": [{"gold": 700, "materials": 140, "aether": 10}]},
 	{"id": "alchemy_lab", "name": "Alchemy Lab", "unlocks": "character", "character": "noah",
 		"desc": "Cauldrons bubble again: Noah, the alchemy student, returns",
-		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},
+		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},	{"id": "bell_tower", "name": "Bell Tower", "unlocks": "character", "character": "raika",
+		"desc": "The storm bell rings again: Raika of the Weather Club returns",
+		"costs": [{"gold": 800, "materials": 160, "aether": 15}]},
+	{"id": "duel_hall", "name": "Duel Hall", "unlocks": "character", "character": "sera",
+		"desc": "The duelling floor is swept clean: Sera, the Spellblade instructor, returns",
+		"costs": [{"gold": 1000, "materials": 200, "aether": 20}]},
+	{"id": "observatory", "name": "Observatory", "unlocks": "character", "character": "celeste",
+		"desc": "The great telescope turns again: Professor Celeste returns (eventually wakes up)",
+		"costs": [{"gold": 1100, "materials": 220, "aether": 25}]},
+	{"id": "rune_workshop", "name": "Rune Workshop", "unlocks": "character", "character": "runa",
+		"desc": "Rune presses hum back to life: Runa, the tiny rune master, returns",
+		"costs": [{"gold": 1100, "materials": 240, "aether": 25}]},
+	{"id": "arcana_lab", "name": "Arcana Lab", "unlocks": "character", "character": "lumi",
+		"desc": "Aether lenses are polished: Lumi, the aether researcher, returns",
+		"costs": [{"gold": 1300, "materials": 260, "aether": 30}]},
+	{"id": "forbidden_archive", "name": "Forbidden Archive", "unlocks": "character", "character": "vesper",
+		"desc": "The sealed wing opens: Vesper wanders out, still half asleep",
+		"costs": [{"gold": 1500, "materials": 300, "aether": 40}]},
 ]
 # Staff Room lessons: permanent run bonuses bought with EXP (+ gold). Rank cap = LESSON_RANKS_PER_LEVEL x Staff Room level.
 const LESSON_RANKS_PER_LEVEL := 3

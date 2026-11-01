@@ -33,6 +33,9 @@ var _beams: Array = []     # Aether Beam visuals {a, b, t, life, width}
 var _mines: Array = []
 var _trait_queue: Array = []  # kill-triggered trait effects, run next frame (no chain recursion within a frame)
 var _retaliate_cd := 0.0
+var _guard_cd := 0.0          # Wren's Page Guard
+var _star_t := 2.0            # Celeste's Stargazer: seconds to the next star
+var _static_kills := 0        # Raika's Static Charge
 var trait_procs := 0          # how often the character trait fired (autotest summary)     # Arcane Mine runes on the floor {pos, t, life, arm, r, trig, dmg, fx}
 
 
@@ -105,6 +108,12 @@ func _process(delta: float) -> void:
 	_update_zones(delta)
 	_update_mines(delta)
 	_retaliate_cd = maxf(0.0, _retaliate_cd - delta)
+	_guard_cd = maxf(0.0, _guard_cd - delta)
+	if _trait() == "stargazer":
+		_star_t -= delta
+		if _star_t <= 0.0:
+			_star_t = float(GameData.TRAITS["stargazer"]["interval"])
+			_stargazer()
 	if not _trait_queue.is_empty():
 		var q := _trait_queue
 		_trait_queue = []
@@ -685,9 +694,52 @@ func trait_on_hurt() -> void:
 	game.screen_fx.shockwave(p.position, r * 1.5, 0.6, 0.3)
 
 
-## Called by main for every kill: Lyra's Kindling, Nym's Thornheal, Noah's Plague.
+## Wren, Page Guard: returns true (and starts the cooldown) when the ward swallows this hit.
+func trait_block() -> bool:
+	if _trait() != "page_guard" or _guard_cd > 0.0:
+		return false
+	_guard_cd = float(GameData.TRAITS["page_guard"]["cooldown"])
+	trait_procs += 1
+	var p: Player = game.player
+	game.vfx.ring(p.position + Vector2(0, -6), Color(1.6, 1.5, 1.1), 16.0, 0.3, 1.5)
+	game.vfx.motes(p.position + Vector2(0, -8), Color(1.8, 1.7, 1.3), 6, 30.0, 0.5, 2.0, -15.0)
+	return true
+
+
+## Lumi, Overflow: the damage past a foe's last HP refracts into the nearest other foe (next frame).
+func trait_overflow(e, excess: float) -> void:
+	if excess < float(GameData.TRAITS["overflow"]["min"]):
+		return
+	_trait_queue.append({"kind": "overflow", "pos": e.pos, "amount": excess})
+
+
+## Celeste, Stargazer: a small star falls on a random nearby foe (uses the meteor strike queue).
+func _stargazer() -> void:
+	var cfg: Dictionary = GameData.TRAITS["stargazer"]
+	var p: Player = game.player
+	var foes: Array = game.enemies.query_radius(p.position, float(cfg["range"]))
+	if foes.is_empty():
+		return
+	trait_procs += 1
+	var e = foes[randi() % foes.size()]
+	_strikes.append({"pos": e.pos, "t": 0.0, "delay": float(cfg["delay"]), "r": float(cfg["radius"]) * p.area(),
+		"dmg": p.dmg() * float(cfg["dmg"]), "fx": false})
+
+
+## Called by main for every kill: Lyra's Kindling, Nym's Thornheal, Noah's Plague, Raika, Vesper, Runa.
 func trait_on_kill(e) -> void:
 	match _trait():
+		"static_charge":
+			_static_kills += 1
+			if _static_kills >= int(GameData.TRAITS["static_charge"]["kills"]):
+				_static_kills = 0
+				_trait_queue.append({"kind": "static", "pos": e.pos})
+		"gravity_pull":
+			if randf() < float(GameData.TRAITS["gravity_pull"]["chance"]):
+				_trait_queue.append({"kind": "gravity", "pos": e.pos})
+		"rune_ward":
+			if randf() < float(GameData.TRAITS["rune_ward"]["chance"]):
+				_trait_queue.append({"kind": "rune", "pos": e.pos})
 		"kindling":
 			if randf() < float(GameData.TRAITS["kindling"]["chance"]):
 				_trait_queue.append({"kind": "kindling", "pos": e.pos})
@@ -706,6 +758,58 @@ func _run_trait(t: Dictionary) -> void:
 	var p: Player = game.player
 	trait_procs += 1
 	match t["kind"]:
+		"static":
+			var cfg: Dictionary = GameData.TRAITS["static_charge"]
+			var cur = game.enemies.nearest(t["pos"], float(cfg["range"]), null)
+			var prev: Vector2 = t["pos"]
+			var done: Array = []
+			game.vfx.flash(t["pos"], Color(1.4, 2.0, 2.8), 14.0, 0.14)
+			for j in int(cfg["jumps"]):
+				if cur == null:
+					break
+				done.append(cur)
+				_hit(cur, p.dmg() * float(cfg["dmg"]), Color(1.2, 1.8, 2.8))
+				var d: Vector2 = cur.pos - prev
+				game.vfx.play("zap_hit", cur.pos, d.angle(), clampf(d.length() / 85.0, 0.35, 1.2))
+				prev = cur.pos
+				var nxt = null
+				var best := INF
+				for e in game.enemies.query_radius(cur.pos, float(cfg["jump_range"])):
+					if e in done or not e.alive:
+						continue
+					var dd: float = e.pos.distance_squared_to(cur.pos)
+					if dd < best:
+						best = dd
+						nxt = e
+				cur = nxt
+		"gravity":
+			var cfg: Dictionary = GameData.TRAITS["gravity_pull"]
+			var r: float = float(cfg["radius"]) * p.area()
+			for e in game.enemies.query_radius(t["pos"], r):
+				if not (e.boss or e.elite):
+					var d: Vector2 = t["pos"] - e.pos
+					e.pos += d.limit_length(minf(float(cfg["pull"]), d.length()))
+				_hit(e, p.dmg() * float(cfg["dmg"]), Color(1.6, 0.9, 2.6))
+			game.vfx.play("void_collapse", t["pos"], 0.0, r / BURST_REACH["void_collapse"] * 0.8, Color.WHITE, 0.5)
+		"rune":
+			var cfg: Dictionary = GameData.TRAITS["rune_ward"]
+			var wards := _mines.filter(func(m): return m.get("ward", false))
+			if wards.size() >= int(cfg["max"]):
+				_mines.erase(wards[0])
+				if not wards[0]["fx"].is_empty():
+					wards[0]["fx"]["dead"] = true
+			var size := p.area()
+			var fx: Dictionary = game.vfx.play("rune_sigil", t["pos"], 0.0, size * MINE_FX_SCALE * 0.8, Color(1, 1, 1, 0.45), 0.6, float(cfg["life"]))
+			_mines.append({"pos": t["pos"], "t": 0.0, "life": float(cfg["life"]), "arm": float(cfg["arm"]), "ward": true,
+				"r": float(cfg["radius"]) * size, "trig": float(cfg["trigger"]) * size, "dmg": p.dmg() * float(cfg["dmg"]), "fx": fx})
+		"overflow":
+			var cfg: Dictionary = GameData.TRAITS["overflow"]
+			var e = game.enemies.nearest(t["pos"], float(cfg["range"]), null)
+			if e == null:
+				return
+			var d: Vector2 = e.pos - t["pos"]
+			game.vfx.play("zap_hit", e.pos, d.angle(), clampf(d.length() / 85.0, 0.3, 0.9), Color(1.2, 0.9, 1.6))
+			game.enemies.damage(e, t["amount"])
 		"kindling":
 			var cfg: Dictionary = GameData.TRAITS["kindling"]
 			var r: float = float(cfg["radius"]) * p.area()

@@ -46,6 +46,13 @@ func _init() -> void:
 	check(SaveData.character_unlocked(d, "selene"), "frost tower unlocks selene")
 	check(not SaveData.character_unlocked(d, "noah"), "noah still locked")
 	check(SaveData.slots_for(d, "tome") == 2 and SaveData.slots_for(d, "weapon") == 2, "character buildings add no slots")
+	# every locked character's building exists; Wren needs the Library at its max level
+	for c in GameData.CHARACTERS:
+		if c["unlock"] != "":
+			check(GameData.BUILDINGS.any(func(b): return b["id"] == c["unlock"]), "%s has a home building" % c["id"])
+	check(not SaveData.character_unlocked(d, "wren"), "wren locked at start")
+	check(SaveData.upgrade(d, "library") and not SaveData.character_unlocked(d, "wren"), "library Lv1 does not bring wren")
+	check(SaveData.upgrade(d, "library") and SaveData.character_unlocked(d, "wren"), "library at max brings wren")
 
 	# --- Staff Room lessons
 	check(SaveData.lesson_cap(d) == 0 and not SaveData.buy_lesson(d, "might"), "no lessons while the staff room is in ruins")

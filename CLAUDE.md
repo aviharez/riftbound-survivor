@@ -31,8 +31,10 @@ Read it before starting any phase.**
 - Characters are rows in `GameData.CHARACTERS` (Syifa's direction: every character is a student or teacher of the
   academy, with a school/element, a role and a home building). Each has a mechanical `trait` (`GameData.TRAITS`,
   code in `weapons.gd` "character traits": Astra arcane_echo, Lyra kindling, Kael retaliation, Nym thornheal,
-  Selene frostbite in `Enemies.damage`, Noah plague) plus small `per_level` stat growth, and `unlock`: the building
-  whose restoration brings them back ("" = from the start). Full roster (13: mostly cute girls, Kael and Noah
+  Selene frostbite and Sera duelist in `Enemies.damage`, Noah plague, Raika static_charge, Vesper gravity_pull,
+  Wren page_guard (`Player.take_damage`), Celeste stargazer, Runa rune_ward, Lumi overflow) plus small `per_level`
+  stat growth, and `unlock`: the building whose restoration brings them back ("" = from the start;
+  `unlock_level` when it needs more than Lv 1, Wren = Library at max). Full roster (13: mostly cute girls, Kael and Noah
   the boys) with roles, outfits and home buildings is in `docs/game_design.md` section 3. A character without
   sprite files falls back to the coloured placeholder.
 - Academy buildings (`GameData.BUILDINGS`): `unlocks` = tome / weapon (slots), character (Lv 1 brings back
@@ -49,16 +51,19 @@ Read it before starting any phase.**
   (one additive node; colours > 1.0 bloom via HDR 2D glow),
   screen effects (shockwave/chroma/vignette shader, shake, hit-stop) in `scripts/vfx/screen_fx.gd`,
   shaders in `shaders/`. Quality switches: `GameData.VFX_*`.
-- Art: character sprites in `assets/characters/<id>/<direction>.png` (see its README); enemies/props are
-  hand-authored grids in `scripts/meta/pixel_sprites.gd`. `--autotest-boss` summons the boss at ~25 s (for boss screenshots).
-  Claude can make character sprites itself with the PixelLab MCP (Syifa's account; trial plan, few generations:
-  check `get_balance`, one job at a time): `create_character` mode v3, size 64, view "low top-down", "cute chibi
-  anime ..." (2 generations). The workspace proxy blocks PixelLab download URLs (403), so for each direction run
-  `pixelart_workbench inspect character:<id>:<dir> --region 0,0,63,63 --scale 1`; its image is saved under
-  /tmp/claude-tool-results/... (an 18 px caption strip above the 64x64 crop on solid #1f252c), and
-  `python3 tools/pixellab_extract.py assets/characters/<id> south=<file> ...` rebuilds the exact PNGs (check that
-  each direction's colour count equals the palette size inspect reports). Sprites only use alpha 0/255.
-  Do not route downloads through CI.
+- Art: character sprites in `assets/characters/<id>/<direction>.png` plus `walk/` (6 frames) and `idle/` (4 frames)
+  strips per direction, played by `CharacterArt.frames()` in `player.gd` (see the folder README for the full
+  PixelLab workflow). Enemies/props are hand-authored grids in `scripts/meta/pixel_sprites.gd`.
+  `--autotest-boss` summons the boss at ~25 s (for boss screenshots).
+  Claude makes character art itself with the PixelLab MCP (Syifa's account, Tier 1: 2000 generations/month,
+  8 jobs at once; report credit use each phase): `create_character` mode v3, size 64, view "low top-down",
+  "cute chibi anime ..." (2 generations); `animate_character` templates `walking-6-frames` / `breathing-idle`
+  (1 generation per direction). The workspace proxy blocks every PixelLab URL (downloads and uploads, 403):
+  pull art out with `pixelart_workbench join ... --as sheet|rows` (the saved image is an 18 px caption above the
+  sheet on solid #1f252c) and `python3 tools/pixellab_sheet.py` (checks the colour count). Sprites only use
+  alpha 0/255. Do not route downloads through CI. Look at every generated sheet: check new designs against
+  well-known game / anime characters (Syifa caught a Genshin look-alike), and re-roll directions where a
+  template animation drops a detail (v3 custom animation, stored on an 84 px canvas).
 - Android APK: `.github/workflows/android.yml` builds on every push and publishes the `latest-build`
   pre-release. CI logs are not readable from the workspace; failures show up as a `ci-log-tail`
   annotation (GitHub API: check-runs/<job id>/annotations).
@@ -91,7 +96,7 @@ godot --headless --path . --fixed-fps 60 -- --autotest --seed=31337 --char=astra
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242 --char=selene --lessons=might:3,vigor:2 --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77 --char=noah
 ```
-The selene / noah runs must report `trait_procs` > 0.
+The selene / noah runs (and every `trait_<character>` run in `tools/run_tests.sh`) must report `trait_procs` > 0.
 The two `--ready-evolve` runs must end with all 4 evolutions in `evolutions=[...]`.
 The main scene is the academy; any `--autotest*` flag makes it jump straight into a run.
 Autotests never read or write the player's save (`SaveData`); without `--slots` they use the base 2 + 2 slots.
@@ -114,10 +119,11 @@ Note: in the cloud workspace the Godot binary is not preinstalled; download the 
    sky", things fall down the screen. `p.disc` is round, so draw flat floor patches per pixel with `p.blend`.
 3. Screenshots need `xvfb-run`; software GL is slow, keep shot times early.
 
-## Status and next up (as of 2026-10-31, evening)
+## Status and next up (as of 2026-11-01)
 Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, Rift Surges, boss, Final Swarm
-(swarm level per minute, wraiths, threat meter), academy (Library, Training Ground), 4 characters with
-chibi sprites, 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+(swarm level per minute, wraiths, threat meter), academy (Library, Training Ground, Staff Room, 6 character
+buildings), **all 13 characters** with v3 sprites + walk/idle animations and mechanical traits (phase 1 of
+`docs/game_design.md` done; next is phase 2, meta systems), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
 The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
 Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).
