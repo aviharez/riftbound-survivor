@@ -31,6 +31,7 @@ func _init() -> void:
 	# already evolved: no hint for the tome
 	_check("after evolution", GameData.combo_hint("tome", "ricochet", {"solar": 8}, none), false)
 	# weapons without an evolution never hint
-	_check("no evolution", GameData.combo_hint("weapon", "slash", none, {"power": 1}), false)
+	_check("no evolution", GameData.combo_hint("weapon", "hex", none, {"power": 1}), false)
+	_check("alpha evolution", GameData.combo_hint("weapon", "slash", none, {"power": 1}), true)
 	print("combo tests: PASS" if _fails == 0 else "combo tests: %d FAIL" % _fails)
 	quit(1 if _fails > 0 else 0)

@@ -91,6 +91,7 @@ func _process(delta: float) -> void:
 				p["vel"] *= 1.0 - 1.6 * delta   # slows toward the turn
 		if w.has("homing"):
 			_steer(p, float(w["homing"]), delta)
+		game.weapons.arena.on_shot(p, delta)   # Gravity Lens / Mirror Gate / Crystal Barricade
 		var look: Array = LOOKS[p["kind"]]
 		if game.world.is_solid_at(p["pos"]) and w.get("wall_bounce", false) and p["bounces"] > 0:
 			# Flame Orb ricochets off walls too: step back and mirror the axis that hit the wall

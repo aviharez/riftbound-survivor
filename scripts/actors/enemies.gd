@@ -36,6 +36,8 @@ class Enemy:
 	var ghost := false   # drifts through walls (Final Swarm wraiths)
 	var def: Dictionary = {}    # its GameData.ENEMY_TYPES row (behaviour flags)
 	var act_t := 0.0            # dash / blink cooldown
+	var hex_t := 0.0            # Hex Mark / Gravity Lens: takes hex_amp more damage while > 0
+	var hex_amp := 0.0
 	# boss state machine
 	var state := "idle"
 	var state_t := 1.5
@@ -118,6 +120,8 @@ func damage(e: Enemy, amount: float, crit := false) -> void:
 	if tr == "duelist" and (e.elite or e.boss):
 		amount *= 1.0 + (float(GameData.TRAITS["duelist"]["mult"]) - 1.0) * game.player.trait_power   # Sera: elites and bosses take more
 		game.weapons.trait_procs += 1
+	if e.hex_t > 0.0:
+		amount *= 1.0 + e.hex_amp
 	e.hp -= amount
 	e.flash = 0.08
 	game.player.damage_dealt += amount
@@ -212,6 +216,10 @@ func _process(delta: float) -> void:
 		e.flash = max(0.0, e.flash - delta)
 		e.slow_t = max(0.0, e.slow_t - delta)
 		e.rooted_t = max(0.0, e.rooted_t - delta)
+		if e.hex_t > 0.0:
+			e.hex_t -= delta
+			if e.hex_t <= 0.0:
+				e.hex_amp = 0.0
 		if e.spawn_t > 0.0:
 			e.spawn_t -= delta
 			continue

@@ -20,6 +20,7 @@ const FAMILIAR_SCALE := 1.6   # the 14 px crystal sprite drawn ~22 px tall (hero
 const BURST_REACH := {"solar_burst": 44.0, "frost_burst": 42.0, "void_collapse": 46.0}
 
 var game: Node
+var arena: WeaponsArena   # Hex Mark, Glacial Burst, Riftstorm, Phantom Knight, Prism Sweep, Lens, Gate, Barricade
 var _cd := {}            # weapon id -> seconds until next use
 var _time := 0.0
 var _strikes: Array = [] # pending meteor impacts {pos, t, delay, r, dmg}
@@ -40,6 +41,10 @@ var trait_procs := 0          # how often the character trait fired (autotest su
 
 
 func _ready() -> void:
+	arena = WeaponsArena.new()
+	arena.game = game
+	arena.weapons = self
+	add_child(arena)
 	_trail = Node2D.new()
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -87,7 +92,7 @@ func _process(delta: float) -> void:
 	for id in p.weapon_levels.keys():
 		var w: Dictionary = GameData.weapon_by_id(id)
 		var lv: int = p.weapon_levels[id]
-		if id == "familiar":
+		if id == "familiar" or id == "legion":
 			_arcane_familiars(w, lv, delta)
 			continue
 		if w.has("blade_len"):   # orbiting swords: Astral Blades, Blade Halo
@@ -119,6 +124,14 @@ func _process(delta: float) -> void:
 			"beam": _aether_beam(w, lv)
 			"venom": _venom_bloom(w, lv)
 			"mine": _drop_mines(w, lv)
+			"lunar": _lunar_cross(w, lv)
+			"infinity": _fan("chakram", w, lv, _aim(float(w["range"])), float(w["spread"]), 0, int(w["pierce"]))
+			"celestial": _aether_beam(w, lv)
+			"plague": _venom_bloom(w, lv)
+			"runic": _drop_mines(w, lv)
+			_:
+				if id in WeaponsArena.IDS:
+					arena.fire(id, w, lv)
 		_cd[id] = level_cooldown(w, lv)
 	_update_strikes(delta)
 	_update_zones(delta)
@@ -138,7 +151,7 @@ func _process(delta: float) -> void:
 	for b in _beams:
 		b["t"] += delta
 	_beams = _beams.filter(func(b): return b["t"] < b["life"])
-	if not p.weapon_levels.has("familiar") and not _familiars.is_empty():
+	if not p.weapon_levels.has("familiar") and not p.weapon_levels.has("legion") and not _familiars.is_empty():
 		_familiars.clear()
 	queue_redraw()
 	if not orbit:
@@ -289,6 +302,18 @@ func _prismatic_barrage(w: Dictionary, lv: int) -> void:
 	for i in count:
 		var spread: float = 0.0 if count == 1 else lerp(-step * (count - 1), step * (count - 1), float(i) / (count - 1))
 		game.projectiles.fire(PRISM_KINDS[i % PRISM_KINDS.size()], p.position, dir.rotated(spread), level_damage(w, lv), w, b, 0, p.area())
+
+
+## Lunar Cross: two big crescents start left and right of the hero and fly toward one point ahead, crossing there.
+func _lunar_cross(w: Dictionary, lv: int) -> void:
+	var p: Player = game.player
+	var dir := _aim(float(w["range"]))
+	var side := dir.orthogonal() * float(w["cross_offset"])
+	var meet: Vector2 = p.position + dir * float(w["range"]) * 0.45
+	for s in [-1.0, 1.0]:
+		var from: Vector2 = p.position + side * s
+		game.projectiles.fire("slash", from, (meet - from).normalized(), level_damage(w, lv), w, 0, int(w["pierce"]), p.area())
+	game.vfx.sparks(p.position, Color(1.2, 1.7, 2.6), 6, 70.0, 0.2, 1.4)
 
 
 ## Called by main when a weapon evolves: the new weapon fires almost at once.
@@ -453,7 +478,17 @@ func _update_zones(delta: float) -> void:
 			for e in game.enemies.query_radius(z["pos"], z["r"]):
 				if _time - e.venom_hit_at >= z["tick"]:
 					e.venom_hit_at = _time
+					if z.get("garden", false):
+						e.set_meta("garden", _time)
 					_hit(e, z["tick_dmg"], Color(1.0, 2.2, 0.5))
+		elif z["kind"] == "trace":
+			z["next"] -= delta
+			if z["next"] <= 0.0:
+				z["next"] = z["tick"]
+				for e in game.enemies.query_radius(z["pos"], z["r"] + z["w"] + 12.0):
+					var q := Geometry2D.get_closest_point_to_segment(e.pos, z["a"], z["b"])
+					if q.distance_to(e.pos) <= z["w"] * 0.5 + e.radius:
+						_hit(e, z["tick_dmg"], Color(2.4, 2.0, 1.0))
 		elif z["kind"] == "void":
 			var reach: float = z["r"] * 1.5
 			for e in game.enemies.query_radius(z["pos"], reach):
@@ -578,7 +613,13 @@ func _arcane_familiars(w: Dictionary, lv: int, delta: float) -> void:
 		var foe = game.enemies.nearest(muzzle, float(w["range"]), null)
 		var dir: Vector2 = (foe.pos - muzzle).normalized() if foe != null else p.facing
 		f["face"] = -1.0 if dir.x < 0.0 else 1.0
-		game.projectiles.fire("familiar_shot", muzzle, dir, level_damage(w, lv), w, 0, 0, p.area())
+		if w.get("legion", false) and i % 3 == 1:
+			for k in 3:   # fan familiar
+				game.projectiles.fire("familiar_shot", muzzle, dir.rotated((k - 1) * 0.25), level_damage(w, lv), w, 0, 0, p.area())
+		elif w.get("legion", false) and i % 3 == 2:
+			game.projectiles.fire("familiar_shot", muzzle, dir, level_damage(w, lv) * 1.6, w, 0, 6, p.area())   # lance familiar
+		else:
+			game.projectiles.fire("familiar_shot", muzzle, dir, level_damage(w, lv), w, 0, 0, p.area())
 		game.vfx.sparks(muzzle, Color(0.7, 1.8, 2.4), 3, 50.0, 0.15, 1.0)
 
 
@@ -603,6 +644,10 @@ func _aether_beam(w: Dictionary, lv: int) -> void:
 			if q.distance_to(e.pos) <= width * 0.5 + e.radius:
 				_hit(e, amount, Color(1.0, 2.0, 2.8))
 		_beams.append({"a": a, "b": b, "t": 0.0, "life": float(w["show_time"]), "width": width})
+		if w.has("trace_time"):   # Celestial Ray: a burning trace stays on the ground
+			_zones.append({"kind": "trace", "a": a, "b": b, "pos": (a + b) * 0.5, "r": a.distance_to(b) * 0.5, "w": width,
+				"t": 0.0, "life": float(w["trace_time"]), "tick": float(w["trace_tick"]), "tick_dmg": amount * float(w["trace_dmg"]), "next": 0.0})
+			_beams.append({"a": a, "b": b, "t": 0.0, "life": float(w["trace_time"]), "width": width * 0.35, "trace": true})
 		game.vfx.flash(a, Color(1.2, 2.2, 2.8), 10.0, 0.12)
 		for k in 6:
 			game.vfx.trail(a.lerp(b, randf()), Color(0.8, 1.9, 2.6), 1.6, 0.35)
@@ -623,7 +668,7 @@ func _venom_bloom(w: Dictionary, lv: int) -> void:
 		var fx: Dictionary = game.vfx.play("venom_cloud", center, 0.0, r / 30.0, Color.WHITE, 0.9, float(w["duration"]))
 		game.vfx.sparks(center, Color(0.9, 2.2, 0.5), 6, 60.0, 0.3, 1.3)
 		_zones.append({"kind": "venom", "pos": center, "r": r, "t": 0.0, "life": float(w["duration"]),
-			"tick": float(w["tick"]), "tick_dmg": level_damage(w, lv), "fx": fx})
+			"tick": float(w["tick"]), "tick_dmg": level_damage(w, lv), "fx": fx, "garden": w.has("spread_r")})
 
 
 # ------------------------------------------------------------------ Arcane Mine
@@ -642,7 +687,8 @@ func _drop_mines(w: Dictionary, lv: int) -> void:
 				old["fx"]["dead"] = true
 		var fx: Dictionary = game.vfx.play("rune_sigil", spot, 0.0, size * MINE_FX_SCALE, Color(1, 1, 1, 0.45), 0.6, float(w["mine_life"]))
 		_mines.append({"pos": spot, "t": 0.0, "life": float(w["mine_life"]), "arm": float(w["arm"]),
-			"r": float(w["radius"]) * size, "trig": float(w["trigger"]) * size, "dmg": level_damage(w, lv), "fx": fx})
+			"r": float(w["radius"]) * size, "trig": float(w["trigger"]) * size, "dmg": level_damage(w, lv), "fx": fx,
+			"chain_r": float(w.get("chain_r", 0.0)), "chain_delay": float(w.get("chain_delay", 0.0))})
 
 
 func _update_mines(delta: float) -> void:
@@ -655,6 +701,9 @@ func _update_mines(delta: float) -> void:
 			if not m["fx"].is_empty():
 				m["fx"]["tint"] = Color.WHITE
 				m["fx"]["light_k"] = 1.2
+		if m.has("chain_at") and m["t"] >= m["chain_at"]:
+			_mine_blast(m)
+			continue
 		for e in game.enemies.query_radius(m["pos"], m["trig"] + 12.0):
 			if e.pos.distance_to(m["pos"]) <= m["trig"] + e.radius:
 				_mine_blast(m)
@@ -663,7 +712,14 @@ func _update_mines(delta: float) -> void:
 
 
 func _mine_blast(m: Dictionary) -> void:
+	if m.get("done", false):
+		return
 	m["done"] = true
+	if m.get("chain_r", 0.0) > 0.0:
+		# Runic Chain: every armed rune near this one goes off a moment later
+		for o in _mines:
+			if not o.get("done", false) and o.get("armed", false) and o["pos"].distance_to(m["pos"]) <= m["chain_r"]:
+				o["chain_at"] = o["t"] + float(m["chain_delay"])
 	if not m["fx"].is_empty():
 		m["fx"]["dead"] = true
 	for e in game.enemies.query_radius(m["pos"], m["r"]):
@@ -744,6 +800,14 @@ func _stargazer() -> void:
 
 ## Called by main for every kill: Lyra's Kindling, Nym's Thornheal, Noah's Plague, Raika, Vesper, Runa.
 func trait_on_kill(e) -> void:
+	# Plague Garden: a foe that dies poisoned by a garden cloud bursts into a small cloud of its own
+	if e.has_meta("garden") and _time - float(e.get_meta("garden")) < 1.0 and game.player.weapon_levels.has("plague"):
+		var w := GameData.weapon_by_id("plague")
+		var clouds := _zones.filter(func(z): return z["kind"] == "venom" and z.get("small", false))
+		if clouds.size() < int(w["spread_max"]):
+			var fx: Dictionary = game.vfx.play("venom_cloud", e.pos, 0.0, float(w["spread_r"]) / 30.0, Color.WHITE, 0.9, float(w["spread_life"]))
+			_zones.append({"kind": "venom", "pos": e.pos, "r": float(w["spread_r"]), "t": 0.0, "life": float(w["spread_life"]),
+				"tick": float(w["tick"]), "tick_dmg": level_damage(w, int(game.player.weapon_levels["plague"])), "fx": fx, "garden": true, "small": true})
 	match _trait():
 		"static_charge":
 			_static_kills += 1
@@ -865,6 +929,11 @@ func _draw_additive() -> void:
 	for b in _beams:
 		var k: float = 1.0 - b["t"] / b["life"]
 		var wd: float = b["width"]
+		if b.get("trace", false):
+			# Celestial Ray's ground trace: a warm golden line that slowly fades
+			_trail.draw_line(b["a"], b["b"], Color(0.9, 0.7, 0.2, 0.35 * k), wd * 2.2)
+			_trail.draw_line(b["a"], b["b"], Color(1.3, 1.1, 0.5, 0.6 * k), maxf(1.0, wd * 0.6))
+			continue
 		# wide soft body, bright mid band, white-hot core that thins as the beam fades (afterglow)
 		# kept below the bloom threshold except the thin core, so a long beam is heavy but not blinding
 		_trail.draw_line(b["a"], b["b"], Color(0.15, 0.5, 0.9, 0.3 * k), wd * 1.8)

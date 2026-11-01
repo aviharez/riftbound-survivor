@@ -15,7 +15,10 @@ Read it before starting any phase.**
 - Weapon behaviour lives in `scripts/actors/weapons.gd` (shots in `projectiles.gd`); its numbers in `GameData.WEAPONS`.
   Attack types follow `docs/weapon_attack_design.md` (Syifa's "Riftbound Weapon Attack Design"; prototype set of 8 done,
   plus 6 alpha weapons: Crescent Slash, Rune Chakram (out-and-return), Arcane Familiar (summon), Aether Beam,
-  Venom Bloom (poison cloud), Arcane Mine (trap)). Optional `short` in a weapon row = 3-letter HUD label.
+  Venom Bloom (poison cloud), Arcane Mine (trap), plus the arena set of 8 in `scripts/actors/weapons_arena.gd`
+  (`Weapons.arena`): Hex Mark (marked foes take `hex_amp` more damage, `Enemy.hex_t`), Glacial Burst, Riftstorm,
+  Phantom Knight, Prism Sweep, Gravity Lens / Mirror Gate / Crystal Barricade (they also bend / teleport / bounce
+  player shots via `WeaponsArena.on_shot`, called from Projectiles). Optional `short` in a weapon row = 3-letter HUD label.
   `--weapons=meteor,void` gives extra weapons (evolved ids such as `solar` come evolved) and `--swarm-at=30` starts
   the Final Swarm early in an autotest run; `--ready-evolve` puts owned weapons at the evolve level with their tome
   so the first chests evolve them; `--profile` prints load counters every 20 s of game time.
@@ -24,7 +27,9 @@ Read it before starting any phase.**
   with `evolved`/`from`/`tome`, weight 0, final numbers (lvl_* = 0); they replace the base weapon in its slot.
   Pairs: bolt+Multitude=Prismatic Barrage, flame+Ricochet=Solar Cataclysm, chain+Haste=Thunderstorm Network,
   meteor+Expanse=Starfall, blades+Vitality=Blade Halo, void+Attraction=Event Horizon, lance+Precision=Absolute Zero,
-  seed+Mending=Worldroot Bloom. Level-up cards show a "COMBO + ... (owned) -> evolution" hint only when the
+  seed+Mending=Worldroot Bloom, slash+Power=Lunar Cross, chakram+Swiftness=Infinity Loop, familiar+Study=Familiar
+  Legion, beam+Fortune=Celestial Ray (ground trace zone), venom+Cursed=Plague Garden (kills inside spread clouds),
+  mine+Greed=Runic Chain (blasts set off nearby runes). The arena set has no evolutions yet. Level-up cards show a "COMBO + ... (owned) -> evolution" hint only when the
   player already owns the other half (`GameData.combo_hint`; tome cards only while the tome is NEW); plain otherwise.
   `--tomes=ricochet,haste` gives autotest runs tomes from the start. Freeze (`Enemy.freeze_t`) stops a foe and its contact damage; bosses are only slowed.
 - Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
@@ -190,8 +195,7 @@ scenes, dormitory, expeditions), **phase 3 UI + home map** (academy hub map with
 "kerjakan semuanya" (2 Nov): after phase 5 come alpha evolutions + remaining weapons, animation review, ad SDK +
 notification plugins, audio (Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
-The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
-Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).
+All 14 base weapons of the first two sets evolve (every tome is paired); the 8 arena weapons do not evolve yet.
 Open question: whether Lv 8 is reached often enough in real runs to evolve (EVOLVE_LEVEL is one constant).
 
 Syifa's next priorities, in order she listed:

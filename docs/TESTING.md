@@ -17,6 +17,29 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Revisi animasi:** jalan Wren arah timur & tenggara (bukunya tidak hilang lagi) dan jalan Kael arah timur
+(pedangnya tidak hilang lagi). Kalau ada arah lain yang menurutmu masih aneh, sebutkan karakter + arahnya.
+
+**Evolusi senjata alpha + 8 senjata baru.**
+- 6 evolusi baru (senjata Lv 8 + tome-nya, lalu buka chest):
+  - Crescent Slash + Tome of Power = **Lunar Cross**: dua bulan sabit besar bersilangan.
+  - Rune Chakram + Tome of Swiftness = **Infinity Loop**: 6 cakram ke segala arah lalu kembali.
+  - Arcane Familiar + Tome of Study = **Familiar Legion**: 5 familiar (ada yang menembak kipas, ada yang tembus).
+  - Aether Beam + Tome of Fortune = **Celestial Ray**: sinar lebar yang meninggalkan jejak emas yang membakar.
+  - Venom Bloom + Cursed Tome = **Plague Garden**: musuh yang mati di dalam awan menyebarkan awan baru.
+  - Arcane Mine + Tome of Greed = **Runic Chain**: satu rune meledak memicu rune lain di dekatnya.
+- 8 senjata baru (muncul di level up):
+  - **Hex Mark**: menandai musuh terkuat, yang ditandai menerima damage lebih besar.
+  - **Glacial Burst**: ledakan es di sekitarmu; mulai Lv 5 bisa membekukan.
+  - **Riftstorm**: petir ungu menyambar musuh acak setelah lingkaran peringatan.
+  - **Phantom Knight**: ksatria hantu menyerbu menembus satu barisan musuh.
+  - **Prism Sweep**: sinar pelangi menyapu satu lingkaran penuh di sekitarmu.
+  - **Gravity Lens**: lensa di atas kerumunan; tembakanmu dibelokkan ke musuh, musuh di dalamnya kena damage lebih.
+  - **Mirror Gate**: dua portal; tembakan yang masuk portal dekat keluar dari portal jauh, lebih kuat.
+  - **Crystal Barricade**: dinding kristal yang mendorong musuh, menahan peluru musuh, dan memantulkan tembakanmu.
+- [ ] Senjata mana yang terasa paling seru / paling lemah?
+- [ ] Efeknya terbaca top-down?
+
 **Tahap 5f: quest dengan hadiah.**
 - Panel QUESTS di layar utama sekarang berisi: pemberitahuan (ekspedisi pulang, bangunan selesai), **1 quest
   cerita** (kuning, berurutan: main run pertama, pulihkan Library, menangkan Courtyard, dst.) dan **3 quest harian**
