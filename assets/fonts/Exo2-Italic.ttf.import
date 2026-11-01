@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://c1avkpktihoq4"
-path="res://.godot/imported/Cinzel.ttf-1e003c02bd9f5caf99829299b24c9916.fontdata"
+uid="uid://c5rfbaq2smnbl"
+path="res://.godot/imported/Exo2-Italic.ttf-5c400e4db1808cd56a19a7b52c1f1873.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Cinzel.ttf"
-dest_files=["res://.godot/imported/Cinzel.ttf-1e003c02bd9f5caf99829299b24c9916.fontdata"]
+source_file="res://assets/fonts/Exo2-Italic.ttf"
+dest_files=["res://.godot/imported/Exo2-Italic.ttf-5c400e4db1808cd56a19a7b52c1f1873.fontdata"]
 
 [params]
 

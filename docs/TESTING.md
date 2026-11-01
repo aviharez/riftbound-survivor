@@ -17,29 +17,20 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
-**Tahap 3: tampilan baru (reskin UI) + navigation bar.**
-- Seluruh akademi memakai tampilan baru sesuai referensi: panel navy dengan bingkai emas berornamen, glow cyan,
-  font judul Cinzel dan font isi Nunito, latar langit malam dengan nebula Rift yang bergerak pelan.
-- **Navigation bar** di bawah dengan 5 halaman:
-  - **Academy**: semua bangunan sebagai kartu (Restore / Upgrade, plus tombol Lessons / Craft / Rooms / Meet).
-  - **Characters**: deretan roster di atas; kartu karakter (level, EXP, stat total termasuk level + equipment +
-    bond, tombol "Select for Rift"); tab Enhance / Equipment / Bond; potret besar (sprite animasi diam,
-    nanti diganti ilustrasi anime-mu).
-  - **Rift**: persiapan run (lokasi, karakter + loadout, bantuan akademi, rekor) dan tombol besar ENTER THE RIFT.
-  - **Expedition**: pilih misi di kiri, pilih karakter di kanan, START EXPEDITION; yang sedang pergi tampil
-    dengan timer (Collect / Recall).
-  - **Codex**: arsip karakter (yang terkunci tampil ???), senjata + pasangan evolusinya, bestiary musuh;
-    tombol Reset save pindah ke sini.
-- Di dalam run: panel level up, pause dan layar hasil juga memakai gaya baru.
-- **Ilustrasi besar**: spesifikasinya ada di `assets/illustrations/README.md` (PNG transparan 768x1024,
-  menghadap sedikit ke kiri, baju sama dengan sprite). Taruh file `<id>.png` di folder itu dan game otomatis
-  memakainya di halaman Characters.
-- [ ] Semua halaman enak dibaca di layar HP (teks tidak terlalu kecil / terpotong)
-- [ ] Navigation bar dan tombol mudah diketuk
-- [ ] Alur: pilih karakter di Characters → Rift → ENTER THE RIFT → hasil → kembali ke akademi
-- [ ] Ekspedisi dari halaman Expedition (kirim, tunggu, Collect)
-- [ ] Kesan tampilan dibanding referensi: warna, bingkai, font — apa yang kurang?
-- [ ] Semua fitur tahap 2 (enhance, equipment, craft, bond, dorm, ekspedisi) masih jalan di tampilan baru
+**Tahap 3 (revisi): layar utama = peta akademi.**
+- Layar utama sekarang **peta akademi** yang bisa digeser. Bangunan dibuat dengan PixelLab; yang masih runtuh
+  tampil sebagai reruntuhan + hologram cyan bangunannya. Panah hijau = bisa dibangun / di-upgrade sekarang.
+- **Ketuk bangunan** → panel bangunan: status, efek level berikutnya, kebutuhan resource (punya / perlu),
+  tombol BUILD / UPGRADE, plus tombol aksi (Lessons, Craft, Rooms, Meet).
+- Kiri atas: karakter yang dipilih + Academy Lv; di bawahnya **Quests** (tujuan yang sedang berjalan; quest
+  dengan hadiah datang di tahap lokasi). Kanan atas: resource + tombol **Settings** (Reset save pindah ke sini).
+- Kiri bawah: **Characters / Expedition / Codex** (halaman penuh dengan tombol kembali). Kanan bawah: tombol
+  besar **ENTER THE RIFT** → halaman Rift → START.
+- Gaya UI baru: panel kaca navy transparan, tombol emas miring, font Nunito + Exo 2 Italic (Cinzel dibuang).
+- [ ] Peta enak digeser di HP, ketuk bangunan tidak terpicu saat menggeser
+- [ ] Tampilan sudah terasa seperti game jualan? Apa yang masih kurang?
+- [ ] Font baru oke?
+- [ ] Posisi bangunan / jalan di peta (mau diatur ulang?)
 
 **Sebelumnya: tahap 2 (sistem meta) — checklist lama tetap berlaku.**
 

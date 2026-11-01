@@ -467,6 +467,24 @@ const BUILDINGS := [
 		"desc": "The sealed wing opens: Vesper wanders out, still half asleep",
 		"costs": [{"gold": 1500, "materials": 300, "aether": 40}]},
 ]
+# Academy hub map (home screen): world size, building plots (sprite centre, world px; sprites in
+# assets/academy/<id>.png are 192 px drawn at ACADEMY_SPRITE_SCALE), decorations and the paths between them.
+const ACADEMY_WORLD := Vector2(1320, 760)
+const ACADEMY_SPRITE_SCALE := 0.5
+const ACADEMY_MAIN_HALL := Vector2(660, 300)
+const ACADEMY_PLOTS := {
+	"frost_tower": Vector2(270, 150), "bell_tower": Vector2(480, 140), "observatory": Vector2(850, 140), "forbidden_archive": Vector2(1060, 150),
+	"library": Vector2(400, 290), "staff_room": Vector2(920, 290),
+	"training": Vector2(250, 440), "alchemy_lab": Vector2(480, 450), "dormitory": Vector2(840, 450), "workshop": Vector2(1070, 440),
+	"duel_hall": Vector2(380, 600), "rune_workshop": Vector2(660, 610), "arcana_lab": Vector2(930, 600),
+}
+const ACADEMY_RUINS := ["ruins_walls", "ruins_beams", "ruins_tower"]
+const ACADEMY_DECOR := [
+	["fountain", Vector2(660, 445)], ["tree", Vector2(120, 260)], ["tree", Vector2(160, 560)], ["tree", Vector2(1200, 280)],
+	["tree", Vector2(1210, 560)], ["tree", Vector2(560, 720)], ["tree", Vector2(790, 715)], ["tree", Vector2(660, 90)],
+	["lamp", Vector2(590, 380)], ["lamp", Vector2(730, 380)], ["lamp", Vector2(580, 520)], ["lamp", Vector2(740, 520)],
+	["crystals", Vector2(150, 400)], ["crystals", Vector2(1180, 410)], ["crystals", Vector2(380, 40)], ["crystals", Vector2(960, 710)],
+]
 # Staff Room lessons: permanent run bonuses bought with EXP (+ gold). Rank cap = LESSON_RANKS_PER_LEVEL x Staff Room level.
 const LESSON_RANKS_PER_LEVEL := 3
 const LESSON_COST_EXP := 120.0      # rank 1; each next rank costs LESSON_COST_GROWTH times more

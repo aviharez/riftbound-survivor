@@ -71,8 +71,8 @@ func _init(s) -> void:
 	_record = UiKit.label("", 7, UiKit.IVORY)
 	_record.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lo[1].add_child(_record)
-	var go := UiKit.button("ENTER THE RIFT", Vector2(0, 44), func(): shell.enter_rift(), "primary")
-	go.add_theme_font_size_override("font_size", 14)
+	var go := UiKit.button("START", Vector2(0, 46), func(): shell.enter_rift(), "primary")
+	go.add_theme_font_size_override("font_size", 20)
 	rp.add_child(go)
 
 

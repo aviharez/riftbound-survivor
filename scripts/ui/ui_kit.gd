@@ -1,17 +1,18 @@
 class_name UiKit
 extends RefCounted
-## Shared academy look (Syifa's references: navy panels, ornate gold frames, cyan glow, Cinzel titles).
-## Every panel and button is drawn with OrnateStyle; fonts are Nunito (body) and Cinzel (titles), both OFL.
+## Shared menu look (mobile hero-game style, Syifa's direction): rounded translucent navy glass panels with a light
+## rim and glossy top, gold slanted call-to-action buttons, white bold text. Fonts: Nunito (body) and Exo 2 Italic
+## (titles / buttons), both SIL OFL. Every panel and button is a GlassStyle.
 
 const NAVY := Color(0.06, 0.08, 0.18, 0.94)
-const GOLD := Color(0.88, 0.72, 0.34)
-const GOLD_DIM := Color(0.6, 0.48, 0.22)
-const IVORY := Color(0.96, 0.94, 0.86)
+const GOLD := Color(1.0, 0.82, 0.38)
+const GOLD_DIM := Color(0.7, 0.55, 0.25)
+const IVORY := Color(0.97, 0.97, 1.0)
 const CYAN := Color(0.42, 0.9, 1.0)
 const PURPLE := Color(0.72, 0.5, 1.0)
-const RED := Color(1, 0.5, 0.5)
-const GREEN := Color(0.55, 1.0, 0.6)
-const GREY := Color(0.4, 0.4, 0.46)
+const RED := Color(1, 0.45, 0.45)
+const GREEN := Color(0.5, 1.0, 0.55)
+const GREY := Color(0.4, 0.42, 0.5)
 
 const TITLE_FONT := preload("res://assets/fonts/title.tres")
 const BOLD_FONT := preload("res://assets/fonts/bold.tres")
@@ -25,52 +26,62 @@ static func label(text: String, fs: int, col: Color) -> Label:
 	return l
 
 
-## A Cinzel title with a soft dark outline.
-static func title(text: String, fs: int, col := GOLD) -> Label:
+## A display title (Exo 2 italic) with a soft dark outline.
+static func title(text: String, fs: int, col := IVORY) -> Label:
 	var l := label(text, fs, col)
 	l.add_theme_font_override("font", TITLE_FONT)
-	l.add_theme_color_override("font_outline_color", Color(0.02, 0.02, 0.08, 0.9))
+	l.add_theme_color_override("font_outline_color", Color(0.01, 0.02, 0.08, 0.85))
 	l.add_theme_constant_override("outline_size", 3)
 	return l
 
 
-## Panel / frame style. `border` gold = normal, cyan = selected (with glow), grey = disabled.
-static func style(border: Color, margin := 8.0) -> OrnateStyle:
-	var sb := OrnateStyle.new()
-	sb.border = border
-	sb.inner = Color(border, 0.35)
+## Panel style. `border` CYAN = selected (rim + glow), GREY = disabled, anything else = normal glass.
+static func style(border: Color, margin := 8.0) -> GlassStyle:
+	var sb := GlassStyle.new()
 	if border == CYAN:
-		sb.glow = Color(CYAN, 0.9)
-		sb.fill_top = Color(0.1, 0.18, 0.32, 0.97)
-	if border == GREY:
-		sb.fill_top = Color(0.1, 0.1, 0.16, 0.9)
-		sb.fill_bottom = Color(0.06, 0.06, 0.1, 0.9)
-		sb.ornaments = false
+		sb.rim = Color(CYAN, 0.95)
+		sb.glow = Color(CYAN, 0.8)
+		sb.fill_top = Color(0.14, 0.32, 0.55, 0.92)
+		sb.fill_bottom = Color(0.06, 0.13, 0.3, 0.92)
+	elif border == GREY:
+		sb.fill_top = Color(0.16, 0.17, 0.22, 0.8)
+		sb.fill_bottom = Color(0.09, 0.1, 0.14, 0.85)
+		sb.rim = Color(1, 1, 1, 0.1)
+		sb.highlight = Color(1, 1, 1, 0.05)
 	sb.set_content_margin_all(margin)
 	return sb
 
 
-## Button looks: "normal" (navy + gold), "primary" (gold-amber, the big call to action), "accent" (blue-cyan).
-static func button_style(kind: String, state: String) -> OrnateStyle:
-	var sb := style(GREY if state == "disabled" else (CYAN if state == "hover" else GOLD), 4.0)
+## Button looks: "normal" (blue glass), "primary" (gold, slanted: the call to action), "accent" (bright blue).
+static func button_style(kind: String, state: String) -> GlassStyle:
+	var sb := style(GREY if state == "disabled" else (CYAN if state == "hover" and kind == "normal" else GOLD), 4.0)
+	sb.radius = 5.0
 	if state == "disabled":
+		if kind == "primary":
+			sb.slant = 8.0
 		return sb
 	match kind:
+		"normal":
+			if state != "hover":
+				sb.fill_top = Color(0.2, 0.3, 0.55, 0.92)
+				sb.fill_bottom = Color(0.09, 0.14, 0.32, 0.92)
 		"primary":
-			sb.fill_top = Color(1.0, 0.78, 0.36)
-			sb.fill_bottom = Color(0.82, 0.45, 0.12)
-			sb.border = Color(1.0, 0.92, 0.6)
-			sb.gem = Color(1.0, 1.0, 0.85)
+			sb.fill_top = Color(1.0, 0.9, 0.5)
+			sb.fill_bottom = Color(0.95, 0.56, 0.12)
+			sb.rim = Color(1.0, 0.97, 0.8, 0.9)
+			sb.highlight = Color(1, 1, 1, 0.5)
+			sb.slant = 8.0
 		"accent":
-			sb.fill_top = Color(0.25, 0.6, 0.95)
-			sb.fill_bottom = Color(0.1, 0.3, 0.7)
-			sb.border = Color(0.6, 0.95, 1.0)
+			sb.fill_top = Color(0.3, 0.72, 1.0)
+			sb.fill_bottom = Color(0.1, 0.36, 0.8)
+			sb.rim = Color(0.75, 0.95, 1.0, 0.8)
+			sb.highlight = Color(1, 1, 1, 0.35)
 	if state == "pressed":
 		var t := sb.fill_top
 		sb.fill_top = sb.fill_bottom
 		sb.fill_bottom = t
-	if state == "hover":
-		sb.glow = Color(CYAN if kind == "normal" else Color(1, 0.95, 0.7), 0.8)
+	if state == "hover" and kind != "normal":
+		sb.glow = Color(1, 1, 1, 0.5)
 	return sb
 
 
@@ -83,22 +94,25 @@ static func button(text: String, min_size: Vector2, cb: Callable, kind := "norma
 	b.add_theme_font_override("font", BOLD_FONT)
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, button_style(kind, st))
-	var txt := Color(0.18, 0.08, 0.02) if kind == "primary" else IVORY
+	var txt := Color(0.25, 0.1, 0.0) if kind == "primary" else IVORY
 	for k in ["font_color", "font_hover_color", "font_pressed_color"]:
 		b.add_theme_color_override(k, txt)
 	b.add_theme_color_override("font_disabled_color", Color(IVORY, 0.4))
+	if kind != "primary":
+		b.add_theme_color_override("font_outline_color", Color(0, 0, 0.1, 0.6))
+		b.add_theme_constant_override("outline_size", 2)
 	if kind == "primary":
 		b.add_theme_font_override("font", TITLE_FONT)
 	b.pressed.connect(cb)
 	return b
 
 
-## Marks a button (tab, roster tile, picked option) as selected: cyan frame + glow.
+## Marks a button (tab, roster tile, picked option) as selected: cyan rim + glow.
 static func set_selected(b: Button, on: bool, kind := "normal") -> void:
 	b.add_theme_stylebox_override("normal", style(CYAN, 4.0) if on else button_style(kind, "normal"))
 
 
-## An ornate panel holding a VBox; returns [panel, vbox].
+## A glass panel holding a VBox; returns [panel, vbox].
 static func panel(margin := 8.0, border := GOLD) -> Array:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", style(border, margin))
@@ -108,24 +122,24 @@ static func panel(margin := 8.0, border := GOLD) -> Array:
 	return [p, box]
 
 
-## A section header: Cinzel text between two thin gold rules.
+## A section header: italic title between two thin light rules.
 static func header(text: String, fs := 10) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	for i in 2:
 		var line := ColorRect.new()
-		line.color = Color(GOLD, 0.5)
+		line.color = Color(0.6, 0.8, 1.0, 0.3)
 		line.custom_minimum_size = Vector2(0, 1)
 		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(line)
 		if i == 0:
-			var t := title(text, fs)
+			var t := title(text, fs, GOLD)
 			row.add_child(t)
 	return row
 
 
-## A full-screen dimmed overlay with a centred ornate panel; returns [overlay, content VBox].
+## A full-screen dimmed overlay with a centred glass panel; returns [overlay, content VBox].
 static func overlay(parent: Control, width: float) -> Array:
 	var dim := ColorRect.new()
 	dim.color = Color(0.01, 0.01, 0.05, 0.7)
@@ -136,7 +150,10 @@ static func overlay(parent: Control, width: float) -> Array:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.add_child(center)
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", style(GOLD, 10.0))
+	var ps := style(GOLD, 10.0)
+	ps.fill_top = Color(0.1, 0.16, 0.33, 0.97)
+	ps.fill_bottom = Color(0.04, 0.07, 0.17, 0.98)
+	p.add_theme_stylebox_override("panel", ps)
 	p.custom_minimum_size = Vector2(width, 0)
 	center.add_child(p)
 	var box := VBoxContainer.new()
@@ -153,7 +170,7 @@ static func bar(k: float, w: float, col := CYAN) -> Control:
 		var r := Rect2(Vector2.ZERO, c.size)
 		c.draw_rect(r, Color(0.02, 0.03, 0.08))
 		c.draw_rect(Rect2(r.position, Vector2(r.size.x * clampf(k, 0, 1), r.size.y)), col)
-		c.draw_rect(r, Color(GOLD, 0.7), false, 1.0))
+		c.draw_rect(r, Color(0.6, 0.8, 1.0, 0.5), false, 1.0))
 	return c
 
 

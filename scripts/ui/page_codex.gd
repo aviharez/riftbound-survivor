@@ -1,7 +1,7 @@
 class_name CodexPage
 extends Control
-## Codex: archive of characters, weapons (with their evolution pairs) and enemies, plus the settings corner
-## (reset save). Phase 5 adds per-location entries, discovery and quests.
+## Codex: archive of characters, weapons (with their evolution pairs) and enemies.
+## Phase 5 adds per-location entries, discovery and quests.
 
 var shell
 var _tab := "characters"
@@ -12,8 +12,6 @@ var _detail: Label
 var _art: Control
 var _art_kind := ""
 var _art_id := ""
-var _reset: Button
-var _armed := false
 
 
 func _init(s) -> void:
@@ -62,13 +60,6 @@ func _init(s) -> void:
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(_detail)
-	var foot := HBoxContainer.new()
-	right.add_child(foot)
-	var credits := UiKit.label("Fonts: Cinzel, Nunito (SIL OFL).  VFX: pixelfx (MIT).", 6, Color(UiKit.IVORY, 0.5))
-	credits.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	foot.add_child(credits)
-	_reset = UiKit.button("Reset save", Vector2(80, 20), _on_reset)
-	foot.add_child(_reset)
 
 
 func refresh() -> void:
@@ -190,16 +181,6 @@ func _draw_art() -> void:
 	if _art_kind == "char" and not SaveData.character_unlocked(shell.save, _art_id):
 		tint = Color(0.05, 0.05, 0.12)
 	_art.draw_texture_rect(tex, Rect2(r.get_center() - s * 0.5, s), false, tint)
-
-
-func _on_reset() -> void:
-	if not _armed:
-		_armed = true
-		_reset.text = "Tap again"
-		return
-	_armed = false
-	_reset.text = "Reset save"
-	shell.reset_save()
 
 
 func on_reset() -> void:
