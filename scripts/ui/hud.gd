@@ -32,6 +32,7 @@ var _choice_cb: Callable
 var _pause_panel: PanelContainer
 var _result_panel: PanelContainer
 var _result_label: Label
+var _result_title: Label
 var _dash_btn: Button
 var _map_btn: Button
 var _pause_btn: Button
@@ -162,7 +163,10 @@ func pick_choice(i: int) -> void:
 func show_result(text: String) -> void:
 	if map_open:
 		toggle_map()
-	_result_label.text = text
+	var head := text.get_slice("\n", 0)
+	_result_title.text = head
+	_result_title.add_theme_color_override("font_color", GOLD if head == "VICTORY" else CRIMSON)
+	_result_label.text = text.substr(head.length()).strip_edges().replace("\n\n", "\n")
 	_result_panel.visible = true
 	_pause_panel.visible = false
 	_choice_panel.visible = false
@@ -403,14 +407,8 @@ func _text(p: Vector2, s: String, col: Color, fs: int, centered: bool) -> void:
 
 # ------------------------------------------------------------------ widgets
 
-func _style(border: Color) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = NAVY
-	sb.border_color = border
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(3)
-	sb.set_content_margin_all(6)
-	return sb
+func _style(border: Color) -> StyleBox:
+	return UiKit.style(border, 6.0)
 
 
 func _make_button(text: String, size: Vector2, cb: Callable) -> Button:
@@ -420,10 +418,9 @@ func _make_button(text: String, size: Vector2, cb: Callable) -> Button:
 	b.size = size
 	b.focus_mode = Control.FOCUS_NONE
 	b.add_theme_font_size_override("font_size", 9)
-	b.add_theme_stylebox_override("normal", _style(GOLD))
-	b.add_theme_stylebox_override("hover", _style(CYAN))
-	b.add_theme_stylebox_override("pressed", _style(CYAN))
-	b.add_theme_stylebox_override("disabled", _style(Color(0.4, 0.4, 0.4)))
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, UiKit.button_style("normal", st))
+	b.add_theme_font_override("font", UiKit.BOLD_FONT)
 	b.pressed.connect(cb)
 	add_child(b)
 	return b
@@ -445,10 +442,8 @@ func _build_choice_panel() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 6)
 	_choice_panel.add_child(box)
-	_choice_title = Label.new()
+	_choice_title = UiKit.title("", 12)
 	_choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_choice_title.add_theme_font_size_override("font_size", 12)
-	_choice_title.add_theme_color_override("font_color", GOLD)
 	box.add_child(_choice_title)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
@@ -459,9 +454,9 @@ func _build_choice_panel() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		b.add_theme_font_size_override("font_size", 9)
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # long card text (combo hints) wraps instead of widening
-		b.add_theme_stylebox_override("normal", _style(Color(0.5, 0.45, 0.7)))
-		b.add_theme_stylebox_override("hover", _style(CYAN))
-		b.add_theme_stylebox_override("pressed", _style(CYAN))
+		for st in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(st, UiKit.button_style("normal", st))
+		b.add_theme_font_override("font", UiKit.BOLD_FONT)
 		b.pressed.connect(pick_choice.bind(i))
 		row.add_child(b)
 		_choice_buttons.append(b)
@@ -471,27 +466,17 @@ func _build_pause_panel() -> void:
 	_pause_panel = _centered_panel()
 	var box := VBoxContainer.new()
 	_pause_panel.add_child(box)
-	var l := Label.new()
-	l.text = "PAUSED"
+	box.add_theme_constant_override("separation", 5)
+	var l := UiKit.title("PAUSED", 14)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.add_theme_color_override("font_color", GOLD)
 	box.add_child(l)
 	var info := Label.new()
 	info.name = "Info"
 	info.add_theme_font_size_override("font_size", 9)
 	box.add_child(info)
-	var resume := Button.new()
-	resume.text = "Resume"
-	resume.pressed.connect(toggle_pause)
-	box.add_child(resume)
-	var restart := Button.new()
-	restart.text = "New run (new map)"
-	restart.pressed.connect(func(): game.restart())
-	box.add_child(restart)
-	var leave := Button.new()
-	leave.text = "Abandon run (no rewards)"
-	leave.pressed.connect(func(): game.return_to_academy())
-	box.add_child(leave)
+	box.add_child(UiKit.button("Resume", Vector2(220, 26), toggle_pause, "primary"))
+	box.add_child(UiKit.button("New run (new map)", Vector2(220, 22), func(): game.restart()))
+	box.add_child(UiKit.button("Abandon run (no rewards)", Vector2(220, 22), func(): game.return_to_academy()))
 	_pause_panel.visibility_changed.connect(func():
 		if _pause_panel.visible:
 			info.text = "Seed %d\nEsc/P pause · M map · Space dash · WASD move" % game.seed_value)
@@ -500,19 +485,19 @@ func _build_pause_panel() -> void:
 func _build_result_panel() -> void:
 	_result_panel = _centered_panel()
 	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 5)
 	_result_panel.add_child(box)
+	_result_title = UiKit.title("", 16)
+	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(_result_title)
 	_result_label = Label.new()
-	_result_label.add_theme_font_size_override("font_size", 10)
-	_result_label.custom_minimum_size = Vector2(260, 0)
+	_result_label.add_theme_font_size_override("font_size", 8)
+	_result_label.custom_minimum_size = Vector2(380, 0)
+	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_result_label)
-	var academy := Button.new()
-	academy.text = "Return to Academy"
-	academy.pressed.connect(func(): game.return_to_academy())
+	var academy := UiKit.button("Return to Academy", Vector2(0, 28), func(): game.return_to_academy(), "primary")
 	box.add_child(academy)
-	var again := Button.new()
-	again.text = "Run again (new map)"
-	again.pressed.connect(func(): game.restart())
+	var again := UiKit.button("Run again (new map)", Vector2(0, 24), func(): game.restart())
 	box.add_child(again)
 	for b in [academy, again]:
 		b.add_theme_font_size_override("font_size", 10)
-		b.custom_minimum_size = Vector2(0, 26)

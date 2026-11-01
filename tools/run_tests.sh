@@ -43,6 +43,8 @@ done
 run trait_vesper "char=vesper trait_procs=[1-9]" --fixed-fps 60 -- --autotest --seed=4242 --char=vesper
 run trait_runa "char=runa trait_procs=[1-9]" --fixed-fps 60 -- --autotest --seed=565590 --char=runa --slots=4
 run trait_sera "char=sera trait_procs=[1-9]" --fixed-fps 60 -- --autotest-boss --seed=31337 --char=sera
+# academy UI: every page and overlay builds and refreshes (demo save, nothing written)
+run academy_ui "ui check ok pages=5" -- --academy-demo --academy-check
 # meta progression: character level + enhance ranks reach the run
 run meta_enhance "char_level=15 enhance=3,3 max_hp=[0-9]+ shards=[0-9]+ equipment=[1-9]" --fixed-fps 60 -- --autotest-boss --seed=31337 --char=astra --char-level=15 --enhance=3,3 --gear=robe:4,wand:2,locket:1
 exit $fail

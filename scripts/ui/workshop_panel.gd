@@ -128,7 +128,7 @@ func _fill_inventory() -> void:
 		_inv_list.add_child(r)
 		var owner := SaveData.owner_of(save, int(it["uid"]))
 		var lab := UiKit.label("%s%s\n%s" % [GameData.item_name(it), ("  · %s" % GameData.character_by_id(owner)["name"]) if owner != "" else "",
-			CharacterPanel.item_stats(it)], 7, GameData.GEAR_RARITY_COLORS[int(it["rarity"])])
+			CharactersPage.item_stats(it)], 7, GameData.GEAR_RARITY_COLORS[int(it["rarity"])])
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		r.add_child(lab)
@@ -146,7 +146,7 @@ func _on_craft(base_id: String) -> void:
 	rng.randomize()
 	var it := SaveData.craft(save, base_id, _rarity, _loc(), rng)
 	if not it.is_empty():
-		_last.text = "Crafted %s: %s" % [GameData.item_name(it), CharacterPanel.item_stats(it)]
+		_last.text = "Crafted %s: %s" % [GameData.item_name(it), CharactersPage.item_stats(it)]
 		on_change.call()
 	refresh()
 

@@ -766,6 +766,15 @@ const ENEMY_TYPES := {
 		"color": Color(0.6, 0.85, 1.0), "xp": 1, "ghost": true},
 	"caster": {"hp": 14.0, "speed": 34.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.85, 0.25, 0.55), "xp": 2, "ranged": true},
 }
+# Codex entries for the bestiary (Codex page).
+const CODEX_ENEMIES := [
+	{"id": "slime", "name": "Rift Slime", "desc": "Purple ooze that seeps from every Rift crack. Weak alone, endless together."},
+	{"id": "bat", "name": "Gloom Bat", "desc": "Fast flyers that arrive after the first minute. They come in from every side."},
+	{"id": "brute", "name": "Stone Brute", "desc": "Slow, heavy golems carrying Rift crystals. Hit hard; keep moving."},
+	{"id": "caster", "name": "Hex Caster", "desc": "Hangs back and throws curse bolts. Close the gap or dodge with a dash."},
+	{"id": "wraith", "name": "Swarm Wraith", "desc": "Only in the Final Swarm. Drifts through walls; there is no hiding."},
+	{"id": "boss", "name": "Corrupted Guardian", "desc": "The academy's old guardian, twisted by the Rift. Rings of bullets, telegraphed dashes and summons; enrages at low health."},
+]
 const ELITE_SCALE := 1.6
 const ELITE_HP_MULT := 12.0
 const ELITE_AFFIXES := ["swift", "warded", "splitter"]

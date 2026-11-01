@@ -76,8 +76,13 @@ Read it before starting any phase.**
   (3 slots, rolled substats, run drops, Workshop crafting/salvage), bond (levels give mods + a story scene in
   `scripts/data/bond_scenes.gd`), Dormitory rooms + daily talk, real-time expeditions (`now` passed in, so tests
   fake time). All of it reaches a run through `SaveData.char_run_bonus()` in `main._apply_lessons()`.
-  Academy panels: `scripts/ui/{ui_kit,character_panel,workshop_panel,dorm_panel}.gd`; screenshot flags
-  `--academy-character/-gear/-bond/-workshop/-dorm/-expedition` (with `--academy-demo`). Autotest flags
+  Academy UI (phase 3 reskin): shell `scripts/ui/academy.gd` (shader background, top bar with resources, bottom
+  nav bar) + pages `page_{academy,characters,rift,expedition,codex}.gd` + overlays `{lessons,workshop,dorm}_panel.gd`.
+  Look = `UiKit` (Nunito body / Cinzel titles in `assets/fonts`, OFL) + `OrnateStyle` (code-drawn chamfered navy
+  panel, gold lines, corner gems, cyan glow when selected); button kinds normal / primary (gold CTA) / accent (blue).
+  Screenshot flags with `--academy-demo`: `--academy-page=characters|rift|expedition|codex`, `--academy-tab=enhance|gear|bond`,
+  `--academy-lessons/-workshop/-dorm`; `--academy-check` opens everything once (test `academy_ui`).
+  Big illustrations: `assets/illustrations/<id>.png` (spec in its README) replace the scaled sprite on the Characters page. Autotest flags
   `--char-level=15 --enhance=3,3 --gear=robe:4,wand:2`; the summary prints `char_level= enhance= max_hp= shards= equipment=`. Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes;
   `tests/test_academy.gd` loads a hand-written v1 save to check the migration.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
@@ -134,8 +139,8 @@ Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, R
 (swarm level per minute, wraiths, threat meter), academy (Library, Training Ground, Staff Room, 6 character
 buildings + Workshop + Dormitory), **all 13 characters** with v3 sprites + walk/idle animations and mechanical
 traits (phase 1 done), **phase 2 meta systems** (character level, enhance, equipment + crafting, bond with 65 story
-scenes, dormitory, expeditions; next is phase 3, UI reskin + navigation bar; some walk/idle directions still need
-revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+scenes, dormitory, expeditions), **phase 3 UI reskin + navigation bar** (next is phase 4, academy hub map with
+construction timers + ad hooks; some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
 The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
 Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).
