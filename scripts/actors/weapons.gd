@@ -344,6 +344,7 @@ func _spawn_roots(w: Dictionary, lv: int, pos: Vector2, r_mult := 1.0, gen := 0)
 ## several storms at once, each starting on a different nearby foe; the chains share their targets, so
 ## together they spread across the whole pack.
 func _chain_lightning(w: Dictionary, lv: int) -> void:
+	Sfx.play("zap")
 	var p: Player = game.player
 	var storm: bool = w.has("jumps")
 	var chains := count_of(w, lv) if storm else 1
@@ -427,6 +428,7 @@ func _update_strikes(delta: float) -> void:
 				_hit(e, s["dmg"], Color(2.6, 1.2, 0.3))
 			game.screen_fx.shockwave(s["pos"], s["r"] * 1.6, 1.0, 0.45)
 			game.screen_fx.shake(0.12)
+			Sfx.play("explosion")
 	_strikes = _strikes.filter(func(s): return not s.get("done", false))
 
 
@@ -714,6 +716,7 @@ func _update_mines(delta: float) -> void:
 func _mine_blast(m: Dictionary) -> void:
 	if m.get("done", false):
 		return
+	Sfx.play("explosion")
 	m["done"] = true
 	if m.get("chain_r", 0.0) > 0.0:
 		# Runic Chain: every armed rune near this one goes off a moment later

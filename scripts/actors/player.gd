@@ -66,6 +66,7 @@ func try_dash() -> void:
 	if dash_cd > 0.0:
 		return
 	dash_t = DASH_TIME
+	Sfx.play("dash")
 	dash_cd = DASH_COOLDOWN
 	game.vfx.play("blink_out", position, 0.0, 0.4)
 
@@ -83,6 +84,7 @@ func take_damage(amount: float) -> void:
 	hp -= amount * (1.0 - min(GameData.ARMOR_CAP, stats["armor"]))
 	iframes = HURT_IFRAMES
 	hurt_flash = 0.15
+	Sfx.play("hurt")
 	game.screen_fx.hurt()
 	game.vfx.sparks(position, Color(2.4, 0.4, 0.5), 8, 90.0, 0.25)
 	if hp <= 0.0:

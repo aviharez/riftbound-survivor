@@ -178,6 +178,7 @@ func _ready() -> void:
 	interactables.update_discovery(fog)
 	world.update_flow(player.position)
 	hud.banner("Find the Rift Portal before the timer ends", Color(1, 0.6, 0.6), 4.0)
+	Sfx.music("rift")
 	if _auto:
 		player.god_mode = not _auto_die
 		process_mode = Node.PROCESS_MODE_ALWAYS  # so the test can answer choice panels
@@ -389,6 +390,7 @@ func _start_final_swarm() -> void:
 		return
 	final_swarm = true
 	hud.banner("FINAL SWARM", Color(1, 0.2, 0.3), 4.0)
+	Sfx.music("boss")
 
 
 func _update_spawning(delta: float) -> void:
@@ -466,6 +468,7 @@ func spawn_damage_number(pos: Vector2, amount: float, crit: bool) -> void:
 
 func on_enemy_killed(e) -> void:
 	kills += 1
+	Sfx.play("kill")
 	if e.pos.distance_to(player.position) < 420.0:
 		if e.elite:
 			vfx.play("dark_explosion", e.pos, 0.0, 0.45)
@@ -502,19 +505,23 @@ func on_enemy_killed(e) -> void:
 func on_pickup(kind: int, value: float) -> void:
 	match kind:
 		Pickups.Kind.XP:
+			Sfx.play("gem", 0.12)
 			xp += value * (1.0 + player.stats["xp_pct"])
 			while xp >= xp_next:
 				xp -= xp_next
 				level += 1
 				xp_next = GameData.xp_to_next(level)
 				pending_levelups += 1
+				Sfx.play("levelup", 0.0)
 				player.on_level_up()
 				_level_up_vfx()
 		Pickups.Kind.GOLD:
+			Sfx.play("coin")
 			var g: float = value * (1.0 + player.stats["gold_pct"])
 			gold += g
 			gold_collected += g
 		Pickups.Kind.HEAL:
+			Sfx.play("heal", 0.0)
 			player.heal(value)
 
 
@@ -593,6 +600,7 @@ func open_chest(c: Dictionary) -> void:
 		chests_paid += 1
 	c["opened"] = true
 	chests_opened += 1
+	Sfx.play("chest", 0.0)
 	var ready := ready_evolutions()
 	if not ready.is_empty():
 		_evolve(ready[0], c["pos"])
@@ -639,6 +647,7 @@ func _check_evolution_ready() -> void:
 
 ## Replaces a base weapon by its evolution in the same slot (slot order is kept).
 func _evolve(base_id: String, at: Vector2) -> void:
+	Sfx.play("evolve", 0.0)
 	var evo := GameData.evolution_of(base_id)
 	var levels := {}
 	for id in player.weapon_levels:
@@ -755,6 +764,7 @@ func _apply_offer(opt: Dictionary) -> void:
 
 func on_shrine_activated(s: Dictionary) -> void:
 	shrines_used += 1
+	Sfx.play("shrine", 0.0)
 	# the shrine's idle beam goes out (Interactables._ambient); just a small puff where it stood
 	var sc: Color = GameData.SHRINE_TYPES[s["type"]]["color"]
 	vfx.motes(s["pos"] + Vector2(0, -6), Color(sc.r, sc.g, sc.b) * 1.6, 6, 30.0, 0.6, 2.5, -30.0)
@@ -826,6 +836,7 @@ func on_portal_discovered() -> void:
 
 
 func on_portal_activated() -> void:
+	Sfx.play("portal", 0.0)
 	screen_fx.shockwave(interactables.portal["pos"], 120.0, 1.0, 0.6)
 	screen_fx.shake(0.3)
 	hud.banner("The Rift Portal is opening...", Color(1, 0.3, 0.4), 2.0)
@@ -841,6 +852,8 @@ func summon_boss(pos: Vector2) -> void:
 	var b := enemies.spawn_boss(pos, (1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0) * float(run_mods["hp"]))
 	b.dmg *= float(run_mods["dmg"])
 	hud.banner("%s has emerged!" % boss_cfg["name"], Color(1, 0.3, 0.35), 3.0)
+	Sfx.play("boss_roar", 0.0)
+	Sfx.music("boss")
 
 
 func _on_boss_killed(pos: Vector2) -> void:
@@ -870,6 +883,8 @@ func _end_run(won: bool) -> void:
 	if run_over:
 		return
 	run_over = true
+	Sfx.music("")
+	Sfx.play("victory" if won else "defeat", 0.0)
 	victory = won
 	var share := (1.0 if won else GameData.DEFEAT_REWARD_SHARE) * float(run_mods["reward"])
 	var academy_gold := int((gold_collected * 2.0 + kills * 0.5) * share)

@@ -124,6 +124,7 @@ func damage(e: Enemy, amount: float, crit := false) -> void:
 		amount *= 1.0 + e.hex_amp
 	e.hp -= amount
 	e.flash = 0.08
+	Sfx.play("crit" if crit else "hit")
 	game.player.damage_dealt += amount
 	game.spawn_damage_number(e.pos, amount, crit)
 	if crit and tr == "arcane_echo" and e.alive:

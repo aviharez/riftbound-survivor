@@ -54,6 +54,7 @@ func _ready() -> void:
 		demo = true
 	_build()
 	show_page("home")
+	Sfx.music("academy")
 	for a in args:
 		if a.begins_with("--academy-page="):
 			show_page(a.get_slice("=", 1))
@@ -399,10 +400,32 @@ func _build_settings() -> void:
 	var o := UiKit.overlay(self, 300, "SETTINGS", func(): settings.visible = false)
 	settings = o[0]
 	var box: VBoxContainer = o[1]
-	box.add_child(UiKit.label("Sound and language options come later.", 8, Color(UiKit.IVORY, 0.7)))
+	# sound switches (stored in user://settings.cfg by the Sound autoload)
+	for opt in [["MUSIC", "music"], ["SOUND EFFECTS", "sfx"]]:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		box.add_child(row)
+		row.add_child(UiKit.icon_rect("bell", 16))
+		var l := UiKit.title(opt[0], 12)
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(l)
+		var key: String = opt[1]
+		var on: bool = Sfx.music_on() if key == "music" else Sfx.sfx_on()
+		var b := UiKit.button("ON" if on else "OFF", Vector2(56, 24), func(): pass, "accent" if on else "normal")
+		b.pressed.connect(func():
+			var now_on: bool = not (Sfx.music_on() if key == "music" else Sfx.sfx_on())
+			if key == "music":
+				Sfx.set_music_on(now_on)
+			else:
+				Sfx.set_sfx_on(now_on)
+			b.text = "ON" if now_on else "OFF"
+			for st in ["normal", "hover", "pressed"]:
+				b.add_theme_stylebox_override(st, UiKit.button_style("accent" if now_on else "normal", st)))
+		row.add_child(b)
 	_reset_btn = UiKit.button("RESET SAVE", Vector2(0, 26), _on_reset, "danger")
 	box.add_child(_reset_btn)
-	var credits := UiKit.label("Fonts: Galmuri (SIL OFL).  VFX: pixelfx (MIT).\nArt: PixelLab.", 7, Color(UiKit.IVORY, 0.5))
+	var credits := UiKit.label("Fonts: Galmuri (SIL OFL).  VFX: pixelfx (MIT).\nArt: PixelLab.  Audio: made in code.", 7, Color(UiKit.IVORY, 0.5))
 	box.add_child(credits)
 
 
@@ -412,6 +435,7 @@ func _tick() -> void:
 	var done := SaveData.complete_due(save, int(Time.get_unix_time_from_system()))
 	for bid in done:
 		toast("%s restored!" % GameData.building_by_id(bid)["name"])
+		Sfx.play("build_done", 0.0)
 	if not done.is_empty():
 		changed()
 	elif building != null and building.is_open():
@@ -528,6 +552,7 @@ func _claim(q: Dictionary) -> void:
 	for k in got:
 		parts.append("+%d %s" % [int(got[k]), UiKit.resource_name(k)])
 	toast("  ".join(parts))
+	Sfx.play("claim", 0.0)
 	changed()
 
 

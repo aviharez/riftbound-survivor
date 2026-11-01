@@ -7,6 +7,10 @@ config/name="Riftbound Arcane Academy - Rift Run Prototype"
 run/main_scene="res://scenes/academy.tscn"
 config/features=PackedStringArray("4.7")
 
+[autoload]
+
+Sound="*res://scripts/meta/sound.gd"
+
 [display]
 
 window/size/viewport_width=640

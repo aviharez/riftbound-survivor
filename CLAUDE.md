@@ -135,6 +135,12 @@ Read it before starting any phase.**
   (3 a day picked by the date, progress = counter growth since `roll_day`) and `STORY_QUESTS` (claimed in order,
   kinds counter / building / clear / char_level). Home quest panel: notifications + next story quest + dailies,
   CLAIM buttons (`SaveData.claim_quest`).
+- Audio (phase 6): `tools/audio/make_audio.py` synthesises every sound (numpy, no samples; Claude cannot listen,
+  Syifa judges) into `assets/audio/sfx/<name>.wav` and looping `assets/audio/music/{academy,rift,boss}.ogg`
+  (`loop=true` in their .import). Autoload `Sound` (`scripts/meta/sound.gd`: pool of players, per-name throttle,
+  music cross-fade, on/off in `user://settings.cfg`); call it through the static `Sfx.play(name)` /
+  `Sfx.music(name)` so scripts still parse where autoloads are missing (test scripts, --check-only).
+  Installing the Audio as Code package was refused in the workspace, so music is made by the same script.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.
@@ -192,8 +198,9 @@ traits (phase 1 done), **phase 2 meta systems** (character level, enhance, equip
 scenes, dormitory, expeditions), **phase 3 UI + home map** (academy hub map with tappable buildings made in phase 3 at Syifa's request),
 **phase 4 construction timers + rewarded-ad hooks** (placeholder ads, no notifications yet), **phase 5**
 (5 locations x 5 danger, 16 new enemies, 4 new bosses, tilesets, banners, quests, per-location codex). Syifa said
-"kerjakan semuanya" (2 Nov): after phase 5 come alpha evolutions + remaining weapons, animation review, ad SDK +
-notification plugins, audio (Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+"kerjakan semuanya" (2 Nov): alpha evolutions + arena weapons, an animation review pass and audio are done; the ad SDK (AdMob) and
+Android notification plugins wait for Syifa (AdMob account / app id, switching CI to a Gradle build)
+(Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
 All 14 base weapons of the first two sets evolve (every tome is paired); the 8 arena weapons do not evolve yet.
 Open question: whether Lv 8 is reached often enough in real runs to evolve (EVOLVE_LEVEL is one constant).

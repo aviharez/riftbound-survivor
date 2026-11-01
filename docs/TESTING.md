@@ -17,6 +17,17 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Audio (tahap 6): suara dan musik pertama.**
+- Semua suara dibuat dengan kode (sintesis, tanpa rekaman): pukulan, kritikal, musuh mati, gem, koin, level up,
+  chest, shrine, evolusi, ledakan, petir, es, dash, terluka, boss mengaum, portal, menang/kalah, klik tombol,
+  bangunan selesai, klaim quest.
+- 3 musik loop: **akademi** (tenang), **Rift** (cepat), **boss / Final Swarm** (lebih tegang).
+- Settings: tombol **MUSIC** dan **SOUND EFFECTS** ON/OFF (tersimpan, tidak ikut terhapus saat reset save).
+- Aku tidak bisa mendengar hasilnya, jadi tolong nilai: mana yang mengganggu, terlalu keras, terlalu pelan,
+  atau tidak cocok. Semua bisa diubah lewat angka di skripnya.
+- [ ] Musik akademi / Rift / boss enak didengar? Terlalu berulang?
+- [ ] Suara pukulan & musuh mati tidak berisik saat ramai?
+
 **Revisi animasi:** jalan Wren arah timur & tenggara (bukunya tidak hilang lagi) dan jalan Kael arah timur
 (pedangnya tidak hilang lagi). Kalau ada arah lain yang menurutmu masih aneh, sebutkan karakter + arahnya.
 

@@ -78,6 +78,7 @@ func _glacial(w: Dictionary, lv: int) -> void:
 	var p := _p()
 	var r: float = float(w["radius"]) * weapons.level_size(w, lv)
 	game.vfx.play("frost_burst", p.position, 0.0, r / Weapons.BURST_REACH["frost_burst"])
+	Sfx.play("freeze")
 	game.screen_fx.shockwave(p.position, r * 1.5, 0.8, 0.4)
 	for e in game.enemies.query_radius(p.position, r):
 		weapons._hit(e, weapons.level_damage(w, lv), Color(0.8, 1.8, 2.6))
@@ -185,6 +186,7 @@ func _update_strikes(delta: float) -> void:
 			for e in game.enemies.query_radius(s["pos"], s["r"]):
 				weapons._hit(e, s["dmg"], Color(1.8, 0.7, 2.6))
 			game.vfx.play("zap_hit", s["pos"], 0.0, s["r"] / 22.0, Color(1.0, 0.6, 1.4))
+			Sfx.play("zap")
 			game.vfx.flash(s["pos"], Color(1.6, 0.7, 2.4), s["r"] * 1.2, 0.15)
 			game.screen_fx.shake(0.05)
 	_strikes = _strikes.filter(func(s): return not s.get("done", false) or s["bolt"] > 0.0)

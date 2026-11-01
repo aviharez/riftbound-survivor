@@ -160,6 +160,7 @@ static func button(text: String, min_size: Vector2, cb: Callable, kind := "norma
 	b.add_theme_color_override("font_disabled_color", Color(IVORY, 0.35))
 	b.add_theme_color_override("font_outline_color", Color("05030c"))
 	b.add_theme_constant_override("outline_size", 2)
+	b.pressed.connect(func(): Sfx.play("ui_confirm" if kind == "primary" else "ui_click", 0.02))
 	b.pressed.connect(cb)
 	return b
 
@@ -254,6 +255,7 @@ static func close_button(cb: Callable) -> Button:
 	b.flat = true
 	b.focus_mode = Control.FOCUS_NONE
 	b.custom_minimum_size = Vector2(22, 22)
+	b.pressed.connect(func(): Sfx.play("ui_back", 0.02))
 	b.pressed.connect(cb)
 	b.draw.connect(func():
 		var m := (b.size * 0.5).floor()
