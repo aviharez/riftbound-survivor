@@ -33,8 +33,8 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
   whose restoration brings them back ("" = from the start). Agreed roster plan (later phases, not built yet):
   Rai (Chain Lightning, Bell Tower), Nox (Void Well, Forbidden Archive), Wren (Arcane Familiar, Library max),
   teachers: Spellblade Instructor (Crescent Slash, Duel Hall), Astronomy Professor (Meteor Fall, Observatory),
-  Rune Master (Chakram/Mine, Rune Workshop), Aether Researcher (Aether Beam, Arcana Lab). New characters use the
-  coloured placeholder until Syifa uploads PixelLab sprites.
+  Rune Master (Chakram/Mine, Rune Workshop), Aether Researcher (Aether Beam, Arcana Lab). A character without
+  sprite files falls back to the coloured placeholder.
 - Academy buildings (`GameData.BUILDINGS`): `unlocks` = tome / weapon (slots), character (Lv 1 brings back
   `character`), lessons (Staff Room: teachers sell permanent upgrades `GameData.LESSONS`, bought with EXP + gold,
   rank cap = `LESSON_RANKS_PER_LEVEL` x Staff Room level, applied at run start). Academy strips scroll sideways;
@@ -50,8 +50,15 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
   screen effects (shockwave/chroma/vignette shader, shake, hit-stop) in `scripts/vfx/screen_fx.gd`,
   shaders in `shaders/`. Quality switches: `GameData.VFX_*`.
 - Art: character sprites in `assets/characters/<id>/<direction>.png` (see its README); enemies/props are
-  hand-authored grids in `scripts/meta/pixel_sprites.gd`. `--autotest-boss` summons the boss at ~25 s (for boss screenshots). The cloud workspace cannot download from
-  PixelLab; Syifa uploads the PNGs and Claude commits them. Do not route downloads through CI.
+  hand-authored grids in `scripts/meta/pixel_sprites.gd`. `--autotest-boss` summons the boss at ~25 s (for boss screenshots).
+  Claude can make character sprites itself with the PixelLab MCP (Syifa's account; trial plan, few generations:
+  check `get_balance`, one job at a time): `create_character` mode v3, size 64, view "low top-down", "cute chibi
+  anime ..." (2 generations). The workspace proxy blocks PixelLab download URLs (403), so for each direction run
+  `pixelart_workbench inspect character:<id>:<dir> --region 0,0,63,63 --scale 1`; its image is saved under
+  /tmp/claude-tool-results/... (an 18 px caption strip above the 64x64 crop on solid #1f252c), and
+  `python3 tools/pixellab_extract.py assets/characters/<id> south=<file> ...` rebuilds the exact PNGs (check that
+  each direction's colour count equals the palette size inspect reports). Sprites only use alpha 0/255.
+  Do not route downloads through CI.
 - Android APK: `.github/workflows/android.yml` builds on every push and publishes the `latest-build`
   pre-release. CI logs are not readable from the workspace; failures show up as a `ci-log-tail`
   annotation (GitHub API: check-runs/<job id>/annotations).
@@ -121,8 +128,8 @@ Syifa's next priorities, in order she listed:
 2. ~~More weapons~~ alpha set of 6 done. Still open from the doc: Hex Mark (damage amp), Glacial Burst,
    Gravity Lens / Mirror Gate / Crystal Barricade (arena manipulation), Phantom Knight, Prism Sweep, Riftstorm.
 3. **Academy expansion**: phase 1 done (Staff Room lessons, Frost Tower -> Selene, Alchemy Lab -> Noah, mechanical
-   traits for all 6). Next phases: the rest of the roster above (2 per phase, as Syifa supplies sprites).
-   Waiting on Syifa: PixelLab sprites for Selene and Noah (8 directions, 64x64, assets/characters/<id>/).
+   traits for all 6, PixelLab sprites for Selene and Noah made by Claude). Next phases: the rest of the roster
+   above (2 per phase).
 
 Playtest fixes (1 Nov): Arcane Bolt = fast homing (`homing` turn rate, cyan trail); Flame Orb = big slow, bounces
 off walls (`wall_bounce`) and splashes a top-down flame star on every hit (`splash_r`/`splash`); meteor-strike is a grey

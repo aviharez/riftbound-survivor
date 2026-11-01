@@ -31,7 +31,7 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
   - **Frost Tower**: membuka **Selene** (Cryomancy, Frost Lance).
   - **Alchemy Lab**: membuka **Noah** (Alchemy, Venom Bloom).
 - Karakter terkunci tampil abu-abu; diketuk = muncul cara membukanya. Baris karakter juga bisa digeser.
-- Selene & Noah masih pakai gambar placeholder sampai sprite PixelLab-nya ada.
+- Selene & Noah sekarang punya sprite PixelLab 8 arah (dibuat Claude).
 - Save lama otomatis dimigrasi (tidak hilang).
 - [ ] Save lama tetap ada setelah update (gold, bangunan, karakter)
 - [ ] Baris karakter & bangunan enak digeser di HP, tombol ENTER THE RIFT tetap terlihat
