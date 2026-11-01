@@ -5,6 +5,7 @@ extends Node2D
 ##
 ## Command-line (after `--`): --seed=123  --slots=4  --autotest  --autotest-die  --autotest-late  --shot=/tmp/shot.png
 ##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1; evolved ids such as solar come evolved)
+##   --lessons=might:3,vigor:2 (Staff Room lesson ranks for this run)
 ##   --tomes=ricochet,haste (tomes owned at Lv 1 from the start)
 ##   --ready-evolve (owned weapons start at the evolve level with their tomes, so chests evolve them)
 ##   --swarm-at=30 (early Final Swarm); autotest only
@@ -76,6 +77,8 @@ var _choice_shot_done := false
 var _auto_portal_at := 240.0
 var _swarm_at := -1.0  # --swarm-at=30: start the Final Swarm early (autotest only)
 var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
+var _lessons_arg := {}          # --lessons=might:3,vigor:2: Staff Room ranks for an autotest run
+var _lessons_applied := {}      # lesson id -> rank applied this run (autotest summary)
 var _extra_tomes: Array = []    # --tomes=ricochet,haste: tomes owned from the start (autotest; combo hint checks)
 var _ready_evolve := false      # --ready-evolve: owned weapons at the evolve level + their tomes
 var _profile := false           # --profile: print load counters every 20 s of game time
@@ -114,6 +117,7 @@ func _ready() -> void:
 	enemies = _add(Enemies.new())
 	player = _add(Player.new())
 	player.setup_character(GameData.character_by_id(character_id))
+	_apply_lessons()
 	for id in _extra_weapons:
 		var ew: Dictionary = GameData.weapon_by_id(id)
 		if _auto and not ew.is_empty():
@@ -160,6 +164,14 @@ func _ready() -> void:
 		process_mode = Node.PROCESS_MODE_ALWAYS  # so the test can answer choice panels
 
 
+## Staff Room lessons (permanent upgrades) from the save; autotests use --lessons instead.
+func _apply_lessons() -> void:
+	var src := {"lessons": _lessons_arg} if _auto else SaveData.load_data()
+	_lessons_applied = src["lessons"].duplicate()
+	player.apply_mods(SaveData.lesson_mods(src))
+	player.hp = player.stats["max_hp"]
+
+
 func _add(n: Node) -> Node:
 	n.set("game", self)
 	add_child(n)
@@ -185,6 +197,10 @@ func _parse_args() -> void:
 			_swarm_at = float(a.get_slice("=", 1))
 		elif a == "--profile":
 			_profile = true
+		elif a.begins_with("--lessons="):
+			for part in a.get_slice("=", 1).split(","):
+				if ":" in part:
+					_lessons_arg[part.get_slice(":", 0)] = int(part.get_slice(":", 1))
 		elif a.begins_with("--tomes="):
 			_extra_tomes = Array(a.get_slice("=", 1).split(","))
 		elif a == "--ready-evolve":
@@ -413,6 +429,7 @@ func on_enemy_killed(e) -> void:
 		screen_fx.hitstop(0.05)
 		screen_fx.shake(0.3)
 		screen_fx.shockwave(e.pos, 90.0, 1.0, 0.5)
+	weapons.trait_on_kill(e)
 	if e.boss:
 		_on_boss_killed(e.pos)
 		return
@@ -827,7 +844,8 @@ func _autotest_step(delta: float) -> void:
 		if _shot_path != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
-		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions])
+		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s char=%s trait_procs=%d lessons=%s" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions,
+			character_id, weapons.trait_procs, _lessons_applied])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s swarm_t=%.0f swarm_lv=%d threat=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm, final_swarm_t, swarm_level(), threat_name()])
 		get_tree().quit()

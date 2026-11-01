@@ -69,7 +69,11 @@ func try_dash() -> void:
 
 
 func take_damage(amount: float) -> void:
-	if iframes > 0.0 or is_dashing() or god_mode or hp <= 0.0:
+	if iframes > 0.0 or is_dashing() or hp <= 0.0:
+		return
+	game.weapons.trait_on_hurt()   # Kael's Retaliation (before god mode, so autotests exercise it)
+	if god_mode:
+		iframes = HURT_IFRAMES
 		return
 	hp -= amount * (1.0 - min(GameData.ARMOR_CAP, stats["armor"]))
 	iframes = HURT_IFRAMES

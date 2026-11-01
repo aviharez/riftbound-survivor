@@ -13,6 +13,7 @@ extends Node2D
 const MAX_ROOTS := 28   # live root patches (oldest dropped first)
 const PRISM_KINDS := ["prism_arcane", "prism_fire", "prism_ice", "prism_nature"]
 # custom top-down bursts (tools/pixelfx_custom/riftbound): their ring's reach in px at scale 1
+const MAX_PLAGUE_CLOUDS := 6    # Noah's Plague: live spread clouds
 const THORN_PATCH_TIME := 1.6  # riftbound/thorn-patch length (s)
 const MINE_FX_SCALE := 1.5     # rune-sigil sheet (25 px wide) drawn ~38 px wide so the rune reads
 const FAMILIAR_SCALE := 1.6   # the 14 px crystal sprite drawn ~22 px tall (hero is 33)
@@ -29,7 +30,10 @@ var _trail: Node2D         # additive child that draws the Astral Blades sweep t
 var _halo_t := 0.5         # Blade Halo: seconds until the next thrown blade
 var _familiars: Array = [] # Arcane Familiar: {cd, pos, hover, face} per familiar
 var _beams: Array = []     # Aether Beam visuals {a, b, t, life, width}
-var _mines: Array = []     # Arcane Mine runes on the floor {pos, t, life, arm, r, trig, dmg, fx}
+var _mines: Array = []
+var _trait_queue: Array = []  # kill-triggered trait effects, run next frame (no chain recursion within a frame)
+var _retaliate_cd := 0.0
+var trait_procs := 0          # how often the character trait fired (autotest summary)     # Arcane Mine runes on the floor {pos, t, life, arm, r, trig, dmg, fx}
 
 
 func _ready() -> void:
@@ -100,6 +104,12 @@ func _process(delta: float) -> void:
 	_update_strikes(delta)
 	_update_zones(delta)
 	_update_mines(delta)
+	_retaliate_cd = maxf(0.0, _retaliate_cd - delta)
+	if not _trait_queue.is_empty():
+		var q := _trait_queue
+		_trait_queue = []
+		for t in q:
+			_run_trait(t)
 	for b in _beams:
 		b["t"] += delta
 	_beams = _beams.filter(func(b): return b["t"] < b["life"])
@@ -637,6 +647,79 @@ func _mine_blast(m: Dictionary) -> void:
 	game.vfx.play("rune_burst", m["pos"], 0.0, m["r"] / 44.0)
 	game.screen_fx.shockwave(m["pos"], m["r"] * 1.6, 0.7, 0.35)
 	game.screen_fx.shake(0.06)
+
+
+# ------------------------------------------------------------------ character traits (mechanical passives)
+
+func _trait() -> String:
+	return String(game.player.character.get("trait", ""))
+
+
+## Astra, Arcane Echo: a crit arcs to the nearest other foe for part of its damage (never crits itself).
+func trait_echo(e, amount: float) -> void:
+	var cfg: Dictionary = GameData.TRAITS["arcane_echo"]
+	var other = game.enemies.nearest(e.pos, float(cfg["range"]), e)
+	if other == null:
+		return
+	trait_procs += 1
+	var d: Vector2 = other.pos - e.pos
+	game.vfx.play("zap_hit", other.pos, d.angle(), clampf(d.length() / 85.0, 0.3, 0.9), Color(0.7, 1.0, 1.0))
+	game.enemies.damage(other, amount * float(cfg["mult"]))
+
+
+## Kael, Retaliation: getting hit sends a sword wave through the foes around him.
+func trait_on_hurt() -> void:
+	if _trait() != "retaliation" or _retaliate_cd > 0.0:
+		return
+	var cfg: Dictionary = GameData.TRAITS["retaliation"]
+	_retaliate_cd = float(cfg["cooldown"])
+	trait_procs += 1
+	var p: Player = game.player
+	var r: float = float(cfg["radius"]) * p.area()
+	for e in game.enemies.query_radius(p.position, r):
+		_hit(e, p.dmg() * float(cfg["dmg"]), Color(0.9, 1.6, 2.4))
+	game.vfx.ring(p.position, Color(0.8, 1.4, 2.0), r, 0.3, 2.0)
+	for i in 8:
+		var dir := Vector2.from_angle(TAU * i / 8.0)
+		game.vfx.trail(p.position + dir * r * 0.6, Color(0.8, 1.3, 1.8), 2.0, 0.25)
+	game.screen_fx.shockwave(p.position, r * 1.5, 0.6, 0.3)
+
+
+## Called by main for every kill: Lyra's Kindling, Nym's Thornheal, Noah's Plague.
+func trait_on_kill(e) -> void:
+	match _trait():
+		"kindling":
+			if randf() < float(GameData.TRAITS["kindling"]["chance"]):
+				_trait_queue.append({"kind": "kindling", "pos": e.pos})
+		"thornheal":
+			if e.rooted_t > 0.0:
+				trait_procs += 1
+				game.player.heal(float(GameData.TRAITS["thornheal"]["heal"]))
+				game.vfx.motes(e.pos, Color(0.8, 2.0, 0.6), 3, 20.0, 0.5, 2.5, -20.0)
+		"plague":
+			var cfg: Dictionary = GameData.TRAITS["plague"]
+			if _time - e.venom_hit_at <= float(cfg["poisoned_window"]) and randf() < float(cfg["chance"]):
+				_trait_queue.append({"kind": "plague", "pos": e.pos})
+
+
+func _run_trait(t: Dictionary) -> void:
+	var p: Player = game.player
+	trait_procs += 1
+	match t["kind"]:
+		"kindling":
+			var cfg: Dictionary = GameData.TRAITS["kindling"]
+			var r: float = float(cfg["radius"]) * p.area()
+			for e in game.enemies.query_radius(t["pos"], r):
+				_hit(e, p.dmg() * float(cfg["dmg"]), Color(2.4, 1.1, 0.3))
+			game.vfx.play("solar_burst", t["pos"], 0.0, r / 44.0)
+		"plague":
+			var cfg: Dictionary = GameData.TRAITS["plague"]
+			if _zones.filter(func(z): return z.get("plague", false)).size() >= MAX_PLAGUE_CLOUDS:
+				return
+			var r: float = float(cfg["radius"]) * p.area()
+			var fx: Dictionary = game.vfx.play("venom_cloud", t["pos"], 0.0, r / 30.0, Color.WHITE, 0.8, float(cfg["duration"]))
+			_zones.append({"kind": "venom", "plague": true, "pos": t["pos"], "r": r, "t": 0.0, "life": float(cfg["duration"]),
+				"tick": float(cfg["tick"]), "tick_dmg": p.dmg() * float(cfg["dmg"]), "fx": fx})
 
 
 # ------------------------------------------------------------------ drawing

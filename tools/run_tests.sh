@@ -33,4 +33,6 @@ run boss_lyra "\[autotest\] done" --fixed-fps 60 -- --autotest-boss --seed=31337
 run evolve_a "evolutions=\[\"[a-z]+\", \"[a-z]+\", \"[a-z]+\", \"[a-z]+\"\]" --fixed-fps 60 -- --autotest --seed=4242 --char=lyra --weapons=bolt,chain,meteor --ready-evolve --slots=4
 run evolve_b "evolutions=\[\"[a-z]+\", \"[a-z]+\", \"[a-z]+\", \"[a-z]+\"\]" --fixed-fps 60 -- --autotest --seed=565590 --char=kael --weapons=void,lance,seed --ready-evolve --slots=4
 run alpha_weapons "\[autotest\] done" --fixed-fps 60 -- --autotest --seed=31337 --char=astra --weapons=slash,chakram,familiar,beam,venom,mine --slots=4
+run selene "char=selene trait_procs=[1-9]" --fixed-fps 60 -- --autotest --seed=4242 --char=selene --lessons=might:3,vigor:2 --slots=4
+run noah "char=noah trait_procs=[1-9]" --fixed-fps 60 -- --autotest-die --seed=77 --char=noah
 exit $fail

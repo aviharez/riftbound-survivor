@@ -17,6 +17,28 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Akademi fase 1: karakter murid & guru.**
+- Semua karakter punya **pasif mekanik** baru (lihat detail di akademi saat memilih karakter):
+  - Astra: crit memercik ke 1 musuh terdekat (50% damage)
+  - Lyra: musuh yang dibunuh 25% meledak api
+  - Kael: saat terkena serangan, gelombang pedang menebas musuh di sekitar
+  - Nym: musuh yang mati saat terjerat akar menyembuhkanmu
+  - Selene (baru): musuh yang melambat/beku menerima +25% damage
+  - Noah (baru): musuh beracun yang mati bisa menyebarkan awan racun kecil
+- **Bangunan baru** (baris bangunan bisa digeser ke samping):
+  - **Staff Room**: guru memberi **Lessons** = upgrade permanen (damage, HP, attack speed, speed, luck, XP, gold,
+    pickup). Dibeli pakai EXP + gold, rank maks 3 per level Staff Room (6 di level 2).
+  - **Frost Tower**: membuka **Selene** (Cryomancy, Frost Lance).
+  - **Alchemy Lab**: membuka **Noah** (Alchemy, Venom Bloom).
+- Karakter terkunci tampil abu-abu; diketuk = muncul cara membukanya. Baris karakter juga bisa digeser.
+- Selene & Noah masih pakai gambar placeholder sampai sprite PixelLab-nya ada.
+- Save lama otomatis dimigrasi (tidak hilang).
+- [ ] Save lama tetap ada setelah update (gold, bangunan, karakter)
+- [ ] Baris karakter & bangunan enak digeser di HP, tombol ENTER THE RIFT tetap terlihat
+- [ ] Panel Lessons terbaca, beli lesson terasa berpengaruh di run
+- [ ] Pasif tiap karakter terasa (terutama Kael saat terkena serangan, Lyra saat membunuh)
+- [ ] Harga bangunan & lesson masuk akal (terlalu mahal / murah?)
+
 **Info combo di kartu level-up (permintaanmu):** kartu tampil biasa selama kamu belum punya pasangannya. Kalau sudah
 punya weapon-nya lalu tome pasangannya muncul sebagai NEW, kartunya menulis
 "COMBO + Flame Orb (owned) -> Solar Cataclysm at Lv 8". Begitu juga sebaliknya: sudah punya tome-nya, lalu kartu

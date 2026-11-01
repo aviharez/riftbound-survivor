@@ -322,24 +322,50 @@ static func weapon_count(w: Dictionary, lv: int, extra_projectiles: int) -> int:
 # base: stat overrides on top of Player.stats defaults. starter: weapon that takes slot 1.
 # per_level: passive mods applied on every level-up (the character's growth identity).
 # colors: placeholder palette used until the character's sprite files exist.
+# role: their place in the academy (Syifa: characters fit the magic-academy theme: students and teachers).
+# unlock: building id whose restoration brings the character back ("" = available from the start).
+# trait: mechanical passive (TRAITS below); per_level: small stat growth on every level-up.
 const CHARACTERS := [
-	{"id": "astra", "name": "Astra", "role": "Mage", "starter": "bolt",
+	{"id": "astra", "name": "Astra", "role": "New Student", "school": "Arcana", "starter": "bolt", "unlock": "",
 		"base": {"max_hp": 100.0, "speed": 90.0, "damage": 10.0, "crit": 0.05},
-		"passive": "Arcane Focus", "passive_desc": "+1% crit chance per level", "per_level": [["crit", 0.01]],
+		"trait": "arcane_echo", "passive": "Arcane Echo", "passive_desc": "Critical hits arc to a nearby foe for 50% damage. +1% crit per level",
+		"per_level": [["crit", 0.01]],
 		"colors": {"robe": Color(0.12, 0.18, 0.4), "hair": Color(0.85, 0.88, 0.95), "accent": Color(0.4, 1.0, 1.0)}},
-	{"id": "lyra", "name": "Lyra", "role": "Fire Mage", "starter": "flame",
+	{"id": "lyra", "name": "Lyra", "role": "Duel Club Champion", "school": "Pyromancy", "starter": "flame", "unlock": "",
 		"base": {"max_hp": 85.0, "speed": 96.0, "damage": 12.0, "area_pct": 0.10},
-		"passive": "Kindling", "passive_desc": "+2% damage per level", "per_level": [["damage_pct", 0.02]],
+		"trait": "kindling", "passive": "Kindling", "passive_desc": "Foes you kill have a 25% chance to burst into flame. +2% damage per level",
+		"per_level": [["damage_pct", 0.02]],
 		"colors": {"robe": Color(0.55, 0.08, 0.12), "hair": Color(1.0, 0.55, 0.7), "accent": Color(1.0, 0.6, 0.2)}},
-	{"id": "kael", "name": "Kael", "role": "Knight", "starter": "blades",
+	{"id": "kael", "name": "Kael", "role": "Academy Guard", "school": "Spellblade", "starter": "blades", "unlock": "",
 		"base": {"max_hp": 150.0, "speed": 82.0, "damage": 10.0, "armor": 0.10},
-		"passive": "Bulwark", "passive_desc": "+1% damage reduction per level (max 50%)", "per_level": [["armor", 0.01]],
+		"trait": "retaliation", "passive": "Retaliation", "passive_desc": "When hit, a sword wave slashes foes around you. +1% damage reduction per level",
+		"per_level": [["armor", 0.01]],
 		"colors": {"robe": Color(0.16, 0.2, 0.42), "hair": Color(0.15, 0.2, 0.45), "accent": Color(0.85, 0.88, 0.95)}},
-	{"id": "nym", "name": "Nym", "role": "Healer", "starter": "seed",
+	{"id": "nym", "name": "Nym", "role": "Infirmary Healer", "school": "Herbology", "starter": "seed", "unlock": "",
 		"base": {"max_hp": 95.0, "speed": 92.0, "damage": 9.0, "regen": 0.6, "luck": 10.0, "heal_pct": 0.5},
-		"passive": "Verdant Grace", "passive_desc": "+0.12 HP/s regen per level; all healing +50%", "per_level": [["regen", 0.12]],
+		"trait": "thornheal", "passive": "Thornheal", "passive_desc": "Foes that die while snared by roots heal you. Healing +50%, +0.12 HP/s per level",
+		"per_level": [["regen", 0.12]],
 		"colors": {"robe": Color(0.9, 0.95, 0.9), "hair": Color(0.55, 1.0, 0.8), "accent": Color(0.3, 0.9, 0.45)}},
+	{"id": "selene", "name": "Selene", "role": "Student Council President", "school": "Cryomancy", "starter": "lance", "unlock": "frost_tower",
+		"base": {"max_hp": 90.0, "speed": 92.0, "damage": 11.0, "crit": 0.03},
+		"trait": "frostbite", "passive": "Frostbite", "passive_desc": "Slowed or frozen foes take +25% damage. +1.5% damage per level",
+		"per_level": [["damage_pct", 0.015]],
+		"colors": {"robe": Color(0.75, 0.85, 0.98), "hair": Color(0.88, 0.92, 1.0), "accent": Color(0.45, 0.8, 1.0)}},
+	{"id": "noah", "name": "Noah", "role": "Alchemy Student", "school": "Alchemy", "starter": "venom", "unlock": "alchemy_lab",
+		"base": {"max_hp": 100.0, "speed": 88.0, "damage": 10.0, "area_pct": 0.10},
+		"trait": "plague", "passive": "Plague", "passive_desc": "Poisoned foes that die may spread a small poison cloud. +1% area per level",
+		"per_level": [["area_pct", 0.01]],
+		"colors": {"robe": Color(0.25, 0.3, 0.2), "hair": Color(0.35, 0.55, 0.25), "accent": Color(0.6, 1.0, 0.35)}},
 ]
+# Character traits (mechanical passives). Damage values are multiples of the player's damage.
+const TRAITS := {
+	"arcane_echo": {"mult": 0.5, "range": 70.0},                        # crit -> spark to one other foe
+	"kindling": {"chance": 0.25, "radius": 22.0, "dmg": 1.0},           # kill -> flame burst
+	"retaliation": {"radius": 42.0, "dmg": 1.6, "cooldown": 0.8},       # hurt -> sword wave
+	"thornheal": {"heal": 1.0},                                         # snared foe dies -> heal
+	"frostbite": {"mult": 1.25},                                        # slowed / frozen foes take more
+	"plague": {"chance": 0.5, "poisoned_window": 1.0, "radius": 18.0, "duration": 1.6, "tick": 0.4, "dmg": 0.3},
+}
 const ARMOR_CAP := 0.5
 # Speed multiplier of a slowed enemy (Frost Lance, Thornseed roots).
 const SLOW_MULT := 0.5
@@ -359,12 +385,50 @@ static func character_by_id(id: String) -> Dictionary:
 # --- Academy (meta progression, saved between runs) ---
 # Level names follow the concept doc's building progression.
 const BUILDING_STATES := ["Ruins", "Repaired", "Functional"]
+# unlocks: "tome" / "weapon" (+1 slot per level), "character" (Lv 1 brings back `character`),
+# "lessons" (the Staff Room: teachers sell permanent upgrades, LESSONS below; each level raises the rank cap).
 const BUILDINGS := [
 	{"id": "library", "name": "Library", "unlocks": "tome", "desc": "Restored shelves of spell tomes: +1 tome slot per level",
 		"costs": [{"gold": 400, "materials": 60, "aether": 0}, {"gold": 1200, "materials": 180, "aether": 20}]},
 	{"id": "training", "name": "Training Ground", "unlocks": "weapon", "desc": "Practice yards for combat magic: +1 weapon slot per level",
 		"costs": [{"gold": 350, "materials": 80, "aether": 0}, {"gold": 1100, "materials": 220, "aether": 20}]},
+	{"id": "staff_room", "name": "Staff Room", "unlocks": "lessons", "desc": "The teachers return and give lessons: permanent upgrades",
+		"costs": [{"gold": 500, "materials": 90, "aether": 0}, {"gold": 1400, "materials": 240, "aether": 25}]},
+	{"id": "frost_tower", "name": "Frost Tower", "unlocks": "character", "character": "selene",
+		"desc": "The Cryomancy tower thaws out: Selene, the Student Council President, returns",
+		"costs": [{"gold": 700, "materials": 140, "aether": 10}]},
+	{"id": "alchemy_lab", "name": "Alchemy Lab", "unlocks": "character", "character": "noah",
+		"desc": "Cauldrons bubble again: Noah, the alchemy student, returns",
+		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},
 ]
+# Staff Room lessons: permanent run bonuses bought with EXP (+ gold). Rank cap = LESSON_RANKS_PER_LEVEL x Staff Room level.
+const LESSON_RANKS_PER_LEVEL := 3
+const LESSON_COST_EXP := 120.0      # rank 1; each next rank costs LESSON_COST_GROWTH times more
+const LESSON_COST_GOLD := 60.0
+const LESSON_COST_GROWTH := 1.5
+const LESSONS := [
+	{"id": "might", "name": "Battle Magic", "teacher": "Spellblade Instructor", "stat": "damage_pct", "per": 0.04, "label": "damage"},
+	{"id": "vigor", "name": "Healing Arts", "teacher": "Infirmary Mistress", "stat": "max_hp", "per": 8.0, "label": "max HP"},
+	{"id": "haste", "name": "Quick Casting", "teacher": "Arcana Professor", "stat": "attack_speed_pct", "per": 0.03, "label": "attack speed"},
+	{"id": "stride", "name": "Fleet Foot", "teacher": "Groundskeeper", "stat": "speed_pct", "per": 0.03, "label": "move speed"},
+	{"id": "fortune", "name": "Divination", "teacher": "Astronomy Professor", "stat": "luck", "per": 3.0, "label": "Luck"},
+	{"id": "wisdom", "name": "Scholarship", "teacher": "Head Librarian", "stat": "xp_pct", "per": 0.05, "label": "XP gain"},
+	{"id": "greed", "name": "Alchemy of Gold", "teacher": "Alchemy Master", "stat": "gold_pct", "per": 0.05, "label": "gold"},
+	{"id": "magnet", "name": "Attraction Runes", "teacher": "Rune Master", "stat": "pickup_pct", "per": 0.10, "label": "pickup radius"},
+]
+
+
+static func lesson_by_id(id: String) -> Dictionary:
+	for l in LESSONS:
+		if l["id"] == id:
+			return l
+	return {}
+
+
+## Cost of buying `rank` (1-based) of a lesson.
+static func lesson_cost(rank: int) -> Dictionary:
+	var k := pow(LESSON_COST_GROWTH, rank - 1)
+	return {"exp": int(round(LESSON_COST_EXP * k)), "gold": int(round(LESSON_COST_GOLD * k))}
 
 
 static func building_by_id(id: String) -> Dictionary:

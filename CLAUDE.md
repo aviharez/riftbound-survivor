@@ -26,7 +26,20 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
   player already owns the other half (`GameData.combo_hint`; tome cards only while the tome is NEW); plain otherwise.
   `--tomes=ricochet,haste` gives autotest runs tomes from the start. Freeze (`Enemy.freeze_t`) stops a foe and its contact damage; bosses are only slowed.
 - Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
-- Characters (stats, starter weapon, per-level passive) are rows in `GameData.CHARACTERS`.
+- Characters are rows in `GameData.CHARACTERS` (Syifa's direction: every character is a student or teacher of the
+  academy, with a school/element, a role and a home building). Each has a mechanical `trait` (`GameData.TRAITS`,
+  code in `weapons.gd` "character traits": Astra arcane_echo, Lyra kindling, Kael retaliation, Nym thornheal,
+  Selene frostbite in `Enemies.damage`, Noah plague) plus small `per_level` stat growth, and `unlock`: the building
+  whose restoration brings them back ("" = from the start). Agreed roster plan (later phases, not built yet):
+  Rai (Chain Lightning, Bell Tower), Nox (Void Well, Forbidden Archive), Wren (Arcane Familiar, Library max),
+  teachers: Spellblade Instructor (Crescent Slash, Duel Hall), Astronomy Professor (Meteor Fall, Observatory),
+  Rune Master (Chakram/Mine, Rune Workshop), Aether Researcher (Aether Beam, Arcana Lab). New characters use the
+  coloured placeholder until Syifa uploads PixelLab sprites.
+- Academy buildings (`GameData.BUILDINGS`): `unlocks` = tome / weapon (slots), character (Lv 1 brings back
+  `character`), lessons (Staff Room: teachers sell permanent upgrades `GameData.LESSONS`, bought with EXP + gold,
+  rank cap = `LESSON_RANKS_PER_LEVEL` x Staff Room level, applied at run start). Academy strips scroll sideways;
+  `--academy-demo` (sample save, never written), `--academy-lessons`, `--academy-scroll` are for screenshots.
+  Autotests: `--lessons=might:3`; the summary prints `char=... trait_procs=N lessons=...`.
 - VFX: weapon/event effects are pixelfx sprite effects (https://github.com/patch-gg/pixelfx, MIT), exported by
   `node tools/pixelfx_export.mjs <pixelfx clone> assets/vfx` into a colour sheet + a light sheet per effect and
   `assets/vfx/effects.json` (which must stay in the Android `include_filter`). Play them with
@@ -42,7 +55,9 @@ Design reference: "Riftbound — Rift Run System Design" doc (claude.ai artifact
 - Android APK: `.github/workflows/android.yml` builds on every push and publishes the `latest-build`
   pre-release. CI logs are not readable from the workspace; failures show up as a `ci-log-tail`
   annotation (GitHub API: check-runs/<job id>/annotations).
-- Meta progression (resources, academy buildings) is saved by `scripts/meta/save_data.gd` to `user://riftbound_save.json`. Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes.
+- Meta progression (resources, academy buildings, lessons) is saved by `scripts/meta/save_data.gd` to `user://riftbound_save.json`
+  (VERSION 2 added `lessons`). Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes;
+  `tests/test_academy.gd` loads a hand-written v1 save to check the migration.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.
@@ -66,7 +81,10 @@ godot --headless --path . --fixed-fps 60 -- --autotest-boss --seed=31337 --char=
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242 --char=lyra --weapons=bolt,chain,meteor --ready-evolve --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=565590 --char=kael --weapons=void,lance,seed --ready-evolve --slots=4
 godot --headless --path . --fixed-fps 60 -- --autotest --seed=31337 --char=astra --weapons=slash,chakram,familiar,beam,venom,mine --slots=4
+godot --headless --path . --fixed-fps 60 -- --autotest --seed=4242 --char=selene --lessons=might:3,vigor:2 --slots=4
+godot --headless --path . --fixed-fps 60 -- --autotest-die --seed=77 --char=noah
 ```
+The selene / noah runs must report `trait_procs` > 0.
 The two `--ready-evolve` runs must end with all 4 evolutions in `evolutions=[...]`.
 The main scene is the academy; any `--autotest*` flag makes it jump straight into a run.
 Autotests never read or write the player's save (`SaveData`); without `--slots` they use the base 2 + 2 slots.
@@ -102,8 +120,9 @@ Syifa's next priorities, in order she listed:
 1. ~~Weapon evolutions~~ done (see Rules). Tune from her playtest feedback.
 2. ~~More weapons~~ alpha set of 6 done. Still open from the doc: Hex Mark (damage amp), Glacial Burst,
    Gravity Lens / Mirror Gate / Crystal Barricade (arena manipulation), Phantom Knight, Prism Sweep, Riftstorm.
-3. **Academy expansion**: more buildings (e.g. unlock characters such as Selene/Noah from the doc,
-   permanent stat upgrades, adding weapons to the pool). Save format changes need `SaveData.VERSION` + migration.
+3. **Academy expansion**: phase 1 done (Staff Room lessons, Frost Tower -> Selene, Alchemy Lab -> Noah, mechanical
+   traits for all 6). Next phases: the rest of the roster above (2 per phase, as Syifa supplies sprites).
+   Waiting on Syifa: PixelLab sprites for Selene and Noah (8 directions, 64x64, assets/characters/<id>/).
 
 Playtest fixes (1 Nov): Arcane Bolt = fast homing (`homing` turn rate, cyan trail); Flame Orb = big slow, bounces
 off walls (`wall_bounce`) and splashes a top-down flame star on every hit (`splash_r`/`splash`); meteor-strike is a grey

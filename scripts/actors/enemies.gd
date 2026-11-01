@@ -106,10 +106,16 @@ func damage(e: Enemy, amount: float, crit := false) -> void:
 		e.shield -= 1
 		e.flash = 0.08
 		return
+	var tr: String = game.player.character.get("trait", "")
+	if tr == "frostbite" and (e.slow_t > 0.0 or e.freeze_t > 0.0):
+		amount *= float(GameData.TRAITS["frostbite"]["mult"])   # Selene: slowed / frozen foes take more
+		game.weapons.trait_procs += 1
 	e.hp -= amount
 	e.flash = 0.08
 	game.player.damage_dealt += amount
 	game.spawn_damage_number(e.pos, amount, crit)
+	if crit and tr == "arcane_echo" and e.alive:
+		game.weapons.trait_echo(e, amount)   # Astra: crits arc to a nearby foe
 	if e.hp <= 0.0:
 		_kill(e)
 

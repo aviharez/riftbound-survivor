@@ -1,9 +1,12 @@
 extends Control
-## Academy hub (placeholder): spend run rewards on buildings that unlock
-## tome / weapon slots, then enter the Rift.
+## Academy hub: spend run rewards restoring buildings. Each building brings something back: tome / weapon
+## slots, a character who lives there (Frost Tower -> Selene, Alchemy Lab -> Noah), or the Staff Room whose
+## teachers sell permanent lessons. Then enter the Rift.
 ##
 ## Command-line (after `--`): any --autotest* flag skips straight to the run;
 ## --academy-shot=/tmp/a.png saves a screenshot of this screen and quits.
+## --academy-demo uses an in-memory sample save (never written) with some buildings restored, for screenshots;
+## --academy-lessons opens the Staff Room lessons; --academy-scroll scrolls both strips to their end.
 
 const NAVY := Color(0.06, 0.08, 0.18, 0.94)
 const GOLD := Color(0.86, 0.7, 0.32)
@@ -19,6 +22,10 @@ var _char_buttons := {}  # character id -> Button
 var _char_detail: Label
 var _reset_armed := false
 var _reset_btn: Button
+var _demo := false   # --academy-demo: the sample save is never written
+var _lessons_panel: Control   # full-screen dimmed overlay holding the lessons panel
+var _lesson_rows := {}   # lesson id -> {label, button}
+var _lessons_header: Label
 
 
 func _ready() -> void:
@@ -28,8 +35,24 @@ func _ready() -> void:
 			return
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	save = SaveData.load_data()
+	var args := OS.get_cmdline_user_args()
+	if "--academy-demo" in args:
+		save = SaveData.defaults()
+		for k in ["gold", "materials", "aether", "exp"]:
+			save[k] = 3000
+		save["buildings"]["staff_room"] = 1
+		save["buildings"]["frost_tower"] = 1
+		save["lessons"] = {"might": 2, "vigor": 1}
+		save["character"] = "selene"
+		_demo = true
 	_build()
 	_refresh()
+	if "--academy-lessons" in args:
+		_on_open_lessons()
+	if "--academy-scroll" in args:
+		await get_tree().process_frame
+		for sc in find_children("*", "ScrollContainer", true, false):
+			sc.scroll_horizontal = 100000
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--academy-shot="):
 			_screenshot_and_quit(a.get_slice("=", 1))
@@ -63,14 +86,14 @@ func _build() -> void:
 	_res_label = _label("", 10, IVORY)
 	top.add_child(_res_label)
 
-	# character select
+	# character select (scrolls sideways once there are more characters than fit)
 	var chars := HBoxContainer.new()
 	chars.alignment = BoxContainer.ALIGNMENT_CENTER
-	chars.add_theme_constant_override("separation", 8)
-	root.add_child(chars)
+	chars.add_theme_constant_override("separation", 6)
+	root.add_child(_hscroll(chars, 54))
 	for c in GameData.CHARACTERS:
-		var b := _button("%s\n%s" % [c["name"], c["role"]], Vector2(132, 56), _on_pick_character.bind(c["id"]))
-		b.add_theme_font_size_override("font_size", 10)
+		var b := _button("", Vector2(112, 48), _on_pick_character.bind(c["id"]))
+		b.add_theme_font_size_override("font_size", 9)
 		b.expand_icon = false
 		var tex := CharacterArt.portrait(c["id"])
 		if tex != null:
@@ -87,8 +110,8 @@ func _build() -> void:
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 16)
-	root.add_child(row)
+	row.add_theme_constant_override("separation", 8)
+	root.add_child(_hscroll(row, 112))
 	for b in GameData.BUILDINGS:
 		row.add_child(_building_card(b))
 
@@ -108,29 +131,99 @@ func _build() -> void:
 	var enter := _button("ENTER THE RIFT", Vector2(150, 40), _on_enter)
 	enter.add_theme_font_size_override("font_size", 12)
 	bottom.add_child(enter)
+	_build_lessons_panel()
 
 
-func _building_card(b: Dictionary) -> Control:
+## A sideways-scrolling strip (touch-drag on phones) holding `content`.
+func _hscroll(content: Control, height: float) -> ScrollContainer:
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(0, height)
+	sc.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(content)
+	return sc
+
+
+## Staff Room lessons: an overlay listing every lesson with its teacher, effect, rank and a buy button.
+func _build_lessons_panel() -> void:
+	_lessons_panel = ColorRect.new()
+	(_lessons_panel as ColorRect).color = Color(0, 0, 0, 0.6)
+	_lessons_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_lessons_panel.visible = false
+	add_child(_lessons_panel)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_lessons_panel.add_child(center)
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", _style(GOLD))
-	panel.custom_minimum_size = Vector2(270, 0)
+	panel.custom_minimum_size = Vector2(500, 0)
+	center.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	panel.add_child(box)
-	box.add_theme_constant_override("separation", 2)
-	box.add_child(_label(b["name"], 12, GOLD))
-	var state := _label("", 9, CYAN)
-	box.add_child(state)
-	var desc := _label(b["desc"], 8, Color(IVORY, 0.75))
+	var head := HBoxContainer.new()
+	box.add_child(head)
+	_lessons_header = _label("", 10, GOLD)
+	_lessons_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_lessons_header)
+	head.add_child(_button("Close", Vector2(60, 22), func(): _lessons_panel.visible = false))
+	var sc := ScrollContainer.new()
+	sc.custom_minimum_size = Vector2(0, 270)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(sc)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 3)
+	sc.add_child(list)
+	for l in GameData.LESSONS:
+		var r := HBoxContainer.new()
+		r.add_theme_constant_override("separation", 6)
+		list.add_child(r)
+		var lab := _label("", 8, IVORY)
+		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		r.add_child(lab)
+		var btn := _button("", Vector2(130, 26), _on_buy_lesson.bind(l["id"]))
+		r.add_child(btn)
+		_lesson_rows[l["id"]] = {"label": lab, "button": btn}
+
+
+func _building_card(b: Dictionary) -> Control:
+	# compact: five buildings scroll sideways and the bottom bar must stay on a 360 px tall screen
+	var panel := PanelContainer.new()
+	var sb := _style(GOLD)
+	sb.set_content_margin_all(6)
+	panel.add_theme_stylebox_override("panel", sb)
+	panel.custom_minimum_size = Vector2(196, 0)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 1)
+	panel.add_child(box)
+	var head := HBoxContainer.new()
+	box.add_child(head)
+	var title := _label(b["name"], 11, GOLD)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var state := _label("", 8, CYAN)
+	head.add_child(state)
+	var desc := _label(b["desc"], 7, Color(IVORY, 0.75))
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.custom_minimum_size = Vector2(184, 0)
 	box.add_child(desc)
-	var effect := _label("", 10, IVORY)
+	var effect := _label("", 9, IVORY)
 	box.add_child(effect)
-	var cost := _label("", 9, IVORY)
+	var cost := _label("", 8, IVORY)
 	box.add_child(cost)
-	var btn := _button("Upgrade", Vector2(0, 24), _on_upgrade.bind(b["id"]))
-	box.add_child(btn)
-	_cards[b["id"]] = {"state": state, "effect": effect, "cost": cost, "button": btn}
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 4)
+	box.add_child(buttons)
+	var btn := _button("Upgrade", Vector2(0, 20), _on_upgrade.bind(b["id"]))
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buttons.add_child(btn)
+	var extra: Button = null
+	if b["unlocks"] == "lessons":
+		extra = _button("Lessons", Vector2(64, 20), _on_open_lessons)
+		buttons.add_child(extra)
+	_cards[b["id"]] = {"state": state, "effect": effect, "cost": cost, "button": btn, "extra": extra}
 	return panel
 
 
@@ -149,28 +242,37 @@ func _refresh() -> void:
 	var sel: String = String(save.get("character", "astra"))
 	for id in _char_buttons:
 		var btn: Button = _char_buttons[id]
+		var c := GameData.character_by_id(id)
+		var open := SaveData.character_unlocked(save, id)
 		var on: bool = id == sel
+		if open:
+			btn.text = "%s\n%s" % [c["name"], c["school"]]
+		else:
+			btn.text = "%s\nLocked" % c["name"]
+		btn.modulate = Color.WHITE if open else Color(0.55, 0.55, 0.65)
 		btn.add_theme_stylebox_override("normal", _style(CYAN if on else Color(0.4, 0.4, 0.55)))
 		btn.add_theme_color_override("font_color", CYAN if on else IVORY)
 	var cdef := GameData.character_by_id(sel)
-	_char_detail.text = "%s\nStarter weapon: %s   ·   Passive %s: %s" % [_stat_line(cdef), GameData.weapon_by_id(cdef["starter"])["name"], cdef["passive"], cdef["passive_desc"]]
+	_char_detail.text = "%s  ·  %s  ·  %s\nStarter weapon: %s   ·   %s: %s" % [cdef["role"], cdef["school"], _stat_line(cdef),
+		GameData.weapon_by_id(cdef["starter"])["name"], cdef["passive"], cdef["passive_desc"]]
 	_res_label.text = "Gold %d   Materials %d   Aether %d   EXP %d" % [save["gold"], save["materials"], save["aether"], save["exp"]]
 	for b in GameData.BUILDINGS:
 		var id: String = b["id"]
 		var c: Dictionary = _cards[id]
 		var lv := SaveData.building_level(save, id)
 		var max_lv: int = b["costs"].size()
-		c["state"].text = "%s   (Lv %d / %d)" % [GameData.BUILDING_STATES[min(lv, GameData.BUILDING_STATES.size() - 1)], lv, max_lv]
-		var kind_name := "Tome" if b["unlocks"] == "tome" else "Weapon"
-		var slots := SaveData.slots_for(save, b["unlocks"])
+		var state_name: String = "Restored" if lv >= max_lv else GameData.BUILDING_STATES[min(lv, GameData.BUILDING_STATES.size() - 1)]
+		c["state"].text = "%s %d/%d" % [state_name, lv, max_lv]
 		var cost := SaveData.next_cost(save, id)
+		c["effect"].text = _building_effect(b, lv, cost.is_empty())
+		if c["extra"] != null:
+			c["extra"].disabled = lv < 1
+			c["extra"].text = "Lessons"
 		if cost.is_empty():
-			c["effect"].text = "%s slots: %d (max)" % [kind_name, slots]
 			c["cost"].text = "Fully restored"
 			c["button"].text = "Complete"
 			c["button"].disabled = true
 		else:
-			c["effect"].text = "%s slots: %d  >  %d" % [kind_name, slots, slots + 1]
 			var parts: Array = []
 			for k in ["gold", "materials", "aether"]:
 				if int(cost[k]) > 0:
@@ -180,6 +282,7 @@ func _refresh() -> void:
 			c["cost"].add_theme_color_override("font_color", IVORY if ok else Color(1, 0.5, 0.5))
 			c["button"].text = "Upgrade" if ok else "Not enough resources"
 			c["button"].disabled = not ok
+	_refresh_lessons()
 	var lr: Dictionary = save["last_run"]
 	var last := "No runs yet."
 	if not lr.is_empty():
@@ -192,16 +295,77 @@ func _refresh() -> void:
 
 # ------------------------------------------------------------------ actions
 
+## What restoring the next level of a building gives (or gave).
+func _building_effect(b: Dictionary, lv: int, maxed: bool) -> String:
+	match b["unlocks"]:
+		"tome", "weapon":
+			var kind_name := "Tome" if b["unlocks"] == "tome" else "Weapon"
+			var slots := SaveData.slots_for(save, b["unlocks"])
+			return "%s slots: %d (max)" % [kind_name, slots] if maxed else "%s slots: %d  >  %d" % [kind_name, slots, slots + 1]
+		"character":
+			var c := GameData.character_by_id(b["character"])
+			return "%s has returned" % c["name"] if lv >= 1 else "Brings back %s (%s)" % [c["name"], c["school"]]
+		"lessons":
+			var cap := SaveData.lesson_cap(save)
+			return "Lesson rank cap: %d (max)" % cap if maxed else "Lesson rank cap: %d  >  %d" % [cap, cap + GameData.LESSON_RANKS_PER_LEVEL]
+	return ""
+
+
+func _refresh_lessons() -> void:
+	var cap := SaveData.lesson_cap(save)
+	_lessons_header.text = "STAFF ROOM LESSONS  ·  rank cap %d  ·  EXP %d  ·  Gold %d" % [cap, save["exp"], save["gold"]]
+	for l in GameData.LESSONS:
+		var row: Dictionary = _lesson_rows[l["id"]]
+		var rank := SaveData.lesson_rank(save, l["id"])
+		var total: float = float(l["per"]) * rank
+		var fmt := "+%d%%" % int(round(total * 100)) if l["stat"] in GameData.PCT_STATS else "+%d" % int(round(total))
+		var per := "+%d%%" % int(round(float(l["per"]) * 100)) if l["stat"] in GameData.PCT_STATS else "+%d" % int(round(float(l["per"])))
+		row["label"].text = "%s  (%s)\n%s %s per rank   ·   now %s   ·   rank %d / %d" % [l["name"], l["teacher"], per, l["label"], fmt, rank, cap]
+		var cost := SaveData.next_lesson_cost(save, l["id"])
+		var btn: Button = row["button"]
+		if cost.is_empty():
+			btn.text = "Max rank" if cap > 0 else "Locked"
+			btn.disabled = true
+		else:
+			btn.text = "EXP %d  Gold %d" % [cost["exp"], cost["gold"]]
+			btn.disabled = not SaveData.can_afford(save, cost)
+
+
+func _on_open_lessons() -> void:
+	_refresh_lessons()
+	_lessons_panel.visible = true
+
+
+func _on_buy_lesson(id: String) -> void:
+	if SaveData.buy_lesson(save, id):
+		_persist()
+	_refresh()
+
+
 func _on_pick_character(id: String) -> void:
+	if not SaveData.character_unlocked(save, id):
+		# show who they are and where they live instead of selecting them
+		var c := GameData.character_by_id(id)
+		var home := ""
+		for b in GameData.BUILDINGS:
+			if b.get("character", "") == id:
+				home = b["name"]
+		_char_detail.text = "%s, %s (%s) is locked.\nRestore the %s to bring %s back to the academy." % [c["name"], c["role"], c["school"], home, c["name"]]
+		return
 	save["character"] = id
-	SaveData.save_data(save)
+	_persist()
 	_refresh()
 
 
 func _on_upgrade(id: String) -> void:
 	if SaveData.upgrade(save, id):
-		SaveData.save_data(save)
+		_persist()
 	_refresh()
+
+
+func _persist() -> void:
+	if not _demo:
+		SaveData.save_data(save)
 
 
 func _on_enter() -> void:
@@ -216,7 +380,7 @@ func _on_reset() -> void:
 		return
 	_reset_armed = false
 	_reset_btn.text = "Reset save"
-	save = SaveData.reset()
+	save = SaveData.defaults() if _demo else SaveData.reset()
 	_refresh()
 
 

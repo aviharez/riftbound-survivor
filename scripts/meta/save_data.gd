@@ -4,7 +4,8 @@ extends RefCounted
 ## Autotests never write here; tests/test_academy.gd uses its own path.
 
 const DEFAULT_PATH := "user://riftbound_save.json"
-const VERSION := 1
+const VERSION := 2
+# v1 -> v2: "lessons" (Staff Room permanent upgrades, id -> rank); new buildings start at 0 (handled generally).
 
 static var path := DEFAULT_PATH
 
@@ -20,6 +21,7 @@ static func defaults() -> Dictionary:
 		"runs": 0, "victories": 0, "best_kills": 0,
 		"last_run": {},
 		"character": "astra",
+		"lessons": {},
 	}
 
 
@@ -41,6 +43,15 @@ static func load_data() -> Dictionary:
 	for b in GameData.BUILDINGS:
 		if not d["buildings"].has(b["id"]):
 			d["buildings"][b["id"]] = 0
+	# v1 saves have no lessons; any version: lessons are id -> int rank
+	if typeof(d["lessons"]) != TYPE_DICTIONARY:
+		d["lessons"] = {}
+	for k in d["lessons"]:
+		d["lessons"][k] = int(d["lessons"][k])
+	d["version"] = VERSION
+	# a locked (or unknown) selected character falls back to Astra
+	if not character_unlocked(d, String(d["character"])):
+		d["character"] = "astra"
 	# JSON numbers come back as floats
 	for k in ["gold", "materials", "aether", "exp", "runs", "victories", "best_kills"]:
 		d[k] = int(d[k])
@@ -102,6 +113,56 @@ static func upgrade(d: Dictionary, id: String) -> bool:
 		d[k] = int(d[k]) - int(cost[k])
 	d["buildings"][id] = building_level(d, id) + 1
 	return true
+
+
+## Characters with an `unlock` building need it restored (Lv 1+); the rest are always available.
+static func character_unlocked(d: Dictionary, id: String) -> bool:
+	for c in GameData.CHARACTERS:
+		if c["id"] == id:
+			return c["unlock"] == "" or building_level(d, c["unlock"]) >= 1
+	return false
+
+
+# ------------------------------------------------------------------ Staff Room lessons
+
+static func lesson_rank(d: Dictionary, id: String) -> int:
+	return int(d["lessons"].get(id, 0))
+
+
+## Highest rank a lesson can reach right now (0 while the Staff Room is in ruins).
+static func lesson_cap(d: Dictionary) -> int:
+	return GameData.LESSON_RANKS_PER_LEVEL * building_level(d, "staff_room")
+
+
+## Cost of the next rank, or {} when capped.
+static func next_lesson_cost(d: Dictionary, id: String) -> Dictionary:
+	var rank := lesson_rank(d, id)
+	if rank >= lesson_cap(d):
+		return {}
+	return GameData.lesson_cost(rank + 1)
+
+
+## Pays and raises a lesson by one rank. Returns false (and changes nothing) if capped or unaffordable.
+static func buy_lesson(d: Dictionary, id: String) -> bool:
+	if GameData.lesson_by_id(id).is_empty():
+		return false
+	var cost := next_lesson_cost(d, id)
+	if not can_afford(d, cost):
+		return false
+	for k in cost:
+		d[k] = int(d[k]) - int(cost[k])
+	d["lessons"][id] = lesson_rank(d, id) + 1
+	return true
+
+
+## Stat mods ([[stat, value], ...]) of every lesson bought, applied to the player at run start.
+static func lesson_mods(d: Dictionary) -> Array:
+	var out: Array = []
+	for l in GameData.LESSONS:
+		var rank := lesson_rank(d, l["id"])
+		if rank > 0:
+			out.append([l["stat"], float(l["per"]) * rank])
+	return out
 
 
 ## Adds a finished run's rewards and summary.
