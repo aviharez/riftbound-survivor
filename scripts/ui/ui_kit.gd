@@ -1,87 +1,113 @@
 class_name UiKit
 extends RefCounted
-## Shared menu look (mobile hero-game style, Syifa's direction): rounded translucent navy glass panels with a light
-## rim and glossy top, gold slanted call-to-action buttons, white bold text. Fonts: Nunito (body) and Exo 2 Italic
-## (titles / buttons), both SIL OFL. Every panel and button is a GlassStyle.
+## Shared menu look: pixel-art UI (Syifa's reference: Overgeared Hero). Hard-edged PixelStyle frames (black
+## outline, purple border with bevel, notched corners, striped dark fill), pixel fonts (DotGothic16 body,
+## Silkscreen Bold titles/buttons, SIL OFL) and pixel icons (assets/ui/icons, PixelLab). Font sizes snap to the
+## fonts' pixel grids (8 / 16 / 24) so the letters stay crisp blocks.
 
-const NAVY := Color(0.06, 0.08, 0.18, 0.94)
-const GOLD := Color(1.0, 0.82, 0.38)
-const GOLD_DIM := Color(0.7, 0.55, 0.25)
-const IVORY := Color(0.97, 0.97, 1.0)
-const CYAN := Color(0.42, 0.9, 1.0)
-const PURPLE := Color(0.72, 0.5, 1.0)
-const RED := Color(1, 0.45, 0.45)
-const GREEN := Color(0.5, 1.0, 0.55)
-const GREY := Color(0.4, 0.42, 0.5)
+const NAVY := Color("221a40")
+const GOLD := Color("ffd062")
+const GOLD_DIM := Color("b8872e")
+const IVORY := Color("f4f0ff")
+const CYAN := Color("6fe3ff")
+const PURPLE := Color("a58cff")
+const RED := Color("ff6b6b")
+const GREEN := Color("6dff8a")
+const GREY := Color("5a5570")
 
 const TITLE_FONT := preload("res://assets/fonts/title.tres")
 const BOLD_FONT := preload("res://assets/fonts/bold.tres")
+const ICON_DIR := "res://assets/ui/icons/"
+
+static var _icons := {}
 
 
-static func label(text: String, fs: int, col: Color) -> Label:
+## Font sizes on the pixel grid of both fonts: 8 (small), 16 (big), 24 (huge).
+static func fs(size: int) -> int:
+	return 8 if size < 12 else (16 if size < 22 else 24)
+
+
+static func label(text: String, size: int, col: Color) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", fs)
+	l.add_theme_font_size_override("font_size", fs(size))
 	l.add_theme_color_override("font_color", col)
+	l.add_theme_color_override("font_outline_color", Color("05030c"))
+	l.add_theme_constant_override("outline_size", 2)
+	l.add_theme_constant_override("line_spacing", -4)   # DotGothic16's line box is tall for its 8 px letters
 	return l
 
 
-## A display title (Exo 2 italic) with a soft dark outline.
-static func title(text: String, fs: int, col := IVORY) -> Label:
-	var l := label(text, fs, col)
+## A bold pixel title with a dark outline.
+static func title(text: String, size: int, col := IVORY) -> Label:
+	var l := label(text, size, col)
 	l.add_theme_font_override("font", TITLE_FONT)
-	l.add_theme_color_override("font_outline_color", Color(0.01, 0.02, 0.08, 0.85))
 	l.add_theme_constant_override("outline_size", 3)
 	return l
 
 
-## Panel style. `border` CYAN = selected (rim + glow), GREY = disabled, anything else = normal glass.
-static func style(border: Color, margin := 8.0) -> GlassStyle:
-	var sb := GlassStyle.new()
+## Panel style. `border` CYAN = selected, GREY = disabled, GOLD = highlighted frame, else the purple frame.
+static func style(border: Color, margin := 8.0) -> PixelStyle:
+	var sb := PixelStyle.new()
+	sb.drop = 0
 	if border == CYAN:
-		sb.rim = Color(CYAN, 0.95)
-		sb.glow = Color(CYAN, 0.8)
-		sb.fill_top = Color(0.14, 0.32, 0.55, 0.92)
-		sb.fill_bottom = Color(0.06, 0.13, 0.3, 0.92)
+		sb.border = Color("49c6f0")
+		sb.light = Color("b5f3ff")
+		sb.shade = Color("1f6d93")
+		sb.glow = Color(0.45, 0.9, 1.0, 0.55)
+		sb.fill = Color("1d2f5a")
+		sb.fill_dark = Color("233a6c")
 	elif border == GREY:
-		sb.fill_top = Color(0.16, 0.17, 0.22, 0.8)
-		sb.fill_bottom = Color(0.09, 0.1, 0.14, 0.85)
-		sb.rim = Color(1, 1, 1, 0.1)
-		sb.highlight = Color(1, 1, 1, 0.05)
+		sb.border = Color("3e3a52")
+		sb.light = Color("55506c")
+		sb.shade = Color("2a2638")
+		sb.fill = Color("1a1726")
+		sb.fill_dark = Color("1e1a2c")
+	elif border == GOLD:
+		sb.border = Color("d9a032")
+		sb.light = Color("ffe08a")
+		sb.shade = Color("8a5a14")
 	sb.set_content_margin_all(margin)
 	return sb
 
 
-## Button looks: "normal" (blue glass), "primary" (gold, slanted: the call to action), "accent" (bright blue).
-static func button_style(kind: String, state: String) -> GlassStyle:
-	var sb := style(GREY if state == "disabled" else (CYAN if state == "hover" and kind == "normal" else GOLD), 4.0)
-	sb.radius = 5.0
+## Button looks: "normal" (purple menu button), "primary" (gold-framed dark call to action), "accent" (green confirm).
+static func button_style(kind: String, state: String) -> PixelStyle:
+	var sb := PixelStyle.new()
+	sb.set_content_margin_all(4.0)
+	sb.drop = 0 if state == "pressed" else 2
 	if state == "disabled":
-		if kind == "primary":
-			sb.slant = 8.0
+		sb.border = Color("3e3a52")
+		sb.light = Color("55506c")
+		sb.shade = Color("2a2638")
+		sb.fill = Color("1c1929")
+		sb.fill_dark = Color("201c2e")
 		return sb
 	match kind:
 		"normal":
-			if state != "hover":
-				sb.fill_top = Color(0.2, 0.3, 0.55, 0.92)
-				sb.fill_bottom = Color(0.09, 0.14, 0.32, 0.92)
+			sb.fill = Color("35296a")
+			sb.fill_dark = Color("3c2f78")
+			sb.border = Color("5b47b5")
+			sb.light = Color("8a76e0")
+			sb.shade = Color("241a4e")
 		"primary":
-			sb.fill_top = Color(1.0, 0.9, 0.5)
-			sb.fill_bottom = Color(0.95, 0.56, 0.12)
-			sb.rim = Color(1.0, 0.97, 0.8, 0.9)
-			sb.highlight = Color(1, 1, 1, 0.5)
-			sb.slant = 8.0
+			sb.fill = Color("3a2412")
+			sb.fill_dark = Color("4a2f16")
+			sb.border = Color("f2b53a")
+			sb.light = Color("ffe08a")
+			sb.shade = Color("9a6512")
+			sb.border_w = 3
 		"accent":
-			sb.fill_top = Color(0.3, 0.72, 1.0)
-			sb.fill_bottom = Color(0.1, 0.36, 0.8)
-			sb.rim = Color(0.75, 0.95, 1.0, 0.8)
-			sb.highlight = Color(1, 1, 1, 0.35)
-	if state == "pressed":
-		var t := sb.fill_top
-		sb.fill_top = sb.fill_bottom
-		sb.fill_bottom = t
-	if state == "hover" and kind != "normal":
-		sb.glow = Color(1, 1, 1, 0.5)
+			sb.fill = Color("1d4c44")
+			sb.fill_dark = Color("235a50")
+			sb.border = Color("46c27a")
+			sb.light = Color("8ff0a8")
+			sb.shade = Color("1f6a3c")
+	if state == "hover":
+		sb.fill = sb.fill.lightened(0.12)
+		sb.border = sb.border.lightened(0.2)
+	elif state == "pressed":
+		sb.fill = sb.fill.darkened(0.2)
 	return sb
 
 
@@ -90,30 +116,29 @@ static func button(text: String, min_size: Vector2, cb: Callable, kind := "norma
 	b.text = text
 	b.custom_minimum_size = min_size
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 9)
+	b.add_theme_font_size_override("font_size", 8)
 	b.add_theme_font_override("font", BOLD_FONT)
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, button_style(kind, st))
-	var txt := Color(0.25, 0.1, 0.0) if kind == "primary" else IVORY
+	var txt := GOLD if kind == "primary" else IVORY
 	for k in ["font_color", "font_hover_color", "font_pressed_color"]:
 		b.add_theme_color_override(k, txt)
-	b.add_theme_color_override("font_disabled_color", Color(IVORY, 0.4))
-	if kind != "primary":
-		b.add_theme_color_override("font_outline_color", Color(0, 0, 0.1, 0.6))
-		b.add_theme_constant_override("outline_size", 2)
-	if kind == "primary":
-		b.add_theme_font_override("font", TITLE_FONT)
+	b.add_theme_color_override("font_disabled_color", Color(IVORY, 0.35))
+	b.add_theme_color_override("font_outline_color", Color("05030c"))
+	b.add_theme_constant_override("outline_size", 2)
 	b.pressed.connect(cb)
 	return b
 
 
-## Marks a button (tab, roster tile, picked option) as selected: cyan rim + glow.
+## Marks a button (tab, roster tile, picked option) as selected: cyan frame + glow.
 static func set_selected(b: Button, on: bool, kind := "normal") -> void:
-	b.add_theme_stylebox_override("normal", style(CYAN, 4.0) if on else button_style(kind, "normal"))
+	var st := style(CYAN, 4.0) if on else button_style(kind, "normal")
+	b.add_theme_stylebox_override("normal", st)
+	b.add_theme_stylebox_override("hover", style(CYAN, 4.0) if on else button_style(kind, "hover"))
 
 
-## A glass panel holding a VBox; returns [panel, vbox].
-static func panel(margin := 8.0, border := GOLD) -> Array:
+## A pixel panel holding a VBox; returns [panel, vbox].
+static func panel(margin := 8.0, border := PURPLE) -> Array:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", style(border, margin))
 	var box := VBoxContainer.new()
@@ -122,44 +147,164 @@ static func panel(margin := 8.0, border := GOLD) -> Array:
 	return [p, box]
 
 
-## A section header: italic title between two thin light rules.
-static func header(text: String, fs := 10) -> Control:
+## A section header: pixel title between two rules.
+static func header(text: String, size := 8) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	for i in 2:
 		var line := ColorRect.new()
-		line.color = Color(0.6, 0.8, 1.0, 0.3)
+		line.color = Color("5b47b5")
 		line.custom_minimum_size = Vector2(0, 1)
 		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(line)
 		if i == 0:
-			var t := title(text, fs, GOLD)
+			var t := title(text, size, GOLD)
 			row.add_child(t)
 	return row
 
 
-## A full-screen dimmed overlay with a centred glass panel; returns [overlay, content VBox].
-static func overlay(parent: Control, width: float) -> Array:
+## A full-screen dimmed overlay with a centred pixel panel; returns [overlay, content VBox, title Label].
+## With a `heading`, a red ribbon sits on the panel's top edge; with `close`, a red diamond X sits at its corner.
+static func overlay(parent: Control, width: float, heading := "", close := Callable()) -> Array:
 	var dim := ColorRect.new()
-	dim.color = Color(0.01, 0.01, 0.05, 0.7)
+	dim.color = Color(0.01, 0.0, 0.04, 0.8)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.visible = false
 	parent.add_child(dim)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.add_child(center)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", -12)
+	col.custom_minimum_size = Vector2(width, 0)
+	center.add_child(col)
+	var t: Label = null
+	if heading != "" or close.is_valid():
+		var top := HBoxContainer.new()
+		top.z_index = 1
+		col.add_child(top)
+		var pad := Control.new()
+		pad.custom_minimum_size = Vector2(22, 0)
+		top.add_child(pad)
+		var rb := ribbon(heading)
+		rb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rb.visible = heading != ""
+		top.add_child(rb)
+		t = rb.get_child(0)
+		if close.is_valid():
+			var x := close_button(close)
+			x.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+			top.add_child(x)
+		else:
+			top.add_child(pad.duplicate())
 	var p := PanelContainer.new()
-	var ps := style(GOLD, 10.0)
-	ps.fill_top = Color(0.1, 0.16, 0.33, 0.97)
-	ps.fill_bottom = Color(0.04, 0.07, 0.17, 0.98)
+	var ps := style(PURPLE, 10.0)
+	ps.border_w = 3
+	if heading != "":
+		ps.content_margin_top = 18
 	p.add_theme_stylebox_override("panel", ps)
-	p.custom_minimum_size = Vector2(width, 0)
-	center.add_child(p)
+	col.add_child(p)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 	p.add_child(box)
-	return [dim, box]
+	return [dim, box, t]
+
+
+## The red diamond close button (top-right corner of overlays).
+static func close_button(cb: Callable) -> Button:
+	var b := Button.new()
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(22, 22)
+	b.pressed.connect(cb)
+	b.draw.connect(func():
+		var m := (b.size * 0.5).floor()
+		var down := b.is_pressed() and b.get_draw_mode() == BaseButton.DRAW_PRESSED
+		var o := Vector2(0, 1) if down else Vector2.ZERO
+		for ring in [[11, Color("05030c")], [9, Color("7a1414")], [8, Color("e0453a")]]:
+			var r: int = ring[0]
+			var pts := PackedVector2Array([m + o + Vector2(0, -r), m + o + Vector2(r, 0), m + o + Vector2(0, r), m + o + Vector2(-r, 0)])
+			b.draw_colored_polygon(pts, ring[1])
+		b.draw_colored_polygon(PackedVector2Array([m + o + Vector2(0, -8), m + o + Vector2(8, 0), m + o + Vector2(0, -2), m + o + Vector2(-8, 0)]), Color("ff7a5c"))
+		for d in [Vector2(1, 1), Vector2(1, -1)]:
+			for k in range(-3, 4):
+				b.draw_rect(Rect2(m + o + d * k - Vector2(1, 1), Vector2(2, 2)), Color("fff1d6")))
+	return b
+
+
+## A square button with a pixel icon (gear, back) in the purple frame.
+static func icon_button(icon_name: String, sz: Vector2, cb: Callable, kind := "normal") -> Button:
+	var b := button("", sz, cb, kind)
+	# 32 px icons drawn at 32 or 16 virtual px (= 1:1 on a 2x screen) stay crisp
+	var room := minf(sz.x, sz.y) - 6.0
+	var px := 32.0 if room >= 30.0 else (16.0 if room >= 16.0 else room)
+	var ic := icon_rect(icon_name, px)
+	ic.custom_minimum_size = Vector2.ZERO
+	ic.position = ((sz - Vector2(px, px)) * 0.5).floor()
+	ic.size = Vector2(px, px)
+	b.add_child(ic)
+	return b
+
+
+## A square framed portrait: head and shoulders of the character's 64 px sprite (gold frame for the Rift button).
+static func portrait(id_getter: Callable, px: float, frame := PURPLE) -> Control:
+	var c := Panel.new()
+	c.custom_minimum_size = Vector2(px, px)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := style(frame, 0.0)
+	sb.pattern = false
+	sb.fill = Color("2b2457")
+	c.add_theme_stylebox_override("panel", sb)
+	var pic := Control.new()
+	pic.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	c.add_child(pic)
+	pic.draw.connect(func():
+		var tex := CharacterArt.portrait(String(id_getter.call()))
+		if tex == null:
+			return
+		var inner := Rect2(Vector2(4, 4), pic.size - Vector2(8, 8)).abs()
+		var src_px := 32.0
+		var src := Rect2(16, 2, src_px, src_px * inner.size.y / maxf(1.0, inner.size.x))
+		pic.draw_texture_rect_region(tex, inner, src))
+	c.set_meta("pic", pic)
+	return c
+
+
+static func refresh_portrait(c: Control) -> void:
+	(c.get_meta("pic") as Control).queue_redraw()
+
+
+## A dark square item slot with an icon (cards, gear, inventory).
+static func slot(icon_name: String, px: float, frame := PURPLE) -> Control:
+	var c := Panel.new()
+	c.custom_minimum_size = Vector2(px, px)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := style(frame, 0.0)
+	sb.pattern = false
+	sb.fill = Color("120d24")
+	c.add_theme_stylebox_override("panel", sb)
+	var room := px - 6.0
+	var ipx := 64.0 if room >= 64.0 else (32.0 if room >= 32.0 else 16.0)   # whole multiples of the 32 px art
+	var ic := icon_rect(icon_name, ipx)
+	ic.custom_minimum_size = Vector2.ZERO
+	ic.position = ((Vector2(px, px) - Vector2(ipx, ipx)) * 0.5).floor()
+	ic.size = Vector2(ipx, ipx)
+	c.add_child(ic)
+	return c
+
+
+## Frame colour for a rarity colour: the rarity colour as border with a matching bevel.
+static func rarity_style(col: Color, margin := 4.0) -> PixelStyle:
+	var sb := style(PURPLE, margin)
+	sb.border = col.darkened(0.15)
+	sb.light = col.lightened(0.35)
+	sb.shade = col.darkened(0.55)
+	sb.fill = Color("1c1538")
+	sb.fill_dark = Color("231a45")
+	return sb
 
 
 ## A thin progress bar (EXP, bond).
@@ -167,10 +312,13 @@ static func bar(k: float, w: float, col := CYAN) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(w, 6)
 	c.draw.connect(func():
-		var r := Rect2(Vector2.ZERO, c.size)
-		c.draw_rect(r, Color(0.02, 0.03, 0.08))
-		c.draw_rect(Rect2(r.position, Vector2(r.size.x * clampf(k, 0, 1), r.size.y)), col)
-		c.draw_rect(r, Color(0.6, 0.8, 1.0, 0.5), false, 1.0))
+		var r := Rect2(Vector2.ZERO, c.size.floor())
+		c.draw_rect(r, Color("05030c"))
+		var inner := r.grow(-1)
+		c.draw_rect(inner, Color("2a2148"))
+		var fw := floorf(inner.size.x * clampf(k, 0, 1))
+		c.draw_rect(Rect2(inner.position, Vector2(fw, inner.size.y)), col)
+		c.draw_rect(Rect2(inner.position, Vector2(fw, 1)), col.lightened(0.45)))
 	return c
 
 
@@ -190,12 +338,98 @@ static func resource_name(k: String) -> String:
 	return k.capitalize()
 
 
-## Small resource icon drawn in code (gold coin, materials brick, aether crystal, shard, EXP star, essence).
+## Pixel icon texture assets/ui/icons/<name>.png (PixelLab), or null.
+static func icon_tex(name: String) -> Texture2D:
+	if not _icons.has(name):
+		var path := ICON_DIR + name + ".png"
+		_icons[name] = load(path) if ResourceLoader.exists(path) else null
+	return _icons[name]
+
+
+## A small icon: the pixel icon when there is one, else a code-drawn fallback.
 static func icon(kind: String, size := 10.0) -> Control:
 	var c := Control.new()
 	c.custom_minimum_size = Vector2(size, size)
-	c.draw.connect(func(): draw_icon(c, kind, c.size * 0.5, size * 0.5))
+	c.draw.connect(func():
+		var tex := icon_tex(kind)
+		if tex != null:
+			c.draw_texture_rect(tex, Rect2(Vector2.ZERO, c.size), false)
+		else:
+			draw_icon(c, kind, c.size * 0.5, size * 0.5))
 	return c
+
+
+## A TextureRect for a pixel icon at an integer scale of its 32 px source.
+static func icon_rect(name: String, px: float) -> TextureRect:
+	var t := TextureRect.new()
+	t.texture = icon_tex(name)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	t.custom_minimum_size = Vector2(px, px)
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return t
+
+
+## A red ribbon banner with a title (overlay and level-up headers), drawn centred in its rect.
+static func ribbon(text: String, size := 8) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(0, 24)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var l := title(text, size, Color("fff1d6"))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.offset_top = -1
+	c.add_child(l)
+	var last := [""]
+	l.draw.connect(func():
+		if l.text != last[0]:   # the band width follows the text
+			last[0] = l.text
+			c.queue_redraw())
+	c.draw.connect(func():
+		var w := floorf(c.size.x)
+		var h := floorf(c.size.y)
+		var f := l.get_theme_font("font")
+		var tw := floorf(f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.get_theme_font_size("font_size")).x) + 36.0
+		tw = maxf(tw, 90.0)
+		var x0 := floorf((w - tw) * 0.5)
+		var band := Rect2(x0, 0, tw, h - 4)
+		# folded tails, a little lower than the band
+		for side in [-1, 1]:
+			var tx := x0 - 9.0 if side < 0 else x0 + tw - 3.0
+			var tail := Rect2(tx, 5, 12, h - 5)
+			c.draw_rect(tail.grow(1), Color("05030c"))
+			c.draw_rect(tail, Color("8e1f1a"))
+			var nx := tail.position.x if side < 0 else tail.end.x - 1
+			for k in 4:
+				var notch := Rect2(nx + (k if side < 0 else -k), tail.position.y + tail.size.y * 0.5 - (4 - k), 1, (4 - k) * 2)
+				c.draw_rect(notch, Color("05030c"))
+		c.draw_rect(band.grow(1), Color("05030c"))
+		c.draw_rect(band, Color("c8352b"))
+		c.draw_rect(Rect2(band.position, Vector2(band.size.x, 2)), Color("ff6a52"))
+		c.draw_rect(Rect2(band.position + Vector2(0, band.size.y - 2), Vector2(band.size.x, 2)), Color("8e1f1a"))
+		c.draw_rect(Rect2(band.position + Vector2(0, 3), Vector2(band.size.x, 1)), Color("f2b53a"))
+		c.draw_rect(Rect2(band.position + Vector2(0, band.size.y - 4), Vector2(band.size.x, 1)), Color("f2b53a")))
+	return c
+
+
+## The pixel icon for an in-run choice card (weapon / tome / fallback / shrine boon).
+static func option_icon(opt: Dictionary) -> String:
+	var d: Dictionary = opt.get("def", opt)
+	var id := String(d.get("id", ""))
+	if icon_tex(id) != null:
+		return id
+	match id:
+		"cursed": return "rift"
+		"fb_heal": return "potion"
+		"fb_gold": return "gold"
+		"b_dmg": return "damage"
+		"b_spd": return "speed"
+		"b_hp": return "hp"
+		"b_aspd": return "haste"
+		"b_luck": return "fortune"
+		"b_crit": return "crit"
+	return "exp"
 
 
 static func draw_icon(ci: CanvasItem, kind: String, at: Vector2, r: float) -> void:

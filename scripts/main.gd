@@ -664,7 +664,7 @@ func _make_offer(entry: Dictionary) -> Dictionary:
 		var combo := GameData.combo_hint("weapon", d["id"], player.weapon_levels, player.tomes)
 		if combo != "":
 			desc += "\n" + combo
-		return {"kind": "weapon", "def": d, "rarity": 0,
+		return {"kind": "weapon", "def": d, "rarity": 0, "level": lv,
 			"name": ("%s (NEW)" % d["name"]) if unlocking else ("%s  Lv %d > %d" % [d["name"], lv, lv + 1]),
 			"desc": desc,
 			"color": Color(0.6, 0.9, 1.0)}
@@ -675,7 +675,7 @@ func _make_offer(entry: Dictionary) -> Dictionary:
 	var tcombo := GameData.combo_hint("tome", d["id"], player.weapon_levels, player.tomes)
 	if tcombo != "":
 		tdesc += "\n" + tcombo
-	return {"kind": "tome", "def": d, "rarity": rarity, "gain": gain,
+	return {"kind": "tome", "def": d, "rarity": rarity, "gain": gain, "level": lv,
 		"name": title,
 		"desc": tdesc,
 		"color": GameData.RARITY_COLORS[rarity]}
@@ -895,8 +895,11 @@ func restart() -> void:
 ## Headless smoke test: teleports between objectives, auto-picks choices,
 ## activates the portal, kills the boss, exits. Prints a summary and quits.
 func _autotest_step(delta: float) -> void:
+	if _shot_path != "" and not _choice_shot_done and elapsed > 4.0 and not hud.choices_open() and "--shot-choice" in OS.get_cmdline_user_args():
+		hud.show_choices("LEVEL UP — choose one", _roll_levelup_offers(), _apply_offer)
+		return
 	if hud.choices_open():
-		if _shot_path != "" and not _choice_shot_done and elapsed > 20.0 and hud._choice_title.text.begins_with("LEVEL"):
+		if _shot_path != "" and not _choice_shot_done and hud._choice_title.text.begins_with("LEVEL"):
 			_choice_shot_done = true
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_choice.png"))

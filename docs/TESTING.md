@@ -17,7 +17,22 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
-**Tahap 3 (revisi): layar utama = peta akademi.**
+**UI pixel ala Overgeared Hero + kartu level up baru.**
+- Seluruh UI (layar utama, semua halaman, panel, HUD saat run) diganti ke gaya pixel: panel ungu gelap bergaris
+  diagonal, garis tepi hitam tegas, bevel ungu, judul pita merah, tombol X merah berbentuk wajik, tombol utama
+  berbingkai emas, tombol hijau untuk aksi. Posisi menu tetap seperti layout HoK.
+- 64 ikon pixel baru (resource, menu, semua senjata, semua tome, stat) dibuat dengan PixelLab.
+- Font pixel: DotGothic16 (teks) + Silkscreen (judul/tombol). Ukuran font dikunci ke grid pixel supaya tajam.
+- **Level up**: tidak ada lagi panel besar dengan 3 tombol lebar. Sekarang 3 kartu ringkas: jenis (WEAPON/TOME),
+  level (NEW atau LV 2>3), ikon besar, nama, efek, petunjuk combo (emas), strip rarity di bawah. Shrine Ley
+  memakai kartu yang sama (BOON).
+- Slot senjata/tome di kiri atas saat run sekarang berupa ikon + angka level (gembok untuk slot terkunci).
+- [ ] Teks terbaca jelas di HP (tidak terlalu kecil / buram)?
+- [ ] Kartu level up enak dibaca dan dipilih dengan jempol?
+- [ ] Ikon-ikonnya cocok dengan senjata/tome-nya? Ada yang mirip game lain?
+- [ ] Ada layar yang masih terasa kosong atau terlalu penuh?
+
+**Sebelumnya: tahap 3: layar utama = peta akademi.**
 - Layar utama sekarang **peta akademi** yang bisa digeser. Bangunan dibuat dengan PixelLab; yang masih runtuh
   tampil sebagai reruntuhan + hologram cyan bangunannya. Panah hijau = bisa dibangun / di-upgrade sekarang.
 - **Ketuk bangunan** → panel bangunan: status, efek level berikutnya, kebutuhan resource (punya / perlu),
@@ -26,10 +41,8 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
   dengan hadiah datang di tahap lokasi). Kanan atas: resource + tombol **Settings** (Reset save pindah ke sini).
 - Kiri bawah: **Characters / Expedition / Codex** (halaman penuh dengan tombol kembali). Kanan bawah: tombol
   besar **ENTER THE RIFT** → halaman Rift → START.
-- Gaya UI baru: panel kaca navy transparan, tombol emas miring, font Nunito + Exo 2 Italic (Cinzel dibuang).
 - [ ] Peta enak digeser di HP, ketuk bangunan tidak terpicu saat menggeser
 - [ ] Tampilan sudah terasa seperti game jualan? Apa yang masih kurang?
-- [ ] Font baru oke?
 - [ ] Posisi bangunan / jalan di peta (mau diatur ulang?)
 
 **Sebelumnya: tahap 2 (sistem meta) — checklist lama tetap berlaku.**

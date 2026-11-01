@@ -18,15 +18,10 @@ var _action: Button
 
 func _init(s, parent: Control) -> void:
 	shell = s
-	var o := UiKit.overlay(parent, 470)
+	var o := UiKit.overlay(parent, 470, "BUILDING", close)
 	root = o[0]
 	var box: VBoxContainer = o[1]
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	_name = UiKit.title("", 15, UiKit.IVORY)
-	_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(_name)
-	head.add_child(UiKit.button("X", Vector2(26, 22), close))
+	_name = o[2]
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	box.add_child(row)
@@ -59,7 +54,7 @@ func _init(s, parent: Control) -> void:
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(sp)
 	_build = UiKit.button("BUILD", Vector2(170, 34), _on_build, "primary")
-	_build.add_theme_font_size_override("font_size", 14)
+	_build.add_theme_font_size_override("font_size", UiKit.fs(14))
 	buttons.add_child(_build)
 
 

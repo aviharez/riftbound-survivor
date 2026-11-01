@@ -25,8 +25,10 @@ var map_open := false
 var _banner := {"text": "", "t": 0.0, "color": IVORY}
 var _toasts: Array = []
 
-var _choice_panel: PanelContainer
+var _choice_panel: ColorRect
 var _choice_title: Label
+var _choice_sub: Label
+var _choice_row: HBoxContainer
 var _choice_buttons: Array = []
 var _choice_cb: Callable
 var _pause_panel: PanelContainer
@@ -127,24 +129,129 @@ func toast(text: String, color := IVORY) -> void:
 
 ## Shows 1-of-3 choices; pauses the game until one is picked.
 func show_choices(title: String, options: Array, cb: Callable) -> void:
-	_choice_title.text = title
+	_choice_title.text = title.get_slice(" — ", 0)
+	_choice_sub.text = title.get_slice(" — ", 1).capitalize() if " — " in title else "Choose one"
 	_choice_cb = cb
-	for i in _choice_buttons.size():
-		var b: Button = _choice_buttons[i]
-		if i < options.size():
-			b.visible = true
-			b.text = "%s\n%s" % [options[i]["name"], options[i]["desc"]]
-			var col: Color = options[i].get("color", IVORY)
-			b.add_theme_color_override("font_color", col)
-			b.add_theme_color_override("font_hover_color", col.lightened(0.3))
-			b.add_theme_color_override("font_pressed_color", col.lightened(0.3))
-			b.set_meta("option", options[i])
-		else:
-			b.visible = false
+	for c in _choice_row.get_children():
+		c.queue_free()
+	_choice_buttons.clear()
+	for i in options.size():
+		var b := _choice_card(options[i])
+		b.pressed.connect(pick_choice.bind(i))
+		_choice_row.add_child(b)
+		_choice_buttons.append(b)
 	_choice_panel.visible = true
 	get_tree().paused = true
 	if map_open:
 		toggle_map()
+
+
+## One compact level-up / boon card: kind tag + level, icon slot, name, effect, rarity strip.
+func _choice_card(opt: Dictionary) -> Button:
+	var kind := String(opt.get("kind", "boon"))
+	var d: Dictionary = opt.get("def", opt)
+	var col: Color = opt.get("color", UiKit.GREEN)
+	var tag: String = {"weapon": "WEAPON", "tome": "TOME", "fallback": "BONUS", "boon": "BOON"}.get(kind, "BOON")
+	if kind == "weapon":
+		col = Color("6fe3ff")
+	elif kind == "boon":
+		col = Color("6dff8a")
+	elif kind == "fallback":
+		col = UiKit.GOLD
+	var b := Button.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.custom_minimum_size = Vector2(128, 150)
+	b.set_meta("option", opt)
+	var st := UiKit.rarity_style(col, 6.0)
+	st.drop = 2
+	b.add_theme_stylebox_override("normal", st)
+	var hv := UiKit.rarity_style(col.lightened(0.25), 6.0)
+	hv.glow = Color(col, 0.6)
+	hv.drop = 2
+	b.add_theme_stylebox_override("hover", hv)
+	var pr := UiKit.rarity_style(col, 6.0)
+	pr.drop = 0
+	b.add_theme_stylebox_override("pressed", pr)
+	var box := VBoxContainer.new()
+	box.set_anchors_preset(Control.PRESET_FULL_RECT)
+	box.offset_left = 7
+	box.offset_right = -7
+	box.offset_top = 6
+	box.offset_bottom = -6
+	box.add_theme_constant_override("separation", 3)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(box)
+	# top: kind tag and level
+	var top := HBoxContainer.new()
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(top)
+	var t := UiKit.title(tag, 8, col)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(t)
+	var lv := int(opt.get("level", -1))
+	if lv >= 0:
+		var lvl := UiKit.title("NEW" if lv == 0 else "LV %d>%d" % [lv, lv + 1], 8, UiKit.GREEN if lv == 0 else UiKit.IVORY)
+		top.add_child(lvl)
+	# icon slot
+	var slot := UiKit.slot(UiKit.option_icon(opt), 72.0, col)
+	slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	box.add_child(slot)
+	# name
+	var nm := UiKit.title(String(d.get("name", opt.get("name", ""))).to_upper(), 8, IVORY)
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nm.custom_minimum_size = Vector2(114, 0)
+	box.add_child(nm)
+	# effect text; a combo hint (second line) in gold
+	var desc := String(opt.get("desc", ""))
+	var lines := desc.split("\n")
+	var main_text := lines[0]
+	if kind == "tome" and "  ·  " in main_text:
+		main_text = main_text.get_slice("  ·  ", 1)   # the rarity has its own strip
+	var dl := UiKit.label(main_text, 8, Color("d8d2ee"))
+	dl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dl.custom_minimum_size = Vector2(114, 0)
+	box.add_child(dl)
+	for k in range(1, lines.size()):
+		var cl := UiKit.label(lines[k], 8, UiKit.GOLD)
+		cl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cl.custom_minimum_size = Vector2(114, 0)
+		box.add_child(cl)
+	var fill := Control.new()
+	fill.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(fill)
+	# bottom strip: rarity for tomes, else the kind's colour
+	var strip_text := "BOON"
+	if kind == "tome":
+		strip_text = String(GameData.RARITY_NAMES[int(opt.get("rarity", 0))]).to_upper()
+	elif kind == "weapon":
+		strip_text = "NEW SPELL" if lv == 0 else "LEVEL UP"
+	elif kind == "fallback":
+		strip_text = "BONUS"
+	var strip := PanelContainer.new()
+	var ss := PixelStyle.new()
+	ss.pattern = false
+	ss.drop = 0
+	ss.border_w = 1
+	ss.border = col.darkened(0.3)
+	ss.light = col
+	ss.shade = col.darkened(0.6)
+	ss.fill = col.darkened(0.65)
+	ss.set_content_margin_all(1)
+	strip.add_theme_stylebox_override("panel", ss)
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sl := UiKit.title(strip_text, 8, col.lightened(0.3))
+	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	strip.add_child(sl)
+	box.add_child(strip)
+	# the button is not a container: grow it with its content (the row then evens out the heights)
+	var fit := func(): b.custom_minimum_size.y = maxf(150.0, box.get_combined_minimum_size().y + 12.0)
+	box.minimum_size_changed.connect(fit)
+	fit.call()
+	return b
 
 
 func choices_open() -> bool:
@@ -211,48 +318,56 @@ func _draw_player_panel() -> void:
 	else:
 		view.draw_circle(Vector2(21, 22), 8, Color(0.98, 0.86, 0.78))
 		view.draw_rect(Rect2(12, 11, 18, 6), Color(p.character["colors"]["hair"]))
+	view.draw_rect(Rect2(5, 5, 32, 32), Color("05030c"), false, 1.0)
 	view.draw_rect(Rect2(6, 6, 30, 30), GOLD, false, 1.0)
-	_text(Vector2(30, 44), "Lv %d" % game.level, IVORY, 8, true)
+	_text(Vector2(21, 46), "Lv %d" % game.level, IVORY, 8, true)
 	_bar(Rect2(40, 8, 120, 8), p.hp / p.stats["max_hp"], Color(0.9, 0.25, 0.3))
 	_text(Vector2(100, 15), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
 	_bar(Rect2(40, 19, 120, 4), game.xp / game.xp_next, CYAN)
-	# weapon row (y 26) and tome row (y 41): filled / empty / locked (opens via academy buildings)
-	_slot_row(26.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35), func(id): return GameData.weapon_by_id(id).get("short", GameData.weapon_by_id(id)["name"]))
-	_slot_row(41.0, p.tomes, game.tome_slots, CYAN, func(id): return GameData.tome_by_id(id)["name"].replace("Tome of ", "").replace(" Tome", ""))
-	# owned items (y 56)
+	# weapon row (y 26) and tome row (y 45): pixel icon slots, filled / empty / locked (opens via academy buildings)
+	_slot_row(26.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35))
+	_slot_row(45.0, p.tomes, game.tome_slots, CYAN)
+	# owned items (y 64)
 	var x := 40.0
 	for id in game.items_owned:
 		var it: Dictionary = game.item_by_id(id)
 		var col: Color = GameData.RARITY_COLORS[int(it["rarity"])]
-		view.draw_rect(Rect2(x, 56, 12, 12), NAVY)
-		view.draw_rect(Rect2(x, 56, 12, 12), col, false, 1.0)
-		_text(Vector2(x + 6, 65), it["name"].substr(0, 1), col, 8, true)
+		_slot_frame(Rect2(x, 64, 12, 12), col)
+		_text(Vector2(x + 6, 73), it["name"].substr(0, 1), col, 8, true)
 		var n: int = game.items_owned[id]
 		if n > 1:
-			_text(Vector2(x + 11, 71), str(n), IVORY, 6, true)
+			_text(Vector2(x + 11, 79), str(n), IVORY, 8, true)
 		x += 14.0
 
 
-func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color, label: Callable) -> void:
+## Pixel slot frame: black outline, coloured 1 px border, dark fill.
+func _slot_frame(r: Rect2, col: Color, fill := Color("140f2a")) -> void:
+	view.draw_rect(r.grow(1), Color("05030c"))
+	view.draw_rect(r, col)
+	view.draw_rect(r.grow(-1), fill)
+
+
+func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color) -> void:
 	var ids: Array = owned.keys()
 	var x := 40.0
 	for i in GameData.MAX_SLOTS:
-		var r := Rect2(x, y, 28, 12)
+		var r := Rect2(x, y, 18, 18)
 		if i < ids.size():
-			view.draw_rect(r, NAVY)
-			view.draw_rect(r, col, false, 1.0)
-			var evolved: bool = GameData.weapon_by_id(String(ids[i])).get("evolved", false) if owned == game.player.weapon_levels else false
-			if evolved:
-				view.draw_rect(r, GOLD, false, 1.0)
-			_text(Vector2(x + 2, y + 9), String(label.call(ids[i])).substr(0, 3), IVORY, 7, false)
-			_text(Vector2(x + 22, y + 9), "E" if evolved else str(owned[ids[i]]), GOLD if evolved else col, 7, true)
+			var id := String(ids[i])
+			var evolved: bool = GameData.weapon_by_id(id).get("evolved", false) if owned == game.player.weapon_levels else false
+			_slot_frame(r, GOLD if evolved else col)
+			var tex := UiKit.icon_tex(UiKit.option_icon({"def": {"id": id}}))
+			if tex != null:
+				view.draw_texture_rect(tex, Rect2(r.position + Vector2(1, 1), Vector2(16, 16)), false)
+			_text(Vector2(r.end.x - 1, r.end.y + 2), "E" if evolved else str(owned[ids[i]]), GOLD if evolved else IVORY, 8, true)
 		elif i < unlocked:
-			view.draw_rect(r, Color(NAVY, 0.6))
-			view.draw_rect(r, Color(col, 0.35), false, 1.0)
+			_slot_frame(r, Color(col, 0.45), Color(0.05, 0.04, 0.12, 0.6))
 		else:
-			view.draw_rect(r, Color(0, 0, 0, 0.45))
-			_text(Vector2(x + 14, y + 9), "lock", Color(1, 1, 1, 0.3), 6, true)
-		x += 30.0
+			_slot_frame(r, Color(0.35, 0.33, 0.45, 0.6), Color(0, 0, 0, 0.45))
+			var lock := UiKit.icon_tex("lock")
+			if lock != null:
+				view.draw_texture_rect(lock, Rect2(r.position + Vector2(1, 1), Vector2(16, 16)), false, Color(1, 1, 1, 0.45))
+		x += 21.0
 
 
 func _draw_timer(vs: Vector2) -> void:
@@ -397,7 +512,8 @@ func _bar(r: Rect2, ratio: float, col: Color) -> void:
 	view.draw_rect(Rect2(r.position, Vector2(r.size.x * clamp(ratio, 0.0, 1.0), r.size.y)), col)
 
 
-func _text(p: Vector2, s: String, col: Color, fs: int, centered: bool) -> void:
+func _text(p: Vector2, s: String, col: Color, size: int, centered: bool) -> void:
+	var fs := UiKit.fs(size)
 	var pos := p
 	if centered:
 		pos.x -= font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * 0.5
@@ -417,7 +533,7 @@ func _make_button(text: String, size: Vector2, cb: Callable) -> Button:
 	b.custom_minimum_size = size
 	b.size = size
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 9)
+	b.add_theme_font_size_override("font_size", UiKit.fs(9))
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, UiKit.button_style("normal", st))
 	b.add_theme_font_override("font", UiKit.BOLD_FONT)
@@ -438,28 +554,29 @@ func _centered_panel() -> PanelContainer:
 
 
 func _build_choice_panel() -> void:
-	_choice_panel = _centered_panel()
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 6)
-	_choice_panel.add_child(box)
-	_choice_title = UiKit.title("", 12)
-	_choice_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_choice_title)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	box.add_child(row)
-	for i in 3:
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(186, 56)
-		b.focus_mode = Control.FOCUS_NONE
-		b.add_theme_font_size_override("font_size", 9)
-		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # long card text (combo hints) wraps instead of widening
-		for st in ["normal", "hover", "pressed"]:
-			b.add_theme_stylebox_override(st, UiKit.button_style("normal", st))
-		b.add_theme_font_override("font", UiKit.BOLD_FONT)
-		b.pressed.connect(pick_choice.bind(i))
-		row.add_child(b)
-		_choice_buttons.append(b)
+	# no big panel: a dimmed screen, a red ribbon and three compact cards
+	_choice_panel = ColorRect.new()
+	_choice_panel.color = Color(0.01, 0.0, 0.05, 0.62)
+	_choice_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_choice_panel.visible = false
+	add_child(_choice_panel)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_choice_panel.add_child(center)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 4)
+	center.add_child(col)
+	var rb := UiKit.ribbon("LEVEL UP", 16)
+	rb.custom_minimum_size = Vector2(300, 28)
+	col.add_child(rb)
+	_choice_title = rb.get_child(0)
+	_choice_sub = UiKit.label("Choose one", 8, Color("d8d2ee"))
+	_choice_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_choice_sub)
+	_choice_row = HBoxContainer.new()
+	_choice_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	_choice_row.add_theme_constant_override("separation", 8)
+	col.add_child(_choice_row)
 
 
 func _build_pause_panel() -> void:
@@ -472,7 +589,7 @@ func _build_pause_panel() -> void:
 	box.add_child(l)
 	var info := Label.new()
 	info.name = "Info"
-	info.add_theme_font_size_override("font_size", 9)
+	info.add_theme_font_size_override("font_size", UiKit.fs(9))
 	box.add_child(info)
 	box.add_child(UiKit.button("Resume", Vector2(220, 26), toggle_pause, "primary"))
 	box.add_child(UiKit.button("New run (new map)", Vector2(220, 22), func(): game.restart()))
@@ -491,7 +608,7 @@ func _build_result_panel() -> void:
 	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(_result_title)
 	_result_label = Label.new()
-	_result_label.add_theme_font_size_override("font_size", 8)
+	_result_label.add_theme_font_size_override("font_size", UiKit.fs(8))
 	_result_label.custom_minimum_size = Vector2(380, 0)
 	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_result_label)
@@ -500,4 +617,4 @@ func _build_result_panel() -> void:
 	var again := UiKit.button("Run again (new map)", Vector2(0, 24), func(): game.restart())
 	box.add_child(again)
 	for b in [academy, again]:
-		b.add_theme_font_size_override("font_size", 10)
+		b.add_theme_font_size_override("font_size", UiKit.fs(10))

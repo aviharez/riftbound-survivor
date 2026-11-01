@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://c5rfbaq2smnbl"
-path="res://.godot/imported/Exo2-Italic.ttf-5c400e4db1808cd56a19a7b52c1f1873.fontdata"
+uid="uid://ctrrc0epij6fo"
+path="res://.godot/imported/Silkscreen-Bold.ttf-c5bfe206a7f26b7a826f144afbfe2747.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Exo2-Italic.ttf"
-dest_files=["res://.godot/imported/Exo2-Italic.ttf-5c400e4db1808cd56a19a7b52c1f1873.fontdata"]
+source_file="res://assets/fonts/Silkscreen-Bold.ttf"
+dest_files=["res://.godot/imported/Silkscreen-Bold.ttf-c5bfe206a7f26b7a826f144afbfe2747.fontdata"]
 
 [params]
 
@@ -22,8 +22,8 @@ msdf_size=48
 allow_system_fallback=true
 force_autohinter=false
 modulate_color_glyphs=false
-hinting=3
-subpixel_positioning=4
+hinting=0
+subpixel_positioning=0
 keep_rounding_remainders=true
 oversampling=0.0
 Fallbacks=null

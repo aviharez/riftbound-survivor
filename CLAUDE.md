@@ -82,8 +82,16 @@ Read it before starting any phase.**
   `BuildingPanel`), HUD: top-left selected mage + quests (`Home.quests()`), top-right resources + settings,
   bottom-left Characters / Expedition / Codex, bottom-right ENTER THE RIFT -> Rift page (START). Pages
   `page_{characters,expedition,codex,rift}.gd` are full screen with a back button; overlays
-  `{lessons,workshop,dorm,building}_panel.gd`. Look = `UiKit` + `GlassStyle` (rounded translucent glass, gold
-  slanted CTA); fonts Nunito (body) + Exo 2 Italic (titles), OFL. No Cinzel (Syifa hates it).
+  `{lessons,workshop,dorm,building}_panel.gd`. Look = pixel UI after Overgeared Hero (Syifa's reference; HoK was
+  only for menu positions, she rejected the glass look): `UiKit` + `PixelStyle` (black outline, purple bevel border,
+  notched corners, striped dark fill; gold-framed dark CTA, green accent buttons), `UiKit.overlay(parent, w, title,
+  close)` = red ribbon title + red diamond X, `UiKit.portrait/slot/icon_button`. Pixel icons (PixelLab, 32 px) in
+  `assets/ui/icons/<id>.png` (resources, menus, every weapon/tome id, stats); draw them at 16/32/64 px only.
+  Fonts: DotGothic16 (body, Latin subset) + Silkscreen Bold (titles/buttons), OFL; sizes snap via `UiKit.fs()` to
+  8/16/24 so letters stay on the pixel grid. No Cinzel (Syifa hates it).
+  In-run level-up / shrine choices = compact cards (`Hud._choice_card`: kind tag + level, 64 px icon slot, name,
+  effect, combo hint in gold, rarity strip) under a LEVEL UP ribbon, no big panel. `--shot-choice` (with `--shot`)
+  opens a level-up in an autotest for a screenshot (`<shot>_choice.png`).
   Screenshot flags with `--academy-demo`: `--academy-page=characters|rift|expedition|codex`, `--academy-tab=enhance|gear|bond`,
   `--academy-building=<id>`, `--academy-lessons/-workshop/-dorm/-settings`; `--academy-check` opens everything once (test `academy_ui`).
   Big illustrations: `assets/illustrations/<id>.png` (spec in its README) replace the scaled sprite on the Characters page. Autotest flags

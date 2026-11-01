@@ -160,7 +160,7 @@ func _draw_plate(save: Dictionary, id: String, pos: Vector2) -> void:
 	var max_lv: int = b["costs"].size()
 	var badge := Rect2(at + Vector2(1, 1), Vector2(13, 11))
 	draw_rect(badge, Color(0.95, 0.65, 0.15) if lv > 0 else Color(0.4, 0.2, 0.6))
-	draw_string(font, badge.position + Vector2(0, 9), str(lv), HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, 7, Color(0.1, 0.05, 0))
+	draw_string(font, badge.position + Vector2(0, 9), str(lv), HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, 8, Color(0.1, 0.05, 0))
 	draw_string_outline(font, at + Vector2(17, 10), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color(0, 0, 0.1, 0.8))
 	draw_string(font, at + Vector2(17, 10), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 	# "ready" marker when the next level is affordable

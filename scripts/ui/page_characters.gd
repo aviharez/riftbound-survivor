@@ -56,7 +56,7 @@ func _init(s) -> void:
 		b.expand_icon = true
 		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.add_theme_font_size_override("font_size", 6)
+		b.add_theme_font_size_override("font_size", UiKit.fs(6))
 		b.tooltip_text = c["name"]
 		strip.add_child(b)
 		_tiles[c["id"]] = b
@@ -143,7 +143,7 @@ func _build_enhance(box: VBoxContainer) -> void:
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		r.add_child(lab)
 		var btn := UiKit.button("", Vector2(108, 32), _on_enhance.bind(track), "primary")
-		btn.add_theme_font_size_override("font_size", 8)
+		btn.add_theme_font_size_override("font_size", UiKit.fs(8))
 		r.add_child(btn)
 		_enh_rows[track] = {"label": lab, "button": btn}
 
@@ -187,15 +187,10 @@ func _build_bond(box: VBoxContainer) -> void:
 
 ## Inventory picker and story reader live on the shell so they cover the whole screen.
 func build_overlays(parent: Control) -> void:
-	var p := UiKit.overlay(parent, 500)
+	var p := UiKit.overlay(parent, 500, "EQUIP", func(): _picker.visible = false)
 	_picker = p[0]
 	var pbox: VBoxContainer = p[1]
-	var phead := HBoxContainer.new()
-	pbox.add_child(phead)
-	_picker_title = UiKit.title("", 10)
-	_picker_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	phead.add_child(_picker_title)
-	phead.add_child(UiKit.button("Back", Vector2(56, 22), func(): _picker.visible = false))
+	_picker_title = p[2]
 	var sc := ScrollContainer.new()
 	sc.custom_minimum_size = Vector2(0, 240)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -205,15 +200,10 @@ func build_overlays(parent: Control) -> void:
 	_picker_list.add_theme_constant_override("separation", 3)
 	sc.add_child(_picker_list)
 
-	var rd := UiKit.overlay(parent, 440)
+	var rd := UiKit.overlay(parent, 440, "STORY", func(): _reader.visible = false)
 	_reader = rd[0]
 	var rbox: VBoxContainer = rd[1]
-	var rhead := HBoxContainer.new()
-	rbox.add_child(rhead)
-	_reader_title = UiKit.title("", 11)
-	_reader_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rhead.add_child(_reader_title)
-	rhead.add_child(UiKit.button("Back", Vector2(56, 22), func(): _reader.visible = false))
+	_reader_title = rd[2]
 	_reader_text = UiKit.label("", 9, UiKit.IVORY)
 	_reader_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_reader_text.custom_minimum_size = Vector2(420, 0)

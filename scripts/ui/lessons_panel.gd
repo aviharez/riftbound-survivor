@@ -11,15 +11,9 @@ var _rows := {}
 
 func _init(parent: Control, change_cb: Callable) -> void:
 	on_change = change_cb
-	var o := UiKit.overlay(parent, 500)
+	var o := UiKit.overlay(parent, 500, "LESSONS", close)
 	root = o[0]
 	var box: VBoxContainer = o[1]
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	var t := UiKit.title("STAFF ROOM LESSONS", 11)
-	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(t)
-	head.add_child(UiKit.button("Close", Vector2(56, 22), close))
 	_header = UiKit.label("", 8, UiKit.CYAN)
 	box.add_child(_header)
 	var sc := ScrollContainer.new()

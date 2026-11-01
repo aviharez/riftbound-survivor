@@ -2,13 +2,13 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://bb5c4nkh8s4vf"
-path="res://.godot/imported/Nunito.ttf-9a0d659c7c014361f3d844547f0a9ee8.fontdata"
+uid="uid://bykykr86dekqt"
+path="res://.godot/imported/DotGothic16.ttf-9a6f6196506947a6839ccc23ed63d536.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Nunito.ttf"
-dest_files=["res://.godot/imported/Nunito.ttf-9a0d659c7c014361f3d844547f0a9ee8.fontdata"]
+source_file="res://assets/fonts/DotGothic16.ttf"
+dest_files=["res://.godot/imported/DotGothic16.ttf-9a6f6196506947a6839ccc23ed63d536.fontdata"]
 
 [params]
 
@@ -22,8 +22,8 @@ msdf_size=48
 allow_system_fallback=true
 force_autohinter=false
 modulate_color_glyphs=false
-hinting=3
-subpixel_positioning=4
+hinting=0
+subpixel_positioning=0
 keep_rounding_remainders=true
 oversampling=0.0
 Fallbacks=null

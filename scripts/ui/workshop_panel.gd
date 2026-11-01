@@ -18,15 +18,11 @@ var _armed_uid := -1     # salvage needs a second tap
 
 func _init(parent: Control, change_cb: Callable) -> void:
 	on_change = change_cb
-	var o := UiKit.overlay(parent, 600)
+	var o := UiKit.overlay(parent, 600, "WORKSHOP", close)
 	root = o[0]
 	var box: VBoxContainer = o[1]
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	_header = UiKit.label("", 10, UiKit.GOLD)
-	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(_header)
-	head.add_child(UiKit.button("Close", Vector2(56, 22), close))
+	_header = UiKit.label("", 8, UiKit.GOLD)
+	box.add_child(_header)
 	var rr := HBoxContainer.new()
 	rr.add_theme_constant_override("separation", 4)
 	box.add_child(rr)

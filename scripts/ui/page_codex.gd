@@ -100,7 +100,7 @@ func _show(t: String) -> void:
 func _add_entry(text: String, cb: Callable, icon: Texture2D, open: bool) -> void:
 	var b := UiKit.button(text, Vector2(0, 22), cb)
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", 8)
+	b.add_theme_font_size_override("font_size", UiKit.fs(8))
 	if icon != null:
 		b.icon = icon
 		b.expand_icon = true

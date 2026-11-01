@@ -72,7 +72,7 @@ func _init(s) -> void:
 	_record.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	lo[1].add_child(_record)
 	var go := UiKit.button("START", Vector2(0, 46), func(): shell.enter_rift(), "primary")
-	go.add_theme_font_size_override("font_size", 20)
+	go.add_theme_font_size_override("font_size", UiKit.fs(20))
 	rp.add_child(go)
 
 

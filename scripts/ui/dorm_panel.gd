@@ -21,22 +21,15 @@ const _TALK_LINES := [
 
 func _init(parent: Control, change_cb: Callable) -> void:
 	on_change = change_cb
-	var o := UiKit.overlay(parent, 540)
+	var o := UiKit.overlay(parent, 540, "DORMITORY", close)
 	root = o[0]
 	var box: VBoxContainer = o[1]
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	var t := UiKit.title("DORMITORY", 11)
-	head.add_child(t)
 	_header = UiKit.label("", 8, UiKit.CYAN)
-	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_header.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	head.add_child(_header)
-	head.add_child(UiKit.button("Close", Vector2(56, 22), close))
+	box.add_child(_header)
 	box.add_child(UiKit.label("Residents can be talked to once a day (+%d bond). Bond also grows from runs and expeditions." % GameData.BOND_TALK,
 		8, Color(UiKit.IVORY, 0.75)))
 	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(0, 230)
+	sc.custom_minimum_size = Vector2(0, 200)
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	box.add_child(sc)
 	_list = VBoxContainer.new()

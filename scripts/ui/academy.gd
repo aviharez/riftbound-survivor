@@ -197,173 +197,139 @@ func _build_home_hud() -> void:
 			band.offset_top = -62
 		_home.add_child(band)
 
-	# top-left: the selected mage
+	# top-left: the selected mage (square pixel portrait + name plate)
 	var who := HBoxContainer.new()
-	who.position = Vector2(10, 6)
-	who.add_theme_constant_override("separation", 6)
+	who.position = Vector2(8, 6)
+	who.add_theme_constant_override("separation", 3)
 	_home.add_child(who)
-	_avatar = Control.new()
-	_avatar.custom_minimum_size = Vector2(34, 34)
-	_avatar.draw.connect(func(): _draw_portrait_circle(_avatar, String(save["character"]), 17.0))
+	_avatar = UiKit.portrait(func(): return save["character"], 38.0)
 	who.add_child(_avatar)
+	var plate := PanelContainer.new()
+	var ps := UiKit.style(UiKit.PURPLE, 4.0)
+	ps.content_margin_left = 6
+	ps.content_margin_right = 8
+	plate.add_theme_stylebox_override("panel", ps)
+	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	who.add_child(plate)
 	var names := VBoxContainer.new()
-	names.add_theme_constant_override("separation", -2)
-	who.add_child(names)
-	_avatar_name = UiKit.title("", 11)
+	names.add_theme_constant_override("separation", 0)
+	plate.add_child(names)
+	_avatar_name = UiKit.title("", 8, UiKit.GOLD)
 	names.add_child(_avatar_name)
-	_avatar_lv = UiKit.label("", 7, UiKit.CYAN)
+	_avatar_lv = UiKit.label("", 8, UiKit.CYAN)
 	names.add_child(_avatar_lv)
 
 	# left: quests
-	var qp := UiKit.panel(6.0)
+	var qp := UiKit.panel(5.0)
 	var qpanel: PanelContainer = qp[0]
-	qpanel.position = Vector2(10, 48)
-	qpanel.custom_minimum_size = Vector2(150, 0)
-	var qs := UiKit.style(UiKit.GOLD, 6.0)
-	qs.fill_top = Color(0.03, 0.06, 0.16, 0.6)
-	qs.fill_bottom = Color(0.03, 0.06, 0.16, 0.45)
-	qs.highlight = Color(0, 0, 0, 0)
+	qpanel.position = Vector2(8, 50)
+	qpanel.custom_minimum_size = Vector2(156, 0)
+	var qs := UiKit.style(UiKit.PURPLE, 5.0)
+	qs.fill = Color(0.09, 0.06, 0.2, 0.9)
+	qs.fill_dark = Color(0.11, 0.08, 0.24, 0.9)
 	qpanel.add_theme_stylebox_override("panel", qs)
 	_home.add_child(qpanel)
-	qp[1].add_child(UiKit.title("QUESTS", 9, UiKit.GOLD))
+	var qh := HBoxContainer.new()
+	qh.add_theme_constant_override("separation", 3)
+	qh.add_child(UiKit.icon_rect("quest", 16))
+	var qt := UiKit.title("QUESTS", 8, UiKit.GOLD)
+	qt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	qh.add_child(qt)
+	qp[1].add_child(qh)
 	_quests = VBoxContainer.new()
-	_quests.add_theme_constant_override("separation", 3)
+	_quests.add_theme_constant_override("separation", 0)
 	qp[1].add_child(_quests)
 
 	# top-right: resources + settings
 	var tr := HBoxContainer.new()
 	tr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	tr.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	tr.offset_right = -8
-	tr.offset_top = 8
-	tr.add_theme_constant_override("separation", 4)
+	tr.offset_right = -6
+	tr.offset_top = 6
+	tr.add_theme_constant_override("separation", 3)
 	_home.add_child(tr)
 	_res_rows.append(_resource_pills(tr))
-	var gear := UiKit.button("", Vector2(24, 22), func(): settings.visible = true)
-	gear.add_child(_icon_control("gear", Vector2(24, 22)))
-	tr.add_child(gear)
+	tr.add_child(UiKit.icon_button("settings", Vector2(24, 24), func(): settings.visible = true))
 
-	# bottom-left: navigation
+	# bottom-left: navigation (square icon buttons with a label plate)
 	var nav := HBoxContainer.new()
 	nav.name = "Nav"
 	nav.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	nav.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	nav.offset_left = 14
+	nav.offset_left = 8
 	nav.offset_bottom = -6
-	nav.add_theme_constant_override("separation", 14)
+	nav.add_theme_constant_override("separation", 6)
 	_home.add_child(nav)
 	for n in NAV:
 		nav.add_child(_nav_button(n[0], n[1]))
 
-	# bottom-right: the Rift
+	# bottom-right: the Rift (gold-framed call to action next to the selected mage)
 	var rift := HBoxContainer.new()
 	rift.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	rift.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	rift.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	rift.offset_right = -10
+	rift.offset_right = -8
 	rift.offset_bottom = -8
-	rift.add_theme_constant_override("separation", -6)
+	rift.add_theme_constant_override("separation", 3)
 	_home.add_child(rift)
-	_rift_char = Control.new()
-	_rift_char.custom_minimum_size = Vector2(46, 46)
-	_rift_char.z_index = 1
-	_rift_char.draw.connect(func(): _draw_portrait_circle(_rift_char, String(save["character"]), 23.0, true))
+	_rift_char = UiKit.portrait(func(): return save["character"], 48.0, UiKit.GOLD)
 	rift.add_child(_rift_char)
-	var go := UiKit.button("", Vector2(176, 46), func(): show_page("rift"), "primary")
-	go.text = ""
-	var gl := VBoxContainer.new()
+	var go := UiKit.button("", Vector2(168, 48), func(): show_page("rift"), "primary")
+	var gl := HBoxContainer.new()
 	gl.set_anchors_preset(Control.PRESET_FULL_RECT)
 	gl.alignment = BoxContainer.ALIGNMENT_CENTER
-	gl.add_theme_constant_override("separation", -4)
+	gl.add_theme_constant_override("separation", 4)
 	gl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	go.add_child(gl)
-	var sub := UiKit.label("%s  ·  Danger 1" % GameData.LOCATIONS[0]["name"], 7, Color(0.35, 0.15, 0.0))
-	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gl.add_child(sub)
-	var big := UiKit.label("ENTER THE RIFT", 17, Color(0.25, 0.08, 0.0))
-	big.add_theme_font_override("font", UiKit.TITLE_FONT)
-	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	gl.add_child(UiKit.icon_rect("rift", 32))
+	var gt := VBoxContainer.new()
+	gt.alignment = BoxContainer.ALIGNMENT_CENTER
+	gt.add_theme_constant_override("separation", 1)
+	gt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gl.add_child(gt)
+	var big := UiKit.title("ENTER THE RIFT", 8, UiKit.GOLD)
 	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	gl.add_child(big)
+	gt.add_child(big)
+	var sub := UiKit.label("%s · Danger 1" % GameData.LOCATIONS[0]["name"], 8, Color("e8d9b8"))
+	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gt.add_child(sub)
 	rift.add_child(go)
 
 
 func _nav_button(page: String, text: String) -> Control:
-	var b := Button.new()
-	b.flat = true
-	b.focus_mode = Control.FOCUS_NONE
-	b.custom_minimum_size = Vector2(58, 50)
-	b.pressed.connect(show_page.bind(page))
-	var ic := _icon_control(page, Vector2(58, 34))
-	b.add_child(ic)
-	var l := UiKit.title(text, 9)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", -4)
+	var b := UiKit.icon_button(page, Vector2(42, 40), show_page.bind(page))
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var ic: Control = b.get_child(0)
+	ic.size = Vector2(32, 32)
+	ic.position = Vector2(5, 4)
+	col.add_child(b)
+	var l := UiKit.title(text.to_upper(), 8, UiKit.IVORY)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	l.offset_top = -14
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(l)
-	return b
-
-
-## Code-drawn menu icons (characters, expedition, codex, gear) in the light-blue HUD colour.
-func _icon_control(kind: String, sz: Vector2) -> Control:
-	var c := Control.new()
-	c.custom_minimum_size = sz
-	c.size = sz
-	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	c.draw.connect(_draw_icon.bind(c, kind))
-	return c
-
-
-static func _draw_icon(c: Control, kind: String) -> void:
-		var m := c.size * 0.5
-		var hi := Color(0.62, 0.86, 1.0)
-		var dark := Color(0.12, 0.3, 0.6)
-		match kind:
-			"characters":
-				c.draw_circle(m + Vector2(0, -7), 7, hi)
-				c.draw_colored_polygon(PackedVector2Array([m + Vector2(-11, 13), m + Vector2(-8, 1), m + Vector2(8, 1), m + Vector2(11, 13)]), hi)
-				c.draw_colored_polygon(PackedVector2Array([m + Vector2(-9, -9), m + Vector2(0, -20), m + Vector2(9, -9)]), dark)
-			"expedition":
-				c.draw_arc(m, 12, 0, TAU, 28, hi, 2.5)
-				c.draw_colored_polygon(PackedVector2Array([m + Vector2(0, -10), m + Vector2(4, 0), m + Vector2(0, 10), m + Vector2(-4, 0)]), hi)
-				c.draw_circle(m, 2.0, dark)
-			"codex":
-				c.draw_rect(Rect2(m + Vector2(-12, -11), Vector2(11, 22)), hi)
-				c.draw_rect(Rect2(m + Vector2(1, -11), Vector2(11, 22)), hi)
-				c.draw_line(m + Vector2(0, -11), m + Vector2(0, 11), dark, 2.0)
-				for i in 3:
-					c.draw_line(m + Vector2(-9, -6 + i * 5), m + Vector2(-3, -6 + i * 5), dark, 1.0)
-			"gear":
-				for i in 8:
-					var a := TAU * i / 8.0
-					c.draw_line(m + Vector2.from_angle(a) * 4, m + Vector2.from_angle(a) * 8, hi, 3.0)
-				c.draw_circle(m, 5.5, hi)
-				c.draw_circle(m, 2.5, Color(0.08, 0.14, 0.3))
-			"back":
-				c.draw_colored_polygon(PackedVector2Array([m + Vector2(-6, 0), m + Vector2(4, -7), m + Vector2(4, 7)]), hi)
+	col.add_child(l)
+	return col
 
 
 func _resource_pills(parent: Control) -> Dictionary:
 	var out := {}
 	for k in ["gold", "materials", "aether", "shards"]:
 		var pill := PanelContainer.new()
-		var sb := UiKit.style(UiKit.GOLD, 2.0)
-		sb.radius = 9.0
-		sb.content_margin_left = 4
-		sb.content_margin_right = 8
-		sb.fill_top = Color(0.02, 0.04, 0.12, 0.75)
-		sb.fill_bottom = Color(0.02, 0.04, 0.12, 0.75)
-		sb.highlight = Color(0, 0, 0, 0)
+		var sb := UiKit.style(UiKit.PURPLE, 1.0)
+		sb.content_margin_left = 2
+		sb.content_margin_right = 6
+		sb.fill = Color("140f2a")
+		sb.pattern = false
 		pill.add_theme_stylebox_override("panel", sb)
 		pill.tooltip_text = UiKit.resource_name(k)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 3)
 		pill.add_child(row)
-		row.add_child(UiKit.icon(k, 11.0))
+		row.add_child(UiKit.icon_rect(k, 16.0))
 		var l := UiKit.label("0", 8, UiKit.IVORY)
-		l.custom_minimum_size = Vector2(26, 0)
+		l.custom_minimum_size = Vector2(28, 0)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		row.add_child(l)
 		parent.add_child(pill)
 		out[k] = l
@@ -380,9 +346,21 @@ func _page_bar() -> Control:
 	row.add_theme_constant_override("separation", 8)
 	bar.add_child(row)
 	var back := UiKit.button("", Vector2(30, 24), func(): show_page("home"))
-	back.add_child(_icon_control("back", Vector2(30, 24)))
+	var arrow := Control.new()
+	arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	arrow.draw.connect(func():
+		# a pixel arrow pointing left, black outlined
+		var m := (back.size * 0.5).floor() + Vector2(-1, -1)
+		for pass_i in 2:
+			var col := Color("05030c") if pass_i == 0 else Color("fff1d6")
+			var g := 1 if pass_i == 0 else 0
+			for k in 6:
+				arrow.draw_rect(Rect2(m + Vector2(-5 + k - g, -k - g), Vector2(2 + g * 2, k * 2 + 2 + g * 2)), col)
+			arrow.draw_rect(Rect2(m + Vector2(1 - g, -2 - g), Vector2(6 + g * 2, 6 + g * 2)), col))
+	back.add_child(arrow)
 	row.add_child(back)
-	_page_title = UiKit.title("", 15)
+	_page_title = UiKit.title("", 16, UiKit.GOLD)
 	_page_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_page_title)
 	_res_rows.append(_resource_pills(row))
@@ -390,39 +368,14 @@ func _page_bar() -> Control:
 
 
 func _build_settings() -> void:
-	var o := UiKit.overlay(self, 300)
+	var o := UiKit.overlay(self, 300, "SETTINGS", func(): settings.visible = false)
 	settings = o[0]
 	var box: VBoxContainer = o[1]
-	var head := HBoxContainer.new()
-	box.add_child(head)
-	var t := UiKit.title("SETTINGS", 14)
-	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	head.add_child(t)
-	head.add_child(UiKit.button("X", Vector2(26, 22), func(): settings.visible = false))
 	box.add_child(UiKit.label("Sound and language options come later.", 8, Color(UiKit.IVORY, 0.7)))
 	_reset_btn = UiKit.button("Reset save", Vector2(0, 26), _on_reset)
 	box.add_child(_reset_btn)
-	var credits := UiKit.label("Fonts: Nunito, Exo 2 (SIL OFL).  VFX: pixelfx (MIT).\nArt: PixelLab.", 7, Color(UiKit.IVORY, 0.5))
+	var credits := UiKit.label("Fonts: DotGothic16, Silkscreen (SIL OFL).\nVFX: pixelfx (MIT).  Art: PixelLab.", 7, Color(UiKit.IVORY, 0.5))
 	box.add_child(credits)
-
-
-## A round character portrait with a light rim (avatar, Rift button).
-func _draw_portrait_circle(c: Control, id: String, r: float, gold := false) -> void:
-	var m := c.size * 0.5
-	c.draw_circle(m, r, Color(0.9, 0.7, 0.3) if gold else Color(0.55, 0.8, 1.0))
-	c.draw_circle(m, r - 2, Color(0.08, 0.14, 0.32))
-	var tex := CharacterArt.portrait(id)
-	if tex == null:
-		return
-	# head and shoulders of the 64 px sprite, cut to the circle (polygon with UVs)
-	var src := Rect2(16, 4, 32, 32)
-	var pts := PackedVector2Array()
-	var uvs := PackedVector2Array()
-	for i in 32:
-		var d := Vector2.from_angle(TAU * i / 32.0)
-		pts.append(m + d * (r - 2))
-		uvs.append((src.get_center() + d * src.size.x * 0.5) / Vector2(tex.get_width(), tex.get_height()))
-	c.draw_colored_polygon(pts, Color.WHITE, uvs, tex)
 
 
 # ------------------------------------------------------------------ state
@@ -467,8 +420,8 @@ func _refresh_home() -> void:
 	for b in GameData.BUILDINGS:
 		total += SaveData.building_level(save, b["id"])
 	_avatar_lv.text = "Lv %d  ·  Academy Lv %d" % [SaveData.char_level(save, c["id"]), 1 + total]
-	_avatar.queue_redraw()
-	_rift_char.queue_redraw()
+	UiKit.refresh_portrait(_avatar)
+	UiKit.refresh_portrait(_rift_char)
 	for ch in _quests.get_children():
 		ch.queue_free()
 	for q in quests():
@@ -476,9 +429,9 @@ func _refresh_home() -> void:
 		b.flat = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.text = ("> " if q.get("ready", false) else "- ") + q["text"]
-		b.custom_minimum_size = Vector2(140, 14)
-		b.add_theme_font_size_override("font_size", 7)
+		b.text = ("> " if q.get("ready", false) else "· ") + q["text"]
+		b.custom_minimum_size = Vector2(146, 12)
+		b.add_theme_font_size_override("font_size", UiKit.fs(8))
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		var col: Color = UiKit.GREEN if q.get("ready", false) else UiKit.IVORY
 		for k in ["font_color", "font_hover_color", "font_pressed_color"]:

@@ -30,7 +30,7 @@ func _init(s) -> void:
 	for m in GameData.EXPEDITIONS:
 		var b := UiKit.button("", Vector2(0, 44), _pick_mission.bind(m["id"]))
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.add_theme_font_size_override("font_size", 8)
+		b.add_theme_font_size_override("font_size", UiKit.fs(8))
 		b.text = "  %s\n  %dh  ·  %s" % [m["name"], int(m["hours"]), ExpeditionPage.rewards_text(SaveData.expedition_rewards(m["id"], 1))]
 		left.add_child(b)
 		_mission_cards[m["id"]] = b
@@ -66,7 +66,7 @@ func _init(s) -> void:
 	_last.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info_box.add_child(_last)
 	_start = UiKit.button("START EXPEDITION", Vector2(150, 36), _on_start, "primary")
-	_start.add_theme_font_size_override("font_size", 10)
+	_start.add_theme_font_size_override("font_size", UiKit.fs(10))
 	bottom.add_child(_start)
 	var timer := Timer.new()
 	timer.wait_time = 1.0
@@ -97,7 +97,7 @@ func refresh() -> void:
 		b.icon = CharacterArt.portrait(id)
 		b.expand_icon = true
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.add_theme_font_size_override("font_size", 6)
+		b.add_theme_font_size_override("font_size", UiKit.fs(6))
 		b.tooltip_text = c["name"]
 		var busy := SaveData.is_away(save, id) or id == String(save["character"])
 		b.disabled = busy
