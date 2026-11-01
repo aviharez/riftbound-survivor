@@ -7,7 +7,8 @@ extends Control
 ## --academy-shot=/tmp/a.png saves a screenshot of this screen and quits.
 ## --academy-demo uses an in-memory sample save (never written) with some buildings restored, for screenshots;
 ## --academy-lessons opens the Staff Room lessons; --academy-scroll scrolls both strips to their end;
-## --academy-character opens the selected character's level / enhance panel.
+## --academy-character / --academy-gear open the selected character's panel (level / equipment tab);
+## --academy-workshop opens the Workshop.
 
 const NAVY := Color(0.06, 0.08, 0.18, 0.94)
 const GOLD := Color(0.86, 0.7, 0.32)
@@ -29,6 +30,7 @@ var _lesson_rows := {}   # lesson id -> {label, button}
 var _lessons_header: Label
 var _char_panel: CharacterPanel
 var _char_btn: Button
+var _workshop: WorkshopPanel
 
 
 func _ready() -> void:
@@ -50,6 +52,14 @@ func _ready() -> void:
 		save["shards"] = 9
 		SaveData.add_char_exp(save, "selene", GameData.char_exp_for(7) + 40)
 		SaveData.char_state(save, "selene")["passive"] = 1
+		save["buildings"]["workshop"] = 2
+		save["essence"] = {"courtyard": 14}
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 7
+		for r in [3, 2, 1, 0, 4, 1, 2]:
+			SaveData.add_item(save, GameData.roll_item(rng, r))
+		SaveData.equip(save, "selene", int(save["items"][0]["uid"]))
+		SaveData.equip(save, "selene", int(save["items"][1]["uid"]))
 		_demo = true
 	_build()
 	_refresh()
@@ -57,6 +67,10 @@ func _ready() -> void:
 		_on_open_lessons()
 	if "--academy-character" in args:
 		_on_open_character()
+	if "--academy-gear" in args:
+		_char_panel.open(save, String(save.get("character", "astra")), "gear")
+	if "--academy-workshop" in args:
+		_on_open_workshop()
 	if "--academy-scroll" in args:
 		await get_tree().process_frame
 		for sc in find_children("*", "ScrollContainer", true, false):
@@ -115,7 +129,7 @@ func _build() -> void:
 	_char_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_char_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_row.add_child(_char_detail)
-	_char_btn = _button("Level & Enhance", Vector2(110, 28), _on_open_character)
+	_char_btn = _button("Level · Enhance\nEquipment", Vector2(110, 30), _on_open_character)
 	detail_row.add_child(_char_btn)
 
 	var spacer := Control.new()
@@ -147,6 +161,9 @@ func _build() -> void:
 	bottom.add_child(enter)
 	_build_lessons_panel()
 	_char_panel = CharacterPanel.new(self, func():
+		_persist()
+		_refresh())
+	_workshop = WorkshopPanel.new(self, func():
 		_persist()
 		_refresh())
 
@@ -240,6 +257,9 @@ func _building_card(b: Dictionary) -> Control:
 	if b["unlocks"] == "lessons":
 		extra = _button("Lessons", Vector2(64, 20), _on_open_lessons)
 		buttons.add_child(extra)
+	elif b["unlocks"] == "workshop":
+		extra = _button("Craft", Vector2(64, 20), _on_open_workshop)
+		buttons.add_child(extra)
 	_cards[b["id"]] = {"state": state, "effect": effect, "cost": cost, "button": btn, "extra": extra}
 	return panel
 
@@ -275,6 +295,8 @@ func _refresh() -> void:
 	_res_label.text = "Gold %d   Materials %d   Aether %d   EXP %d   Shards %d" % [save["gold"], save["materials"], save["aether"], save["exp"], save["shards"]]
 	if _char_panel != null and _char_panel.is_open():
 		_char_panel.refresh()
+	if _workshop != null and _workshop.is_open():
+		_workshop.refresh()
 	for b in GameData.BUILDINGS:
 		var id: String = b["id"]
 		var c: Dictionary = _cards[id]
@@ -286,7 +308,6 @@ func _refresh() -> void:
 		c["effect"].text = _building_effect(b, lv, cost.is_empty())
 		if c["extra"] != null:
 			c["extra"].disabled = lv < 1
-			c["extra"].text = "Lessons"
 		if cost.is_empty():
 			c["cost"].text = "Fully restored"
 			c["button"].text = "Complete"
@@ -324,6 +345,10 @@ func _building_effect(b: Dictionary, lv: int, maxed: bool) -> String:
 		"character":
 			var c := GameData.character_by_id(b["character"])
 			return "%s has returned" % c["name"] if lv >= 1 else "Brings back %s (%s)" % [c["name"], c["school"]]
+		"workshop":
+			if maxed:
+				return "Crafts up to %s (max)" % GameData.GEAR_RARITY_NAMES[lv]
+			return "Crafts up to %s  >  %s" % [GameData.GEAR_RARITY_NAMES[lv] if lv > 0 else "nothing", GameData.GEAR_RARITY_NAMES[lv + 1]]
 		"lessons":
 			var cap := SaveData.lesson_cap(save)
 			return "Lesson rank cap: %d (max)" % cap if maxed else "Lesson rank cap: %d  >  %d" % [cap, cap + GameData.LESSON_RANKS_PER_LEVEL]
@@ -377,6 +402,10 @@ func _on_pick_character(id: String) -> void:
 	save["character"] = id
 	_persist()
 	_refresh()
+
+
+func _on_open_workshop() -> void:
+	_workshop.open(save)
 
 
 func _on_open_character() -> void:

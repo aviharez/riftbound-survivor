@@ -123,6 +123,53 @@ func _init() -> void:
 	loaded = SaveData.load_data()
 	check(loaded["characters"]["astra"]["passive"] == 2 and typeof(loaded["characters"]["astra"]["exp"]) == TYPE_INT, "character progress survives save/load")
 
+	# --- equipment + crafting
+	d = SaveData.reset()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 42
+	var epic := GameData.roll_item(rng, 3, "focus")
+	check(epic["base"] == "focus" and epic["rarity"] == 3 and epic["subs"].size() == GameData.RARITY_SUBSTATS[3], "epic focus has 2 substats")
+	var subs_ok := true
+	for sub in epic["subs"]:
+		subs_ok = subs_ok and sub[0] != "crit"
+	check(subs_ok, "substats never repeat the main stat")
+	var main_mod: Array = GameData.item_mods(epic)[0]
+	check(main_mod[0] == "crit" and absf(main_mod[1] - 0.03 * GameData.RARITY_MAIN_MULT[3]) < 0.0001, "main stat x rarity (%s)" % [main_mod])
+	var uid := SaveData.add_item(d, epic)
+	var uid2 := SaveData.add_item(d, GameData.roll_item(rng, 0, "robe"))
+	check(uid != uid2 and d["items"].size() == 2, "items get unique uids")
+	check(SaveData.equip(d, "astra", uid) and SaveData.equipped_item(d, "astra", "weapon")["uid"] == uid, "astra wears the focus")
+	check(SaveData.equip(d, "lyra", uid) and SaveData.equipped_item(d, "astra", "weapon").is_empty() and SaveData.owner_of(d, uid) == "lyra", "equipping on lyra takes it off astra")
+	check(not SaveData.equip(d, "lyra", 999), "unknown piece refused")
+	var lyra_mods: Array = SaveData.char_run_bonus(d, "lyra")["mods"]
+	var has_crit := false
+	for m in lyra_mods:
+		has_crit = has_crit or m[0] == "crit"
+	check(has_crit, "equipment mods reach the run bonus")
+	check(SaveData.craft_rarity_cap(d) == -1 and not SaveData.can_craft(d, 0, "courtyard"), "no crafting while the workshop is in ruins")
+	d["gold"] = 10000
+	d["materials"] = 5000
+	d["aether"] = 500
+	d["essence"]["courtyard"] = 30
+	check(SaveData.upgrade(d, "workshop") and SaveData.craft_rarity_cap(d) == 1, "workshop Lv1 crafts up to uncommon")
+	check(SaveData.craft(d, "wand", 2, "courtyard", rng).is_empty(), "cannot craft above the cap")
+	var crafted := SaveData.craft(d, "wand", 1, "courtyard", rng)
+	check(not crafted.is_empty() and crafted["base"] == "wand" and crafted["rarity"] == 1, "crafted an uncommon wand")
+	check(d["essence"]["courtyard"] == 30 - GameData.CRAFT_COST[1]["essence"], "craft spends essence")
+	var mats: int = d["materials"]
+	check(SaveData.salvage(d, uid, "courtyard") and SaveData.item_by_uid(d, uid).is_empty() and SaveData.equipped_item(d, "lyra", "weapon").is_empty(), "salvage removes an equipped piece")
+	check(d["materials"] == mats + int(round(GameData.CRAFT_COST[3]["materials"] * GameData.SALVAGE_SHARE)), "salvage refunds materials")
+	SaveData.bank_run(d, {"essence": {"courtyard": 4}, "items": [GameData.roll_item(rng, 4)]}, {"victory": false, "kills": 0})
+	check(d["items"].size() == 3 and d["essence"]["courtyard"] > 4, "run drops and essence are banked")
+	SaveData.equip(d, "nym", uid2)
+	SaveData.save_data(d)
+	loaded = SaveData.load_data()
+	check(loaded["items"].size() == 3 and typeof(loaded["items"][0]["uid"]) == TYPE_INT and SaveData.equipped_item(loaded, "nym", "armor")["uid"] == uid2, "equipment survives save/load")
+	check(int(loaded["next_uid"]) > uid2, "next uid survives")
+	for i in GameData.INVENTORY_CAP:
+		SaveData.add_item(loaded, GameData.roll_item(rng, 0))
+	check(loaded["items"].size() == GameData.INVENTORY_CAP and SaveData.add_item(loaded, GameData.roll_item(rng, 0)) == -1, "inventory cap")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveData.path))
 	print("academy tests: ", "PASS" if failures == 0 else "%d FAILED" % failures)
 	quit(1 if failures > 0 else 0)

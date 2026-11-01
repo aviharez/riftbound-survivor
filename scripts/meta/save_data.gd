@@ -4,9 +4,10 @@ extends RefCounted
 ## Autotests never write here; tests/test_academy.gd uses its own path.
 
 const DEFAULT_PATH := "user://riftbound_save.json"
-const VERSION := 3
+const VERSION := 4
 # v1 -> v2: "lessons" (Staff Room permanent upgrades, id -> rank); new buildings start at 0 (handled generally).
 # v2 -> v3: "shards" (Arcane Shards) and "characters" (id -> {exp, passive, weapon}: level EXP and enhance ranks).
+# v3 -> v4: equipment ("items" inventory, "equipped" char -> slot -> uid, "next_uid") and "essence" (location -> n).
 const RESOURCES := ["gold", "materials", "aether", "exp", "shards"]
 const ENHANCE_TRACKS := ["passive", "weapon"]
 
@@ -26,6 +27,7 @@ static func defaults() -> Dictionary:
 		"character": "astra",
 		"lessons": {},
 		"characters": {},
+		"items": [], "next_uid": 1, "equipped": {}, "essence": {},
 	}
 
 
@@ -63,6 +65,7 @@ static func load_data() -> Dictionary:
 		d["characters"][id] = _char_defaults()
 		for k in d["characters"][id]:
 			d["characters"][id][k] = int(st.get(k, 0))
+	_clean_equipment(d)
 	d["version"] = VERSION
 	# a locked (or unknown) selected character falls back to Astra
 	if not character_unlocked(d, String(d["character"])):
@@ -229,11 +232,148 @@ static func enhance(d: Dictionary, id: String, track: String) -> bool:
 	return true
 
 
-## What a run starts with for this character: level stat mods and enhance ranks.
+## What a run starts with for this character: level + equipment stat mods and enhance ranks.
 static func char_run_bonus(d: Dictionary, id: String) -> Dictionary:
 	var st := char_state(d, id)
 	var lv := char_level(d, id)
-	return {"level": lv, "mods": GameData.char_level_mods(lv), "passive": int(st["passive"]), "weapon": int(st["weapon"])}
+	return {"level": lv, "mods": GameData.char_level_mods(lv) + equip_mods(d, id),
+		"passive": int(st["passive"]), "weapon": int(st["weapon"])}
+
+
+# ------------------------------------------------------------------ equipment + crafting
+
+## JSON turns ints into floats and old saves lack the keys: normalise items, drop dangling equips.
+static func _clean_equipment(d: Dictionary) -> void:
+	for k in ["items"]:
+		if typeof(d[k]) != TYPE_ARRAY:
+			d[k] = []
+	for k in ["equipped", "essence"]:
+		if typeof(d[k]) != TYPE_DICTIONARY:
+			d[k] = {}
+	var items: Array = []
+	for it in d["items"]:
+		if typeof(it) == TYPE_DICTIONARY and not GameData.equip_base(String(it.get("base", ""))).is_empty():
+			var subs: Array = []
+			for sub in it.get("subs", []):
+				subs.append([String(sub[0]), float(sub[1])])
+			items.append({"uid": int(it["uid"]), "base": String(it["base"]), "rarity": int(it["rarity"]), "subs": subs})
+	d["items"] = items
+	d["next_uid"] = int(d["next_uid"])
+	for it in items:
+		d["next_uid"] = maxi(int(d["next_uid"]), int(it["uid"]) + 1)
+	for cid in d["equipped"].keys():
+		var slots: Dictionary = d["equipped"][cid]
+		for slot in slots.keys():
+			slots[slot] = int(slots[slot])
+			if item_by_uid(d, slots[slot]).is_empty():
+				slots.erase(slot)
+	for k in d["essence"]:
+		d["essence"][k] = int(d["essence"][k])
+
+
+static func item_by_uid(d: Dictionary, uid: int) -> Dictionary:
+	for it in d["items"]:
+		if int(it["uid"]) == uid:
+			return it
+	return {}
+
+
+## Adds a rolled piece to the inventory; returns its uid, or -1 when the inventory is full.
+static func add_item(d: Dictionary, item: Dictionary) -> int:
+	if d["items"].size() >= GameData.INVENTORY_CAP:
+		return -1
+	var it := item.duplicate(true)
+	it["uid"] = int(d["next_uid"])
+	d["next_uid"] = int(d["next_uid"]) + 1
+	d["items"].append(it)
+	return it["uid"]
+
+
+static func equipped_item(d: Dictionary, char_id: String, slot: String) -> Dictionary:
+	var slots: Dictionary = d["equipped"].get(char_id, {})
+	return item_by_uid(d, int(slots[slot])) if slots.has(slot) else {}
+
+
+## Character currently wearing the piece ("" = in the inventory).
+static func owner_of(d: Dictionary, uid: int) -> String:
+	for cid in d["equipped"]:
+		for slot in d["equipped"][cid]:
+			if int(d["equipped"][cid][slot]) == uid:
+				return cid
+	return ""
+
+
+## Puts a piece on a character (taking it off whoever wore it). Returns false for an unknown piece.
+static func equip(d: Dictionary, char_id: String, uid: int) -> bool:
+	var it := item_by_uid(d, uid)
+	if it.is_empty():
+		return false
+	var prev := owner_of(d, uid)
+	if prev != "":
+		for slot in d["equipped"][prev].keys():
+			if int(d["equipped"][prev][slot]) == uid:
+				d["equipped"][prev].erase(slot)
+	if not d["equipped"].has(char_id):
+		d["equipped"][char_id] = {}
+	d["equipped"][char_id][GameData.equip_base(String(it["base"]))["slot"]] = uid
+	return true
+
+
+static func unequip(d: Dictionary, char_id: String, slot: String) -> void:
+	if d["equipped"].has(char_id):
+		d["equipped"][char_id].erase(slot)
+
+
+static func equip_mods(d: Dictionary, char_id: String) -> Array:
+	var out: Array = []
+	for slot in GameData.EQUIP_SLOTS:
+		var it := equipped_item(d, char_id, slot)
+		if not it.is_empty():
+			out += GameData.item_mods(it)
+	return out
+
+
+static func essence(d: Dictionary, loc: String) -> int:
+	return int(d["essence"].get(loc, 0))
+
+
+## Highest rarity the Workshop can craft right now: its level (Lv 1 = Uncommon ... Lv 3 = Epic), -1 in ruins.
+static func craft_rarity_cap(d: Dictionary) -> int:
+	var lv := building_level(d, "workshop")
+	return lv if lv > 0 else -1
+
+
+static func can_craft(d: Dictionary, rarity: int, loc: String) -> bool:
+	if rarity < 0 or rarity > craft_rarity_cap(d) or d["items"].size() >= GameData.INVENTORY_CAP:
+		return false
+	var cost: Dictionary = GameData.CRAFT_COST[rarity]
+	return int(d["materials"]) >= int(cost["materials"]) and essence(d, loc) >= int(cost["essence"])
+
+
+## Crafts a piece of `base_id` at `rarity` with essence from `loc`. Returns the new item or {}.
+static func craft(d: Dictionary, base_id: String, rarity: int, loc: String, rng: RandomNumberGenerator) -> Dictionary:
+	if GameData.equip_base(base_id).is_empty() or not can_craft(d, rarity, loc):
+		return {}
+	var cost: Dictionary = GameData.CRAFT_COST[rarity]
+	d["materials"] = int(d["materials"]) - int(cost["materials"])
+	d["essence"][loc] = essence(d, loc) - int(cost["essence"])
+	var uid := add_item(d, GameData.roll_item(rng, rarity, base_id))
+	return item_by_uid(d, uid)
+
+
+## Breaks a piece down (taking it off first) for part of its craft cost; essence goes to `loc`.
+static func salvage(d: Dictionary, uid: int, loc: String) -> bool:
+	var it := item_by_uid(d, uid)
+	if it.is_empty():
+		return false
+	var prev := owner_of(d, uid)
+	if prev != "":
+		unequip(d, prev, GameData.equip_base(String(it["base"]))["slot"])
+	var cost: Dictionary = GameData.CRAFT_COST[int(it["rarity"])]
+	d["materials"] = int(d["materials"]) + int(round(int(cost["materials"]) * GameData.SALVAGE_SHARE))
+	d["essence"][loc] = essence(d, loc) + int(round(int(cost["essence"]) * GameData.SALVAGE_SHARE))
+	d["items"].erase(it)
+	return true
 
 
 ## Adds a finished run's rewards and summary. rewards["char_exp"] goes to summary["character"].
@@ -242,6 +382,11 @@ static func bank_run(d: Dictionary, rewards: Dictionary, summary: Dictionary) ->
 		d[k] = int(d[k]) + int(rewards.get(k, 0))
 	if summary.has("character") and rewards.has("char_exp"):
 		add_char_exp(d, String(summary["character"]), int(rewards["char_exp"]))
+	var ess: Dictionary = rewards.get("essence", {})
+	for loc in ess:
+		d["essence"][loc] = essence(d, loc) + int(ess[loc])
+	for it in rewards.get("items", []):
+		add_item(d, it)   # a full inventory loses the extra drops (the result screen says so)
 	d["runs"] = int(d["runs"]) + 1
 	if summary.get("victory", false):
 		d["victories"] = int(d["victories"]) + 1

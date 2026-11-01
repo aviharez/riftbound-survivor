@@ -444,7 +444,9 @@ const BUILDINGS := [
 		"costs": [{"gold": 700, "materials": 140, "aether": 10}]},
 	{"id": "alchemy_lab", "name": "Alchemy Lab", "unlocks": "character", "character": "noah",
 		"desc": "Cauldrons bubble again: Noah, the alchemy student, returns",
-		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},	{"id": "bell_tower", "name": "Bell Tower", "unlocks": "character", "character": "raika",
+		"costs": [{"gold": 900, "materials": 180, "aether": 20}]},	{"id": "workshop", "name": "Workshop", "unlocks": "workshop", "desc": "Forges and looms: craft equipment from materials + Rift Essence",
+		"costs": [{"gold": 450, "materials": 120, "aether": 0}, {"gold": 1200, "materials": 260, "aether": 20}, {"gold": 2400, "materials": 480, "aether": 45}]},
+	{"id": "bell_tower", "name": "Bell Tower", "unlocks": "character", "character": "raika",
 		"desc": "The storm bell rings again: Raika of the Weather Club returns",
 		"costs": [{"gold": 800, "materials": 160, "aether": 15}]},
 	{"id": "duel_hall", "name": "Duel Hall", "unlocks": "character", "character": "sera",
@@ -535,6 +537,113 @@ static func char_level_mods(level: int) -> Array:
 ## Cost of enhance rank `rank` (1..ENHANCE_MAX).
 static func enhance_cost(rank: int) -> Dictionary:
 	return {"gold": ENHANCE_COST_GOLD[rank - 1], "shards": ENHANCE_COST_SHARDS[rank - 1]}
+
+
+# --- Equipment (persistent gear, shared inventory; saved in SaveData "items" / "equipped") ---
+# Three slots per character. A piece = base (main stat) x rarity, plus rarity-many random substats.
+const EQUIP_SLOTS := ["weapon", "armor", "accessory"]
+const EQUIP_SLOT_NAMES := {"weapon": "Weapon", "armor": "Armour", "accessory": "Accessory"}
+const GEAR_RARITY_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary"]
+const GEAR_RARITY_COLORS := [Color(0.8, 0.8, 0.82), Color(0.5, 1.0, 0.55), Color(0.45, 0.75, 1.0), Color(0.85, 0.55, 1.0), Color(1.0, 0.8, 0.3)]
+const RARITY_MAIN_MULT := [1.0, 1.5, 2.2, 3.0, 4.0]
+const RARITY_SUBSTATS := [0, 1, 1, 2, 3]
+const RARITY_SUB_MULT := [0.5, 0.75, 1.0, 1.25, 1.5]     # substat = pool value x this
+const RARITY_DROP_WEIGHTS := [55.0, 28.0, 12.0, 4.0, 1.0]
+const EQUIP_BASES := [
+	{"id": "wand", "name": "Apprentice Wand", "slot": "weapon", "stat": "damage_pct", "value": 0.06},
+	{"id": "focus", "name": "Crystal Focus", "slot": "weapon", "stat": "crit", "value": 0.03},
+	{"id": "rod", "name": "Quickcast Rod", "slot": "weapon", "stat": "attack_speed_pct", "value": 0.05},
+	{"id": "robe", "name": "Academy Robe", "slot": "armor", "stat": "max_hp", "value": 15.0},
+	{"id": "cloak", "name": "Warded Cloak", "slot": "armor", "stat": "armor", "value": 0.03},
+	{"id": "boots", "name": "Courier Boots", "slot": "armor", "stat": "speed_pct", "value": 0.04},
+	{"id": "charm", "name": "Lucky Charm", "slot": "accessory", "stat": "luck", "value": 5.0},
+	{"id": "pin", "name": "Scholar's Pin", "slot": "accessory", "stat": "xp_pct", "value": 0.06},
+	{"id": "ring", "name": "Lodestone Ring", "slot": "accessory", "stat": "pickup_pct", "value": 0.15},
+	{"id": "locket", "name": "Mending Locket", "slot": "accessory", "stat": "regen", "value": 0.3},
+]
+# Substat pool: stat -> value at RARITY_SUB_MULT 1.0.
+const EQUIP_SUBSTATS := {"damage_pct": 0.04, "max_hp": 10.0, "crit": 0.02, "attack_speed_pct": 0.03, "speed_pct": 0.03,
+	"area_pct": 0.04, "luck": 3.0, "regen": 0.2, "armor": 0.02, "pickup_pct": 0.10, "xp_pct": 0.04, "gold_pct": 0.05}
+const INVENTORY_CAP := 60
+# Run drops: the boss always drops a piece; each elite has a chance; a victory adds one.
+const EQUIP_DROP_BOSS := 1
+const EQUIP_DROP_ELITE_CHANCE := 0.15
+const EQUIP_DROP_VICTORY := 1
+# Rift Essence: one kind per location (only the Ruined Courtyard exists so far).
+const LOCATIONS := [{"id": "courtyard", "name": "Ruined Courtyard", "essence": "Courtyard Essence"}]
+const ESSENCE_PER_KILLS := 40      # +1 essence per this many kills
+const ESSENCE_BOSS := 5
+# Workshop crafting: Workshop level L crafts up to rarity L (0 = Common ... Lv 3 = Epic); Legendary only drops.
+# Cost per rarity: materials + essence of the chosen location. Salvage returns SALVAGE_SHARE of it.
+const CRAFT_COST := [{"materials": 40, "essence": 2}, {"materials": 90, "essence": 5}, {"materials": 180, "essence": 10},
+	{"materials": 360, "essence": 20}, {"materials": 720, "essence": 40}]
+const SALVAGE_SHARE := 0.4
+
+
+static func equip_base(id: String) -> Dictionary:
+	for b in EQUIP_BASES:
+		if b["id"] == id:
+			return b
+	return {}
+
+
+## Rolls a new piece (without uid). `slot` / `base_id` empty = random.
+static func roll_item(rng: RandomNumberGenerator, rarity: int, base_id := "", slot := "") -> Dictionary:
+	var pool: Array = []
+	for b in EQUIP_BASES:
+		if (base_id == "" or b["id"] == base_id) and (slot == "" or b["slot"] == slot):
+			pool.append(b)
+	var base: Dictionary = pool[rng.randi() % pool.size()]
+	rarity = clampi(rarity, 0, GEAR_RARITY_NAMES.size() - 1)
+	var subs: Array = []
+	var keys: Array = EQUIP_SUBSTATS.keys()
+	keys.erase(base["stat"])
+	for i in RARITY_SUBSTATS[rarity]:
+		var k: String = keys.pop_at(rng.randi() % keys.size())
+		subs.append([k, snappedf(float(EQUIP_SUBSTATS[k]) * RARITY_SUB_MULT[rarity], 0.001)])
+	return {"base": base["id"], "rarity": rarity, "subs": subs}
+
+
+## Random rarity by RARITY_DROP_WEIGHTS.
+static func roll_gear_rarity(rng: RandomNumberGenerator) -> int:
+	var total := 0.0
+	for w in RARITY_DROP_WEIGHTS:
+		total += w
+	var r := rng.randf() * total
+	for i in RARITY_DROP_WEIGHTS.size():
+		r -= RARITY_DROP_WEIGHTS[i]
+		if r <= 0.0:
+			return i
+	return 0
+
+
+## Stat mods of one piece ([[stat, value], ...]).
+static func item_mods(item: Dictionary) -> Array:
+	var base := equip_base(String(item["base"]))
+	if base.is_empty():
+		return []
+	var out: Array = [[base["stat"], snappedf(float(base["value"]) * RARITY_MAIN_MULT[int(item["rarity"])], 0.001)]]
+	for sub in item["subs"]:
+		out.append([String(sub[0]), float(sub[1])])
+	return out
+
+
+static func item_name(item: Dictionary) -> String:
+	return "%s %s" % [GEAR_RARITY_NAMES[int(item["rarity"])], equip_base(String(item["base"])).get("name", "?")]
+
+
+## "+12% damage", "+15 HP" ... for one stat mod.
+static func mod_text(stat: String, v: float) -> String:
+	match stat:
+		"max_hp": return "+%d HP" % int(round(v))
+		"luck": return "+%d Luck" % int(round(v))
+		"regen": return "+%.1f HP/s" % v
+		"crit": return "+%d%% crit" % int(round(v * 100))
+		"armor": return "+%d%% armour" % int(round(v * 100))
+	var label := stat.trim_suffix("_pct").replace("_", " ")
+	if label == "xp": label = "XP"
+	if label == "pickup": label = "pickup radius"
+	return "+%d%% %s" % [int(round(v * 100)), label]
 
 
 static func lesson_cost(rank: int) -> Dictionary:

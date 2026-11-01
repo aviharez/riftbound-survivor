@@ -7,6 +7,7 @@ extends Node2D
 ##   --char=kael  --weapons=meteor,void (extra weapons at Lv 1; evolved ids such as solar come evolved)
 ##   --lessons=might:3,vigor:2 (Staff Room lesson ranks for this run)
 ##   --char-level=10 --enhance=2,3 (character level and passive / signature enhance ranks for this run)
+##   --gear=wand:3,robe:1 (equipment base:rarity worn this run, substats rolled from the seed)
 ##   --tomes=ricochet,haste (tomes owned at Lv 1 from the start)
 ##   --ready-evolve (owned weapons start at the evolve level with their tomes, so chests evolve them)
 ##   --swarm-at=30 (early Final Swarm); autotest only
@@ -82,8 +83,10 @@ var _lessons_arg := {}          # --lessons=might:3,vigor:2: Staff Room ranks fo
 var _lessons_applied := {}      # lesson id -> rank applied this run (autotest summary)
 var _char_level_arg := 1        # --char-level=10 (autotest)
 var _enhance_arg := [0, 0]      # --enhance=passive,weapon ranks (autotest)
+var _gear_arg: Array = []       # --gear=wand:3,robe:1 (autotest)
 var char_bonus := {}            # {level, mods, passive, weapon} applied this run
 var elites_killed := 0
+var equipment_dropped := 0
 var _extra_tomes: Array = []    # --tomes=ricochet,haste: tomes owned from the start (autotest; combo hint checks)
 var _ready_evolve := false      # --ready-evolve: owned weapons at the evolve level + their tomes
 var _profile := false           # --profile: print load counters every 20 s of game time
@@ -177,7 +180,12 @@ func _apply_lessons() -> void:
 	player.apply_mods(SaveData.lesson_mods(src))
 	if _auto:
 		var lv := clampi(_char_level_arg, 1, GameData.CHAR_MAX_LEVEL)
-		char_bonus = {"level": lv, "mods": GameData.char_level_mods(lv), "passive": _enhance_arg[0], "weapon": _enhance_arg[1]}
+		var mods := GameData.char_level_mods(lv)
+		var grng := RandomNumberGenerator.new()
+		grng.seed = seed_value
+		for g in _gear_arg:
+			mods += GameData.item_mods(GameData.roll_item(grng, int(g[1]), String(g[0])))
+		char_bonus = {"level": lv, "mods": mods, "passive": _enhance_arg[0], "weapon": _enhance_arg[1]}
 	else:
 		char_bonus = SaveData.char_run_bonus(src, character_id)
 	player.apply_mods(char_bonus["mods"])
@@ -220,6 +228,9 @@ func _parse_args() -> void:
 		elif a.begins_with("--enhance="):
 			var parts := a.get_slice("=", 1).split(",")
 			_enhance_arg = [int(parts[0]), int(parts[1]) if parts.size() > 1 else 0]
+		elif a.begins_with("--gear="):
+			for part in a.get_slice("=", 1).split(","):
+				_gear_arg.append([part.get_slice(":", 0), int(part.get_slice(":", 1))])
 		elif a.begins_with("--tomes="):
 			_extra_tomes = Array(a.get_slice("=", 1).split(","))
 		elif a == "--ready-evolve":
@@ -816,6 +827,22 @@ func _end_run(won: bool) -> void:
 	var exp_gain := int((level * 20 + kills * 0.2) * share)
 	# Arcane Shards are kept in full on defeat (they come from hard fights, not from the clock)
 	var shards := (GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD
+	# equipment drops and Rift Essence (kept on defeat too: they were found, not earned by the clock)
+	var drop_rng := RandomNumberGenerator.new()
+	drop_rng.seed = seed_value * 7919 + kills
+	var drops: Array = []
+	var n_drops := (GameData.EQUIP_DROP_BOSS if boss_killed else 0) + (GameData.EQUIP_DROP_VICTORY if won else 0)
+	for i in elites_killed:
+		if drop_rng.randf() < GameData.EQUIP_DROP_ELITE_CHANCE:
+			n_drops += 1
+	for i in n_drops:
+		drops.append(GameData.roll_item(drop_rng, GameData.roll_gear_rarity(drop_rng)))
+	var loc: String = GameData.LOCATIONS[0]["id"]
+	var essence := kills / GameData.ESSENCE_PER_KILLS + (GameData.ESSENCE_BOSS if boss_killed else 0)
+	equipment_dropped = drops.size()
+	var drop_names: Array = []
+	for it in drops:
+		drop_names.append(GameData.item_name(it))
 	var char_name: String = player.character["name"]
 	var lv_line := ""
 	if not _auto:
@@ -831,15 +858,16 @@ func _end_run(won: bool) -> void:
 	var weapon_list: Array = []
 	for id in player.weapon_levels:
 		weapon_list.append("%s %d" % [GameData.weapon_by_id(id)["name"], player.weapon_levels[id]])
-	var text := "%s\n\nKills: %d\nTime: %02d:%02d\nLevel: %d\nChests opened: %d   Shrines used: %d\nExplored: %d%%\nWeapons: %s\nTomes: %s\nDamage dealt: %d\nFinal Swarm survived: %ds\n\nRewards%s:\nGold +%d   Materials +%d   Aether +%d   EXP +%d   Arcane Shards +%d%s\n\nSeed %d" % [
+	var text := "%s\n\nKills: %d\nTime: %02d:%02d\nLevel: %d\nChests opened: %d   Shrines used: %d\nExplored: %d%%\nWeapons: %s\nTomes: %s\nDamage dealt: %d\nFinal Swarm survived: %ds\n\nRewards%s:\nGold +%d   Materials +%d   Aether +%d   EXP +%d   Arcane Shards +%d\n%s +%d   Equipment: %s%s\n\nSeed %d" % [
 		"VICTORY" if won else "DEFEAT", kills, t / 60, t % 60, level, chests_opened, shrines_used,
 		int(fog.explored_ratio() * 100), ", ".join(weapon_list), ", ".join(tome_list) if not tome_list.is_empty() else "-", int(player.damage_dealt), int(final_swarm_t),
-		" (sent to the academy)" if won else " (50% on defeat, sent to the academy)", academy_gold, materials, aether, exp_gain, shards, lv_line, seed_value]
+		" (sent to the academy)" if won else " (50% on defeat, sent to the academy)", academy_gold, materials, aether, exp_gain, shards,
+		GameData.LOCATIONS[0]["essence"], essence, ", ".join(drop_names) if not drop_names.is_empty() else "none", lv_line, seed_value]
 	print("[run] END ", text.replace("\n", " | "))
 	if not _auto:
 		var save := SaveData.load_data()
 		SaveData.bank_run(save, {"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain,
-			"shards": shards, "char_exp": exp_gain},
+			"shards": shards, "char_exp": exp_gain, "essence": {loc: essence}, "items": drops},
 			{"victory": won, "kills": kills, "time": t, "level": level, "seed": seed_value, "character": character_id,
 			"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain, "shards": shards})
 		SaveData.save_data(save)
@@ -876,9 +904,9 @@ func _autotest_step(delta: float) -> void:
 		if _shot_path != "":
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_end.png"))
-		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s char=%s trait_procs=%d lessons=%s char_level=%d enhance=%d,%d max_hp=%d shards=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions,
+		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s char=%s trait_procs=%d lessons=%s char_level=%d enhance=%d,%d max_hp=%d shards=%d equipment=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions,
 			character_id, weapons.trait_procs, _lessons_applied, char_bonus["level"], char_bonus["passive"], char_bonus["weapon"], int(player.stats["max_hp"]),
-			(GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD])
+			(GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD, equipment_dropped])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s swarm_t=%.0f swarm_lv=%d threat=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm, final_swarm_t, swarm_level(), threat_name()])
 		get_tree().quit()
