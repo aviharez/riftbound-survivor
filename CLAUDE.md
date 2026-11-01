@@ -83,15 +83,22 @@ Read it before starting any phase.**
   bottom-left Characters / Expedition / Codex, bottom-right ENTER THE RIFT -> Rift page (START). Pages
   `page_{characters,expedition,codex,rift}.gd` are full screen with a back button; overlays
   `{lessons,workshop,dorm,building}_panel.gd`. Look = pixel UI after Overgeared Hero (Syifa's reference; HoK was
-  only for menu positions, she rejected the glass look): `UiKit` + `PixelStyle` (black outline, purple bevel border,
-  notched corners, striped dark fill; gold-framed dark CTA, green accent buttons), `UiKit.overlay(parent, w, title,
-  close)` = red ribbon title + red diamond X, `UiKit.portrait/slot/icon_button`. Pixel icons (PixelLab, 32 px) in
-  `assets/ui/icons/<id>.png` (resources, menus, every weapon/tome id, stats); draw them at 16/32/64 px only.
-  Fonts: DotGothic16 (body, Latin subset) + Silkscreen Bold (titles/buttons), OFL; sizes snap via `UiKit.fs()` to
-  8/16/24 so letters stay on the pixel grid. No Cinzel (Syifa hates it).
+  only for menu positions, she rejected the glass look): `UiKit` + `PixelStyle` (black outline, lavender bevel border,
+  notched corners, wide diagonal stripes, gold corner rivets on overlays). Main panels are purple, rows inside them are
+  dark `UiKit.well()`s, section titles are `UiKit.header(text, 12, icon)` bars, selected = gold frame. Buttons:
+  normal (lavender), primary (gold frame, dark), accent (green), danger (red), info (blue). `UiKit.overlay(parent, w,
+  title, close)` = red ribbon + red diamond X. Syifa's feedback (1 Nov): too much text, monotone, too small, no
+  ornament, so show things as icons (`chip`, `slot`, `item_slot`, `cost_chips`, `pips`, `rich_button`, `portrait`,
+  `banner`), keep sentences short and put the long explanations in tooltips. Pages show the academy map dimmed
+  behind them. Pixel icons (PixelLab, 32 px) in `assets/ui/icons/<id>.png` (resources, menus, every weapon/tome id,
+  stats; `UiKit.stat_icon`); draw them at 16/32/64 px only. Banners `assets/ui/banner_*.png` (PixelLab pixflux 320x128).
+  Fonts (Syifa picked): Galmuri 9 body + Galmuri 11 Bold titles/buttons (Latin subsets, OFL, no antialiasing);
+  sizes snap via `UiKit.fs()` (10/20) and `UiKit.tfs()` (12/24), whole virtual pixels. No Cinzel (Syifa hates it).
   In-run level-up / shrine choices = compact cards (`Hud._choice_card`: kind tag + level, 64 px icon slot, name,
-  effect, combo hint in gold, rarity strip) under a LEVEL UP ribbon, no big panel. `--shot-choice` (with `--shot`)
-  opens a level-up in an autotest for a screenshot (`<shot>_choice.png`).
+  effect, combo hint in gold, rarity strip) under a LEVEL UP ribbon, no big panel (Syifa likes these). The result
+  screen gets a summary dict from `main._end_run` (stats chips, build icons, reward slots, drops).
+  `--shot-choice` (with `--shot`) opens a level-up in an autotest for a screenshot (`<shot>_choice.png`);
+  adding `--shot-result` then ends the run as a victory (`<shot>_end.png`).
   Screenshot flags with `--academy-demo`: `--academy-page=characters|rift|expedition|codex`, `--academy-tab=enhance|gear|bond`,
   `--academy-building=<id>`, `--academy-lessons/-workshop/-dorm/-settings`; `--academy-check` opens everything once (test `academy_ui`).
   Big illustrations: `assets/illustrations/<id>.png` (spec in its README) replace the scaled sprite on the Characters page. Autotest flags

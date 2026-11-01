@@ -128,13 +128,15 @@ func _screenshot_and_quit(path: String) -> void:
 # ------------------------------------------------------------------ layout
 
 func _build() -> void:
-	_home = Control.new()
-	_home.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(_home)
+	# the academy map stays behind everything (pages dim it instead of hiding it)
 	map = AcademyMap.new(self)
 	map.set_anchors_preset(Control.PRESET_FULL_RECT)
 	map.building_tapped.connect(func(id): building.open(id))
-	_home.add_child(map)
+	add_child(map)
+	_home = Control.new()
+	_home.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_home.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_home)
 	_build_home_hud()
 
 	_page_layer = Control.new()
@@ -142,9 +144,7 @@ func _build() -> void:
 	add_child(_page_layer)
 	var bg := ColorRect.new()
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var mat := ShaderMaterial.new()
-	mat.shader = preload("res://shaders/ui_background.gdshader")
-	bg.material = mat
+	bg.color = Color(0.04, 0.02, 0.1, 0.82)
 	_page_layer.add_child(bg)
 	var root := VBoxContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -274,7 +274,7 @@ func _build_home_hud() -> void:
 	_home.add_child(rift)
 	_rift_char = UiKit.portrait(func(): return save["character"], 48.0, UiKit.GOLD)
 	rift.add_child(_rift_char)
-	var go := UiKit.button("", Vector2(168, 48), func(): show_page("rift"), "primary")
+	var go := UiKit.button("", Vector2(200, 48), func(): show_page("rift"), "primary")
 	var gl := HBoxContainer.new()
 	gl.set_anchors_preset(Control.PRESET_FULL_RECT)
 	gl.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -287,10 +287,10 @@ func _build_home_hud() -> void:
 	gt.add_theme_constant_override("separation", 1)
 	gt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gl.add_child(gt)
-	var big := UiKit.title("ENTER THE RIFT", 8, UiKit.GOLD)
+	var big := UiKit.title("ENTER THE RIFT", 12, UiKit.GOLD)
 	big.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gt.add_child(big)
-	var sub := UiKit.label("%s · Danger 1" % GameData.LOCATIONS[0]["name"], 8, Color("e8d9b8"))
+	var sub := UiKit.label("%s · Danger 1" % GameData.LOCATIONS[0]["name"], 10, Color("e8d9b8"))
 	sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gt.add_child(sub)
 	rift.add_child(go)
@@ -298,14 +298,16 @@ func _build_home_hud() -> void:
 
 func _nav_button(page: String, text: String) -> Control:
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", -4)
+	col.custom_minimum_size = Vector2(58, 0)
+	col.add_theme_constant_override("separation", -2)
 	var b := UiKit.icon_button(page, Vector2(42, 40), show_page.bind(page))
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	var ic: Control = b.get_child(0)
 	ic.size = Vector2(32, 32)
 	ic.position = Vector2(5, 4)
 	col.add_child(b)
-	var l := UiKit.title(text.to_upper(), 8, UiKit.IVORY)
+	var l := UiKit.label(text, 10, UiKit.IVORY)
+	l.add_theme_constant_override("outline_size", 3)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(l)
@@ -372,9 +374,9 @@ func _build_settings() -> void:
 	settings = o[0]
 	var box: VBoxContainer = o[1]
 	box.add_child(UiKit.label("Sound and language options come later.", 8, Color(UiKit.IVORY, 0.7)))
-	_reset_btn = UiKit.button("Reset save", Vector2(0, 26), _on_reset)
+	_reset_btn = UiKit.button("RESET SAVE", Vector2(0, 26), _on_reset, "danger")
 	box.add_child(_reset_btn)
-	var credits := UiKit.label("Fonts: DotGothic16, Silkscreen (SIL OFL).\nVFX: pixelfx (MIT).  Art: PixelLab.", 7, Color(UiKit.IVORY, 0.5))
+	var credits := UiKit.label("Fonts: Galmuri (SIL OFL).  VFX: pixelfx (MIT).\nArt: PixelLab.", 7, Color(UiKit.IVORY, 0.5))
 	box.add_child(credits)
 
 
@@ -534,7 +536,7 @@ func _on_reset() -> void:
 		_reset_btn.text = "Tap again to erase everything"
 		return
 	_armed = false
-	_reset_btn.text = "Reset save"
+	_reset_btn.text = "RESET SAVE"
 	save = SaveData.defaults() if demo else SaveData.reset()
 	for k in pages:
 		pages[k].on_reset()

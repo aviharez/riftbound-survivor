@@ -6,9 +6,11 @@ extends Control
 var shell
 var _tab := "characters"
 var _tabs := {}
-var _list: VBoxContainer
+var _list: GridContainer
 var _detail_title: Label
+var _detail_sub: Label
 var _detail: Label
+var _combo: HBoxContainer
 var _art: Control
 var _art_kind := ""
 var _art_id := ""
@@ -20,46 +22,61 @@ func _init(s) -> void:
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.add_theme_constant_override("separation", 6)
 	add_child(row)
-	var lp := UiKit.panel(8.0)
-	lp[0].custom_minimum_size = Vector2(240, 0)
+	# left: tabs + a grid of icon tiles
+	var lp := UiKit.panel(6.0)
+	lp[0].custom_minimum_size = Vector2(252, 0)
 	row.add_child(lp[0])
 	var left: VBoxContainer = lp[1]
 	var tabbar := HBoxContainer.new()
 	tabbar.add_theme_constant_override("separation", 4)
 	left.add_child(tabbar)
-	for t in [["characters", "Characters"], ["weapons", "Weapons"], ["enemies", "Bestiary"]]:
-		var b := UiKit.button(t[1], Vector2(0, 20), _show.bind(t[0]))
+	for t in [["characters", "MAGES"], ["weapons", "SPELLS"], ["enemies", "MONSTERS"]]:
+		var b := UiKit.button(t[1], Vector2(0, 24), _show.bind(t[0]))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_override("font", UiKit.TITLE_FONT)
 		tabbar.add_child(b)
 		_tabs[t[0]] = b
 	var sc := ScrollContainer.new()
 	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	left.add_child(sc)
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", 3)
+	_list = GridContainer.new()
+	_list.columns = 5
+	_list.add_theme_constant_override("h_separation", 4)
+	_list.add_theme_constant_override("v_separation", 4)
 	sc.add_child(_list)
 
-	var rp := UiKit.panel(10.0)
+	# right: big art, name, text, evolution combo
+	var rp := UiKit.panel(8.0)
 	rp[0].size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(rp[0])
 	var right: VBoxContainer = rp[1]
-	_detail_title = UiKit.title("", 13)
-	right.add_child(_detail_title)
-	var body := HBoxContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.add_theme_constant_override("separation", 8)
-	right.add_child(body)
+	right.add_theme_constant_override("separation", 5)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	right.add_child(top)
 	_art = Control.new()
-	_art.custom_minimum_size = Vector2(110, 110)
+	_art.custom_minimum_size = Vector2(112, 112)
 	_art.draw.connect(_draw_art)
-	body.add_child(_art)
-	_detail = UiKit.label("", 8, UiKit.IVORY)
+	top.add_child(_art)
+	var tcol := VBoxContainer.new()
+	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tcol.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_child(tcol)
+	_detail_title = UiKit.title("", 24, UiKit.GOLD)
+	tcol.add_child(_detail_title)
+	_detail_sub = UiKit.label("", 10, UiKit.CYAN)
+	_detail_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tcol.add_child(_detail_sub)
+	var dw := UiKit.well(6.0)
+	dw[0].size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right.add_child(dw[0])
+	_detail = UiKit.label("", 10, UiKit.IVORY)
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(_detail)
+	_detail.custom_minimum_size = Vector2(300, 0)
+	dw[1].add_child(_detail)
+	_combo = HBoxContainer.new()
+	_combo.add_theme_constant_override("separation", 4)
+	dw[1].add_child(_combo)
 
 
 func refresh() -> void:
@@ -77,7 +94,7 @@ func _show(t: String) -> void:
 		"characters":
 			for c in GameData.CHARACTERS:
 				var open := SaveData.character_unlocked(shell.save, c["id"])
-				_add_entry(c["name"] if open else "??? (%s)" % c["school"], _pick_char.bind(c["id"]), CharacterArt.portrait(c["id"]), open)
+				_add_entry(c["name"] if open else "???", _pick_char.bind(c["id"]), CharacterArt.portrait(c["id"]), open)
 				if first == "":
 					first = c["id"]
 			if _art_kind != "char":
@@ -85,77 +102,113 @@ func _show(t: String) -> void:
 		"weapons":
 			for w in GameData.WEAPONS:
 				if not w.get("evolved", false):
-					_add_entry(w["name"], _pick_weapon.bind(w["id"]), null, true)
+					_add_entry(w["name"], _pick_weapon.bind(w["id"]), UiKit.icon_tex(w["id"]), true)
 					if first == "":
 						first = w["id"]
 			if _art_kind != "weapon":
 				_pick_weapon(first)
 		"enemies":
 			for e in GameData.CODEX_ENEMIES:
-				_add_entry(e["name"], _pick_enemy.bind(e["id"]), null, true)
+				_add_entry(e["name"], _pick_enemy.bind(e["id"]), _enemy_tex(e["id"]), true)
 			if _art_kind != "enemy":
 				_pick_enemy(GameData.CODEX_ENEMIES[0]["id"])
 
 
 func _add_entry(text: String, cb: Callable, icon: Texture2D, open: bool) -> void:
-	var b := UiKit.button(text, Vector2(0, 22), cb)
-	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.add_theme_font_size_override("font_size", UiKit.fs(8))
+	var b := UiKit.button("", Vector2(42, 42), cb)
+	b.tooltip_text = text
 	if icon != null:
-		b.icon = icon
-		b.expand_icon = true
-	if not open:
-		b.modulate = Color(0.6, 0.6, 0.7)
+		var t := TextureRect.new()
+		t.texture = icon
+		t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		t.position = Vector2(5, 5)
+		t.size = Vector2(32, 32)
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if not open:
+			t.modulate = Color(0.08, 0.08, 0.15)
+		b.add_child(t)
 	_list.add_child(b)
+
+
+func _enemy_tex(id: String) -> Texture2D:
+	return CharacterArt.texture("boss", "south") if id == "boss" else PixelSprites.texture(id)
 
 
 func _pick_char(id: String) -> void:
 	_art_kind = "char"
 	_art_id = id
+	_clear_combo()
 	var c := GameData.character_by_id(id)
 	var open := SaveData.character_unlocked(shell.save, id)
 	_detail_title.text = c["name"].to_upper() if open else "???"
-	var home := "from the start"
+	var home := "From the start"
 	for b in GameData.BUILDINGS:
 		if b["id"] == c["unlock"]:
-			home = "returns when the %s is restored" % b["name"]
-	_detail.text = "%s  ·  %s\nSignature weapon: %s\nPassive: %s\n%s\n\nHome: %s" % [c["role"], c["school"],
-		GameData.weapon_by_id(c["starter"])["name"], c["passive"], c["passive_desc"], home] if open else \
-		"A %s student or teacher still lost to the Rift.\nHome: %s." % [c["school"], home]
+			home = "Returns with the %s" % b["name"]
+	_detail_sub.text = "%s · %s" % [c["role"], c["school"]] if open else c["school"]
+	if open:
+		_detail.text = "%s: %s\n%s" % [c["passive"], c["passive_desc"], home]
+		_combo.add_child(UiKit.slot(c["starter"], 40.0, UiKit.CYAN))
+		_combo.add_child(UiKit.label(GameData.weapon_by_id(c["starter"])["name"], 10, UiKit.CYAN))
+	else:
+		_detail.text = "Still lost to the Rift.\n%s." % home
 	_art.queue_redraw()
+
+
+func _clear_combo() -> void:
+	for ch in _combo.get_children():
+		ch.queue_free()
 
 
 func _pick_weapon(id: String) -> void:
 	_art_kind = "weapon"
 	_art_id = id
+	_clear_combo()
 	var w := GameData.weapon_by_id(id)
 	var evo := GameData.evolution_of(id)
 	_detail_title.text = w["name"].to_upper()
-	var evo_text := "No evolution yet."
-	if not evo.is_empty():
-		evo_text = "EVOLUTION: %s\nLv %d + %s, then open any chest.\n%s" % [evo["name"], GameData.EVOLVE_LEVEL,
-			GameData.tome_by_id(evo["tome"])["name"], evo.get("desc", "")]
 	var users: Array = []
 	for c in GameData.CHARACTERS:
 		if c["starter"] == id:
 			users.append(c["name"])
-	_detail.text = "%s\nLevels: %s\n%s\n\n%s" % [w["desc"], w.get("level_desc", "-"),
-		("Signature weapon of " + ", ".join(users)) if not users.is_empty() else "", evo_text]
+	_detail_sub.text = ("Signature of " + ", ".join(users)) if not users.is_empty() else "Spell"
+	_detail.text = "%s\nLevels: %s" % [w["desc"], w.get("level_desc", "-")]
+	if not evo.is_empty():
+		# evolution recipe as icons: weapon Lv 8 + tome -> evolution
+		_combo.add_child(UiKit.slot(id, 40.0))
+		_combo.add_child(UiKit.title("Lv%d +" % GameData.EVOLVE_LEVEL, 12, UiKit.IVORY))
+		_combo.add_child(UiKit.slot(evo["tome"], 40.0))
+		_combo.add_child(UiKit.title(">", 24, UiKit.GOLD))
+		var es := UiKit.slot(evo["id"], 40.0, UiKit.GOLD)
+		es.tooltip_text = evo.get("desc", "")
+		es.mouse_filter = Control.MOUSE_FILTER_PASS
+		_combo.add_child(es)
+		var en := UiKit.label(evo["name"], 10, UiKit.GOLD)
+		en.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		en.custom_minimum_size = Vector2(70, 0)
+		en.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		_combo.add_child(en)
 	_art.queue_redraw()
 
 
 func _pick_enemy(id: String) -> void:
 	_art_kind = "enemy"
 	_art_id = id
+	_clear_combo()
+	_detail_sub.text = "Boss" if id == "boss" else "Monster"
 	for e in GameData.CODEX_ENEMIES:
 		if e["id"] == id:
 			_detail_title.text = e["name"].to_upper()
 			var stats := ""
 			if GameData.ENEMY_TYPES.has(id):
 				var t: Dictionary = GameData.ENEMY_TYPES[id]
-				stats = "\n\nHP %d   ·   Speed %d   ·   Contact damage %d" % [int(t["hp"]), int(t["speed"]), int(t["dmg"])]
+				_combo.add_child(UiKit.chip("hp", str(int(t["hp"]))))
+				_combo.add_child(UiKit.chip("speed", str(int(t["speed"]))))
+				_combo.add_child(UiKit.chip("damage", str(int(t["dmg"]))))
 			elif id == "boss":
-				stats = "\n\nHP %d   ·   Contact damage %d" % [int(GameData.BOSS["hp"]), int(GameData.BOSS["dmg"])]
+				_combo.add_child(UiKit.chip("hp", str(int(GameData.BOSS["hp"]))))
+				_combo.add_child(UiKit.chip("damage", str(int(GameData.BOSS["dmg"]))))
 			_detail.text = e["desc"] + stats
 	_art.queue_redraw()
 
@@ -171,11 +224,12 @@ func _draw_art() -> void:
 		"enemy":
 			tex = CharacterArt.texture("boss", "south") if _art_id == "boss" else PixelSprites.texture(_art_id)
 		"weapon":
-			UiKit.draw_icon(_art, "aether", r.get_center(), 26.0)
-			return
+			tex = UiKit.icon_tex(_art_id)
 	if tex == null:
 		return
 	var k := floorf(minf(r.size.x / tex.get_width(), r.size.y / tex.get_height()))
+	if _art_kind == "char":
+		k = 1.0   # 64 px sprite in a 112 px circle
 	var s := Vector2(tex.get_width(), tex.get_height()) * maxf(1.0, k)
 	var tint := Color.WHITE
 	if _art_kind == "char" and not SaveData.character_unlocked(shell.save, _art_id):

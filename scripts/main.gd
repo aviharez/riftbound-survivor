@@ -853,7 +853,7 @@ func _end_run(won: bool) -> void:
 		var b0 := SaveData.bond_level(before, character_id)
 		SaveData.add_bond(before, character_id, GameData.BOND_RUN + (GameData.BOND_VICTORY if won else 0))
 		var b1 := SaveData.bond_level(before, character_id)
-		lv_line = "\n%s Lv %d%s   ·   Bond +%d%s" % [char_name, lv1, ("  (LEVEL UP from %d!)" % lv0) if lv1 > lv0 else "",
+		lv_line = "\n%s Lv %d%s · Bond +%d%s" % [char_name, lv1, ("  (LEVEL UP from %d!)" % lv0) if lv1 > lv0 else "",
 			GameData.BOND_RUN + (GameData.BOND_VICTORY if won else 0), ("  (Bond Lv %d: new story!)" % b1) if b1 > b0 else ""]
 	var t := int(elapsed)
 	var tome_list: Array = []
@@ -875,7 +875,10 @@ func _end_run(won: bool) -> void:
 			{"victory": won, "kills": kills, "time": t, "level": level, "seed": seed_value, "character": character_id,
 			"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain, "shards": shards})
 		SaveData.save_data(save)
-	hud.show_result(text)
+	hud.show_result({"won": won, "kills": kills, "time": t, "level": level, "chests": chests_opened, "shrines": shrines_used,
+		"weapons": player.weapon_levels.duplicate(), "tomes": player.tomes.duplicate(), "seed": seed_value, "note": lv_line.strip_edges(),
+		"rewards": {"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain, "shards": shards, "essence": essence},
+		"items": drops})
 
 
 func return_to_academy() -> void:
@@ -897,6 +900,9 @@ func restart() -> void:
 func _autotest_step(delta: float) -> void:
 	if _shot_path != "" and not _choice_shot_done and elapsed > 4.0 and not hud.choices_open() and "--shot-choice" in OS.get_cmdline_user_args():
 		hud.show_choices("LEVEL UP — choose one", _roll_levelup_offers(), _apply_offer)
+		return
+	if _choice_shot_done and "--shot-result" in OS.get_cmdline_user_args() and not run_over:
+		_end_run(true)
 		return
 	if hud.choices_open():
 		if _shot_path != "" and not _choice_shot_done and hud._choice_title.text.begins_with("LEVEL"):

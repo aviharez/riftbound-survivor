@@ -13,13 +13,16 @@ var _name: Label
 var _role: Label
 var _level: Label
 var _exp_bar_box: HBoxContainer
-var _stats: Label
+var _stat_grid: GridContainer
+var _trait_name: Label
+var _trait_desc: Label
 var _select: Button
 var _tab := "enhance"
 var _tabs := {}
 var _enh_rows := {}
 var _slots := {}
 var _bond: Label
+var _bond_bonus: Label
 var _bond_bar_box: HBoxContainer
 var _scene_rows: Array = []
 var _portrait: Control
@@ -56,7 +59,7 @@ func _init(s) -> void:
 		b.expand_icon = true
 		b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		b.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-		b.add_theme_font_size_override("font_size", UiKit.fs(6))
+		b.add_theme_font_size_override("font_size", UiKit.tfs(6))
 		b.tooltip_text = c["name"]
 		strip.add_child(b)
 		_tiles[c["id"]] = b
@@ -66,28 +69,45 @@ func _init(s) -> void:
 	row.add_theme_constant_override("separation", 6)
 	box.add_child(row)
 
-	# character card
-	var cp := UiKit.panel(8.0)
-	cp[0].custom_minimum_size = Vector2(168, 0)
+	# character card: name, level, stat chips, trait, select
+	var cp := UiKit.panel(7.0)
+	cp[0].custom_minimum_size = Vector2(176, 0)
 	row.add_child(cp[0])
 	var card: VBoxContainer = cp[1]
-	_name = UiKit.title("", 13)
+	card.add_theme_constant_override("separation", 3)
+	_name = UiKit.title("", 24, UiKit.GOLD)
 	_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	card.add_child(_name)
-	_role = UiKit.label("", 7, UiKit.GOLD)
+	_role = UiKit.label("", 10, UiKit.CYAN)
 	_role.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_role.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_role.custom_minimum_size = Vector2(160, 0)
 	card.add_child(_role)
-	_level = UiKit.label("", 8, UiKit.IVORY)
-	_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	card.add_child(_level)
+	var lvrow := HBoxContainer.new()
+	lvrow.add_theme_constant_override("separation", 4)
+	card.add_child(lvrow)
+	_level = UiKit.title("", 12, UiKit.IVORY)
+	lvrow.add_child(_level)
 	_exp_bar_box = HBoxContainer.new()
-	card.add_child(_exp_bar_box)
-	card.add_child(UiKit.header("STATS", 8))
-	_stats = UiKit.label("", 8, UiKit.IVORY)
-	_stats.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_stats.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	card.add_child(_stats)
+	_exp_bar_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_exp_bar_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	lvrow.add_child(_exp_bar_box)
+	var sw := UiKit.well(4.0)
+	card.add_child(sw[0])
+	_stat_grid = GridContainer.new()
+	_stat_grid.columns = 2
+	_stat_grid.add_theme_constant_override("h_separation", 8)
+	_stat_grid.add_theme_constant_override("v_separation", 1)
+	sw[1].add_child(_stat_grid)
+	var tw := UiKit.well(4.0)
+	tw[0].size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.add_child(tw[0])
+	_trait_name = UiKit.title("", 12, UiKit.GOLD)
+	tw[1].add_child(_trait_name)
+	_trait_desc = UiKit.label("", 10, Color("d8d2ee"))
+	_trait_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_trait_desc.custom_minimum_size = Vector2(150, 0)
+	tw[1].add_child(_trait_desc)
 	_select = UiKit.button("SELECT", Vector2(0, 26), _on_select, "primary")
 	card.add_child(_select)
 
@@ -99,8 +119,8 @@ func _init(s) -> void:
 	var tabbar := HBoxContainer.new()
 	tabbar.add_theme_constant_override("separation", 4)
 	tbox.add_child(tabbar)
-	for t in [["enhance", "Enhance"], ["gear", "Equipment"], ["bond", "Bond"]]:
-		var b := UiKit.button(t[1], Vector2(0, 20), show_tab.bind(t[0]))
+	for t in [["enhance", "ENHANCE"], ["gear", "EQUIPMENT"], ["bond", "BOND"]]:
+		var b := UiKit.button(t[1], Vector2(0, 24), show_tab.bind(t[0]))
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.add_theme_font_override("font", UiKit.TITLE_FONT)
 		tabbar.add_child(b)
@@ -116,6 +136,8 @@ func _init(s) -> void:
 	# portrait
 	_portrait = Control.new()
 	_portrait.custom_minimum_size = Vector2(150, 0)
+	_portrait.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_portrait.size_flags_stretch_ratio = 0.5
 	_portrait.draw.connect(_draw_portrait)
 	row.add_child(_portrait)
 	show_tab("enhance")
@@ -129,58 +151,98 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------------ tab content
 
+## One tab row: dark well with an icon slot, a text column and room for buttons; returns the parts.
+func _row(box: VBoxContainer, icon_name: String) -> Dictionary:
+	var pb := UiKit.well(4.0)
+	box.add_child(pb[0])
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 6)
+	pb[1].add_child(r)
+	var slot := UiKit.slot(icon_name, 40.0)
+	r.add_child(slot)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 1)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	r.add_child(col)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	col.add_child(head)
+	var name_l := UiKit.title("", 12)
+	head.add_child(name_l)
+	var sub := UiKit.label("", 10, Color("d8d2ee"))
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub.custom_minimum_size = Vector2(120, 0)
+	col.add_child(sub)
+	return {"row": r, "slot": slot, "name": name_l, "head": head, "sub": sub}
+
+
 func _build_enhance(box: VBoxContainer) -> void:
-	var note := UiKit.label("Gold + Arcane Shards. Rank N needs character Lv %d x N." % GameData.ENHANCE_LEVEL_STEP, 7, Color(UiKit.IVORY, 0.7))
-	box.add_child(note)
 	for track in SaveData.ENHANCE_TRACKS:
-		var pb := UiKit.panel(6.0)
-		box.add_child(pb[0])
-		var r := HBoxContainer.new()
-		r.add_theme_constant_override("separation", 6)
-		pb[1].add_child(r)
-		var lab := UiKit.label("", 8, UiKit.IVORY)
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		r.add_child(lab)
-		var btn := UiKit.button("", Vector2(108, 32), _on_enhance.bind(track), "primary")
-		btn.add_theme_font_size_override("font_size", UiKit.fs(8))
-		r.add_child(btn)
-		_enh_rows[track] = {"label": lab, "button": btn}
+		var p := _row(box, "crit")
+		var pips_holder := HBoxContainer.new()
+		pips_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		p["head"].add_child(pips_holder)
+		var rb := UiKit.rich_button(Vector2(112, 40), _on_enhance.bind(track), "primary")
+		var btn: Button = rb[0]
+		btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		p["row"].add_child(btn)
+		p["button"] = btn
+		p["content"] = rb[1]
+		p["pips"] = pips_holder
+		_enh_rows[track] = p
 
 
 func _build_gear(box: VBoxContainer) -> void:
-	box.add_child(UiKit.label("Any character can wear any piece, one character at a time.", 7, Color(UiKit.IVORY, 0.7)))
 	for slot in GameData.EQUIP_SLOTS:
-		var pb := UiKit.panel(6.0)
-		box.add_child(pb[0])
-		var r := HBoxContainer.new()
-		r.add_theme_constant_override("separation", 6)
-		pb[1].add_child(r)
-		var lab := UiKit.label("", 8, UiKit.IVORY)
-		lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lab.custom_minimum_size = Vector2(0, 24)
-		r.add_child(lab)
-		var change := UiKit.button("Change", Vector2(54, 24), _open_picker.bind(slot), "accent")
-		r.add_child(change)
-		var remove := UiKit.button("Remove", Vector2(52, 24), _on_unequip.bind(slot))
-		r.add_child(remove)
-		_slots[slot] = {"label": lab, "change": change, "remove": remove}
+		var icon_name: String = {"weapon": "damage", "armor": "armor", "accessory": "gift"}[slot]
+		var p := _row(box, icon_name)
+		var change := UiKit.button("CHANGE", Vector2(64, 26), _open_picker.bind(slot), "accent")
+		change.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		p["row"].add_child(change)
+		var remove := UiKit.button("X", Vector2(26, 26), _on_unequip.bind(slot), "danger")
+		remove.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		p["row"].add_child(remove)
+		p["change"] = change
+		p["remove"] = remove
+		_slots[slot] = p
 
 
 func _build_bond(box: VBoxContainer) -> void:
-	_bond = UiKit.label("", 8, UiKit.IVORY)
-	_bond.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_bond)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 6)
+	box.add_child(top)
+	top.add_child(UiKit.icon_rect("hp", 32))
+	var tcol := VBoxContainer.new()
+	tcol.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tcol.add_theme_constant_override("separation", 1)
+	top.add_child(tcol)
+	_bond = UiKit.title("", 12, Color("ff9ac8"))
+	tcol.add_child(_bond)
 	_bond_bar_box = HBoxContainer.new()
-	box.add_child(_bond_bar_box)
+	tcol.add_child(_bond_bar_box)
+	_bond_bonus = UiKit.label("", 10, Color("d8d2ee"))
+	tcol.add_child(_bond_bonus)
+	var sc := ScrollContainer.new()
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	box.add_child(sc)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 2)
+	sc.add_child(list)
 	for lv in range(1, GameData.BOND_MAX + 1):
+		var pb := UiKit.well(3.0)
+		list.add_child(pb[0])
 		var r := HBoxContainer.new()
-		box.add_child(r)
-		var lab := UiKit.label("", 8, UiKit.IVORY)
+		r.add_theme_constant_override("separation", 4)
+		pb[1].add_child(r)
+		r.add_child(UiKit.icon_rect("scroll", 16))
+		var lab := UiKit.label("", 10, UiKit.IVORY)
 		lab.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		lab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		r.add_child(lab)
-		var b := UiKit.button("Read", Vector2(48, 18), _read_scene.bind(lv), "accent")
+		var b := UiKit.button("READ", Vector2(52, 22), _read_scene.bind(lv), "accent")
 		r.add_child(b)
 		_scene_rows.append([lab, b])
 
@@ -247,27 +309,33 @@ func refresh() -> void:
 		b.modulate = Color.WHITE if open else Color(0.35, 0.35, 0.45)
 		UiKit.set_selected(b, id == char_id)
 	_name.text = c["name"].to_upper()
-	_role.text = "%s  ·  %s" % [c["role"], c["school"]]
+	_role.text = c["school"]
+	_role.tooltip_text = c["role"]
 	var lv := SaveData.char_level(save, char_id)
 	var exp := int(SaveData.char_state(save, char_id)["exp"])
 	for ch in _exp_bar_box.get_children():
 		ch.queue_free()
+	_level.text = "Lv %d" % lv
 	if lv < GameData.CHAR_MAX_LEVEL:
 		var a := GameData.char_exp_for(lv)
 		var b := GameData.char_exp_for(lv + 1)
-		_level.text = "Level %d / %d   ·   EXP %d / %d" % [lv, GameData.CHAR_MAX_LEVEL, exp - a, b - a]
-		var bar := UiKit.bar(float(exp - a) / float(b - a), 150.0)
-		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var bar := UiKit.bar(float(exp - a) / float(b - a), 110.0)
+		bar.tooltip_text = "EXP %d / %d" % [exp - a, b - a]
 		_exp_bar_box.add_child(bar)
 	else:
-		_level.text = "Level %d / %d   ·   MAX" % [lv, GameData.CHAR_MAX_LEVEL]
-	_stats.text = _stats_text(save, c)
+		_exp_bar_box.add_child(UiKit.title("MAX", 12, UiKit.GOLD))
+	for ch in _stat_grid.get_children():
+		ch.queue_free()
+	for st in _stat_list(save, c):
+		_stat_grid.add_child(UiKit.chip(st[0], st[1]))
+	_trait_name.text = c["passive"]
+	_trait_desc.text = c["passive_desc"]
 	var selected := String(save["character"]) == char_id
 	var away := SaveData.is_away(save, char_id)
 	if not unlocked:
 		_select.text = "LOCKED"
 		_select.disabled = true
-		_stats.text += "\n\n" + _unlock_hint(c)
+		_trait_desc.text = _unlock_hint(c)
 	elif away:
 		_select.text = "ON EXPEDITION"
 		_select.disabled = true
@@ -275,7 +343,7 @@ func refresh() -> void:
 		_select.text = "IN RIFT TEAM"
 		_select.disabled = true
 	else:
-		_select.text = "SELECT FOR RIFT"
+		_select.text = "SELECT"
 		_select.disabled = false
 	_refresh_enhance(save, c, unlocked)
 	_refresh_gear(save, unlocked)
@@ -294,8 +362,9 @@ static func _unlock_hint(c: Dictionary) -> String:
 	return "Restore the %s%s to bring %s back." % [home, (" to Lv %d" % need) if need > 1 else "", c["name"]]
 
 
-## Base stats plus level, equipment and bond bonuses (lessons and in-run tomes come on top in the Rift).
-static func _stats_text(save: Dictionary, c: Dictionary) -> String:
+## Base stats plus level, equipment and bond bonuses as [icon, text] chips (lessons and in-run tomes come on
+## top in the Rift).
+static func _stat_list(save: Dictionary, c: Dictionary) -> Array:
 	var base: Dictionary = c["base"]
 	var add := {}
 	for m in SaveData.char_run_bonus(save, c["id"])["mods"]:
@@ -305,67 +374,90 @@ static func _stats_text(save: Dictionary, c: Dictionary) -> String:
 	var spd := float(base["speed"]) * (1.0 + float(add.get("speed_pct", 0.0)))
 	var crit := float(base.get("crit", 0.0)) + float(add.get("crit", 0.0))
 	var armor := float(base.get("armor", 0.0)) + float(add.get("armor", 0.0))
-	var lines: Array = ["HP  %d" % int(round(hp)), "Damage  %.1f" % dmg, "Speed  %d" % int(round(spd)),
-		"Crit  %d%%     Armour  %d%%" % [int(round(crit * 100)), int(round(armor * 100))]]
-	var other: Array = []
-	for k in add:
-		if not k in ["max_hp", "damage_pct", "speed_pct", "crit", "armor"] and float(add[k]) > 0.0:
-			other.append(GameData.mod_text(k, float(add[k])))
-	for k in base:
-		if not k in ["max_hp", "damage", "speed", "crit", "armor"]:
-			other.append(GameData.mod_text(k, float(base[k])))
-	if not other.is_empty():
-		lines.append(", ".join(other))
-	lines.append("%s: %s" % [c["passive"], c["passive_desc"]])
-	return "\n".join(lines)
+	var out: Array = [["hp", "%d" % int(round(hp))], ["damage", "%.1f" % dmg], ["speed", "%d" % int(round(spd))],
+		["crit", "%d%%" % int(round(crit * 100))], ["armor", "%d%%" % int(round(armor * 100))]]
+	var xp := float(base.get("xp_pct", 0.0)) + float(add.get("xp_pct", 0.0))
+	if xp > 0.0:
+		out.append(["exp", "+%d%%" % int(round(xp * 100))])
+	return out
 
 
 func _refresh_enhance(save: Dictionary, c: Dictionary, unlocked: bool) -> void:
 	var st := SaveData.char_state(save, char_id)
 	for track in SaveData.ENHANCE_TRACKS:
 		var rank := int(st[track])
-		var lab: Label = _enh_rows[track]["label"]
-		var btn: Button = _enh_rows[track]["button"]
+		var p: Dictionary = _enh_rows[track]
+		var btn: Button = p["button"]
+		var content: HBoxContainer = p["content"]
 		if track == "passive":
-			lab.text = "PASSIVE · %s   %s\nTrait +%d%% stronger per rank (now +%d%%)" % [c["passive"], _pips(rank),
-				int(GameData.ENHANCE_TRAIT_PER_RANK * 100), int(GameData.ENHANCE_TRAIT_PER_RANK * 100 * rank)]
+			p["name"].text = c["passive"]
+			p["sub"].text = "Trait +%d%% per rank" % int(GameData.ENHANCE_TRAIT_PER_RANK * 100)
+			_set_slot_icon(p["slot"], "crit")
 		else:
 			var w := GameData.weapon_by_id(c["starter"])
-			lab.text = "SIGNATURE · %s   %s\n+%d%% damage, +%d%% attack speed per rank, evolution included (now +%d%% / +%d%%)" % [
-				w["name"], _pips(rank), int(GameData.ENHANCE_WEAPON_DMG * 100), int(GameData.ENHANCE_WEAPON_CD * 100),
-				int(GameData.ENHANCE_WEAPON_DMG * 100 * rank), int(GameData.ENHANCE_WEAPON_CD * 100 * rank)]
+			p["name"].text = w["name"]
+			p["sub"].text = "+%d%% dmg, +%d%% atk speed per rank" % [int(GameData.ENHANCE_WEAPON_DMG * 100), int(GameData.ENHANCE_WEAPON_CD * 100)]
+			_set_slot_icon(p["slot"], w["id"])
+		for ch in p["pips"].get_children():
+			ch.queue_free()
+		p["pips"].add_child(UiKit.pips(rank, GameData.ENHANCE_MAX))
+		for ch in content.get_children():
+			ch.queue_free()
 		var cost := SaveData.next_enhance_cost(save, char_id, track)
 		if rank >= GameData.ENHANCE_MAX:
-			btn.text = "MAX"
+			content.add_child(UiKit.title("MAX", 12, UiKit.GOLD))
 			btn.disabled = true
 		elif not unlocked:
-			btn.text = "Locked"
+			content.add_child(UiKit.icon_rect("lock", 16))
 			btn.disabled = true
 		elif cost.is_empty():
-			btn.text = "Needs Lv %d" % ((rank + 1) * GameData.ENHANCE_LEVEL_STEP)
+			content.add_child(UiKit.icon_rect("lock", 16))
+			content.add_child(UiKit.title("Lv %d" % ((rank + 1) * GameData.ENHANCE_LEVEL_STEP), 12))
 			btn.disabled = true
 		else:
-			btn.text = "ENHANCE\n%d gold · %d shards" % [cost["gold"], cost["shards"]]
+			var col := VBoxContainer.new()
+			col.alignment = BoxContainer.ALIGNMENT_CENTER
+			col.add_theme_constant_override("separation", 0)
+			col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			content.add_child(col)
+			var t := UiKit.title("ENHANCE", 12, UiKit.GOLD)
+			t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			col.add_child(t)
+			var cc := UiKit.cost_chips(cost, save)
+			cc.alignment = BoxContainer.ALIGNMENT_CENTER
+			col.add_child(cc)
 			btn.disabled = not SaveData.can_afford(save, cost)
 
 
-static func _pips(rank: int) -> String:
-	return "Rank %d / %d" % [rank, GameData.ENHANCE_MAX]
+static func _set_slot_icon(slot: Control, icon_name: String) -> void:
+	var ic := slot.get_child(0) as TextureRect
+	ic.texture = UiKit.icon_tex(icon_name)
 
 
 func _refresh_gear(save: Dictionary, unlocked: bool) -> void:
 	for slot in GameData.EQUIP_SLOTS:
 		var it := SaveData.equipped_item(save, char_id, slot)
-		var row: Dictionary = _slots[slot]
-		var lab: Label = row["label"]
+		var p: Dictionary = _slots[slot]
 		if it.is_empty():
-			lab.text = "%s\n(empty)" % GameData.EQUIP_SLOT_NAMES[slot].to_upper()
-			lab.add_theme_color_override("font_color", Color(UiKit.IVORY, 0.55))
+			p["name"].text = GameData.EQUIP_SLOT_NAMES[slot]
+			p["name"].add_theme_color_override("font_color", Color(UiKit.IVORY, 0.5))
+			p["sub"].text = "Empty"
 		else:
-			lab.text = "%s · %s\n%s" % [GameData.EQUIP_SLOT_NAMES[slot].to_upper(), GameData.item_name(it), item_stats(it)]
-			lab.add_theme_color_override("font_color", GameData.GEAR_RARITY_COLORS[int(it["rarity"])])
-		row["remove"].disabled = it.is_empty() or not unlocked
-		row["change"].disabled = _items_for(slot).is_empty() or not unlocked
+			var col: Color = GameData.GEAR_RARITY_COLORS[int(it["rarity"])]
+			p["name"].text = GameData.item_name(it)
+			p["name"].add_theme_color_override("font_color", col)
+			p["sub"].text = item_stats(it)
+			var sb := UiKit.rarity_style(col, 0.0)
+			sb.pattern = false
+			sb.fill = Color("120d24")
+			p["slot"].add_theme_stylebox_override("panel", sb)
+		if it.is_empty():
+			var eb := UiKit.style(UiKit.PURPLE, 0.0)
+			eb.pattern = false
+			eb.fill = Color("120d24")
+			p["slot"].add_theme_stylebox_override("panel", eb)
+		p["remove"].disabled = it.is_empty() or not unlocked
+		p["change"].disabled = _items_for(slot).is_empty() or not unlocked
 
 
 func _refresh_bond(save: Dictionary, c: Dictionary) -> void:
@@ -375,9 +467,10 @@ func _refresh_bond(save: Dictionary, c: Dictionary) -> void:
 	for m in GameData.bond_mods(blv):
 		if float(m[1]) > 0.0:
 			bonus.append(GameData.mod_text(m[0], float(m[1])))
-	_bond.text = "BOND Lv %d / %d   ·   bonus %s\nFrom runs with %s (+%d, +%d on victory), expeditions (+%d) and a daily talk in the Dormitory (+%d)." % [
-		blv, GameData.BOND_MAX, ", ".join(bonus) if not bonus.is_empty() else "none yet", c["name"],
-		GameData.BOND_RUN, GameData.BOND_VICTORY, GameData.BOND_EXPEDITION, GameData.BOND_TALK]
+	_bond.text = "BOND Lv %d / %d" % [blv, GameData.BOND_MAX]
+	_bond_bonus.text = ", ".join(bonus) if not bonus.is_empty() else "Runs, expeditions and talks raise bond"
+	_bond_bonus.tooltip_text = "Runs with %s +%d (+%d on victory), expeditions +%d, daily talk in the Dormitory +%d." % [
+		c["name"], GameData.BOND_RUN, GameData.BOND_VICTORY, GameData.BOND_EXPEDITION, GameData.BOND_TALK]
 	for ch in _bond_bar_box.get_children():
 		ch.queue_free()
 	if blv < GameData.BOND_MAX:
@@ -388,7 +481,7 @@ func _refresh_bond(save: Dictionary, c: Dictionary) -> void:
 		var lv := i + 1
 		var sc := BondScenes.scene(char_id, lv)
 		var open := blv >= lv and not sc.is_empty()
-		_scene_rows[i][0].text = ("Story %d · %s" % [lv, sc[0]]) if open else "Story %d · reach bond Lv %d" % [lv, lv]
+		_scene_rows[i][0].text = sc[0] if open else "Bond Lv %d" % lv
 		_scene_rows[i][0].add_theme_color_override("font_color", UiKit.IVORY if open else Color(UiKit.IVORY, 0.45))
 		_scene_rows[i][1].disabled = not open
 

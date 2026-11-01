@@ -151,18 +151,21 @@ func _draw_plate(save: Dictionary, id: String, pos: Vector2) -> void:
 	var lv := SaveData.building_level(save, id)
 	var font := UiKit.BOLD_FONT
 	var name: String = b["name"]
-	var fs := 8
-	var w := font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 26
-	var at := pos + Vector2(-w * 0.5, 42)
-	var r := Rect2(at, Vector2(w, 13))
-	draw_rect(r, Color(0.03, 0.06, 0.16, 0.78))
-	draw_rect(Rect2(r.position, Vector2(r.size.x, 1)), Color(0.6, 0.85, 1.0, 0.5))
-	var max_lv: int = b["costs"].size()
-	var badge := Rect2(at + Vector2(1, 1), Vector2(13, 11))
+	var fs := 12
+	var w := floorf(font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x) + 26
+	var at := (pos + Vector2(-w * 0.5, 40)).floor()
+	var r := Rect2(at, Vector2(w, 17))
+	# pixel name plate: black outline, purple border, dark fill, level badge
+	draw_rect(r.grow(1), Color("05030c"))
+	draw_rect(r, Color("7b63d9"))
+	draw_rect(r.grow(-1), Color("1b1440"))
+	draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 1)), Color("b4a2ff"))
+	var badge := Rect2(at + Vector2(2, 2), Vector2(14, 13))
 	draw_rect(badge, Color(0.95, 0.65, 0.15) if lv > 0 else Color(0.4, 0.2, 0.6))
-	draw_string(font, badge.position + Vector2(0, 9), str(lv), HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, 8, Color(0.1, 0.05, 0))
-	draw_string_outline(font, at + Vector2(17, 10), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color(0, 0, 0.1, 0.8))
-	draw_string(font, at + Vector2(17, 10), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+	draw_string(UiKit.TITLE_FONT, badge.position + Vector2(0, 11), str(lv), HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, 12, Color(0.1, 0.05, 0) if lv > 0 else Color.WHITE)
+	draw_string_outline(font, at + Vector2(19, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color("05030c"))
+	draw_string(font, at + Vector2(19, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+	var max_lv: int = b["costs"].size()
 	# "ready" marker when the next level is affordable
 	var cost := SaveData.next_cost(save, id)
 	if lv < max_lv and SaveData.can_afford(save, cost):

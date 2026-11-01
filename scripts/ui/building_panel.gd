@@ -11,8 +11,9 @@ var _name: Label
 var _state: Label
 var _desc: Label
 var _effect: Label
-var _req: VBoxContainer
+var _req: HBoxContainer
 var _build: Button
+var _pips: HBoxContainer
 var _action: Button
 
 
@@ -33,28 +34,42 @@ func _init(s, parent: Control) -> void:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 4)
 	row.add_child(info)
-	_state = UiKit.label("", 9, UiKit.CYAN)
-	info.add_child(_state)
-	_desc = UiKit.label("", 8, Color(UiKit.IVORY, 0.8))
+	var srow := HBoxContainer.new()
+	srow.add_theme_constant_override("separation", 6)
+	info.add_child(srow)
+	_state = UiKit.title("", 12, UiKit.CYAN)
+	srow.add_child(_state)
+	_pips = HBoxContainer.new()
+	_pips.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	srow.add_child(_pips)
+	_desc = UiKit.label("", 10, Color("d8d2ee"))
 	_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_desc.custom_minimum_size = Vector2(250, 0)
 	info.add_child(_desc)
-	_effect = UiKit.label("", 9, UiKit.GOLD)
+	var ew := UiKit.well(5.0)
+	info.add_child(ew[0])
+	var er := HBoxContainer.new()
+	er.add_theme_constant_override("separation", 5)
+	ew[1].add_child(er)
+	er.add_child(UiKit.icon_rect("exp", 16))
+	_effect = UiKit.label("", 10, UiKit.GOLD)
 	_effect.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	info.add_child(_effect)
-	info.add_child(UiKit.header("REQUISITIONS", 8))
-	_req = VBoxContainer.new()
-	_req.add_theme_constant_override("separation", 2)
+	_effect.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	er.add_child(_effect)
+	info.add_child(UiKit.header("NEEDED", 12, "materials"))
+	_req = HBoxContainer.new()
+	_req.add_theme_constant_override("separation", 6)
 	info.add_child(_req)
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 6)
 	box.add_child(buttons)
-	_action = UiKit.button("", Vector2(120, 32), _on_action, "accent")
+	_action = UiKit.button("", Vector2(130, 34), _on_action, "accent")
 	buttons.add_child(_action)
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(sp)
 	_build = UiKit.button("BUILD", Vector2(170, 34), _on_build, "primary")
-	_build.add_theme_font_size_override("font_size", UiKit.fs(14))
+	_build.add_theme_font_size_override("font_size", UiKit.tfs(20))
 	buttons.add_child(_build)
 
 
@@ -79,7 +94,10 @@ func refresh() -> void:
 	var max_lv: int = b["costs"].size()
 	_name.text = b["name"]
 	var state_name: String = "Restored" if lv >= max_lv else GameData.BUILDING_STATES[mini(lv, GameData.BUILDING_STATES.size() - 1)]
-	_state.text = "%s   ·   Level %d / %d" % [state_name.to_upper(), lv, max_lv]
+	_state.text = state_name.to_upper()
+	for ch in _pips.get_children():
+		ch.queue_free()
+	_pips.add_child(UiKit.pips(lv, max_lv, UiKit.CYAN))
 	_state.add_theme_color_override("font_color", UiKit.RED if lv == 0 else (UiKit.GREEN if lv >= max_lv else UiKit.CYAN))
 	_desc.text = b["desc"]
 	var cost := SaveData.next_cost(save, id)
@@ -87,21 +105,24 @@ func refresh() -> void:
 	for ch in _req.get_children():
 		ch.queue_free()
 	if cost.is_empty():
-		_req.add_child(UiKit.label("Fully restored.", 8, UiKit.GREEN))
+		_req.add_child(UiKit.label("Fully restored.", 10, UiKit.GREEN))
 	else:
+		# each requisition: icon slot with have / need under it (red while short)
 		for k in cost:
 			if int(cost[k]) <= 0:
 				continue
-			var r := HBoxContainer.new()
-			r.add_theme_constant_override("separation", 4)
-			r.add_child(UiKit.icon(k, 10.0))
 			var have := int(save[k])
 			var need := int(cost[k])
-			var name := UiKit.label(UiKit.resource_name(k), 8, UiKit.IVORY)
-			name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			r.add_child(name)
-			r.add_child(UiKit.label("%d / %d" % [have, need], 8, UiKit.GREEN if have >= need else UiKit.RED))
-			_req.add_child(r)
+			var col := VBoxContainer.new()
+			col.add_theme_constant_override("separation", 1)
+			var sl := UiKit.slot(k, 38.0, UiKit.GOLD if have >= need else UiKit.PURPLE)
+			sl.tooltip_text = UiKit.resource_name(k)
+			sl.mouse_filter = Control.MOUSE_FILTER_PASS
+			col.add_child(sl)
+			var nl := UiKit.label("%s/%s" % [Home._short(have), Home._short(need)], 10, UiKit.GREEN if have >= need else UiKit.RED)
+			nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			col.add_child(nl)
+			_req.add_child(col)
 	if cost.is_empty():
 		_build.text = "COMPLETE"
 		_build.disabled = true
@@ -117,12 +138,12 @@ func refresh() -> void:
 
 static func _action_name(b: Dictionary) -> String:
 	match b["unlocks"]:
-		"lessons": return "Lessons"
-		"workshop": return "Craft"
-		"dorm": return "Rooms"
-		"character": return "Meet %s" % GameData.character_by_id(b["character"])["name"]
+		"lessons": return "LESSONS"
+		"workshop": return "CRAFT"
+		"dorm": return "ROOMS"
+		"character": return "MEET %s" % GameData.character_by_id(b["character"])["name"].to_upper()
 	if b["id"] == "library":
-		return "Meet Wren"
+		return "MEET WREN"
 	return ""
 
 

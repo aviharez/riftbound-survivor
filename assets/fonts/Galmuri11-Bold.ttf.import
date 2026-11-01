@@ -2,18 +2,18 @@
 
 importer="font_data_dynamic"
 type="FontFile"
-uid="uid://ctrrc0epij6fo"
-path="res://.godot/imported/Silkscreen-Bold.ttf-c5bfe206a7f26b7a826f144afbfe2747.fontdata"
+uid="uid://8rrbfixcxdxf"
+path="res://.godot/imported/Galmuri11-Bold.ttf-3a23d149e7b99ee54cc37134f38f9040.fontdata"
 
 [deps]
 
-source_file="res://assets/fonts/Silkscreen-Bold.ttf"
-dest_files=["res://.godot/imported/Silkscreen-Bold.ttf-c5bfe206a7f26b7a826f144afbfe2747.fontdata"]
+source_file="res://assets/fonts/Galmuri11-Bold.ttf"
+dest_files=["res://.godot/imported/Galmuri11-Bold.ttf-3a23d149e7b99ee54cc37134f38f9040.fontdata"]
 
 [params]
 
 Rendering=null
-antialiasing=1
+antialiasing=0
 generate_mipmaps=false
 disable_embedded_bitmaps=true
 multichannel_signed_distance_field=false

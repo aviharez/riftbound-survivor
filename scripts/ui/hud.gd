@@ -33,7 +33,7 @@ var _choice_buttons: Array = []
 var _choice_cb: Callable
 var _pause_panel: PanelContainer
 var _result_panel: PanelContainer
-var _result_label: Label
+var _result_box: VBoxContainer
 var _result_title: Label
 var _dash_btn: Button
 var _map_btn: Button
@@ -267,13 +267,75 @@ func pick_choice(i: int) -> void:
 	_choice_cb.call(b.get_meta("option"))
 
 
-func show_result(text: String) -> void:
+## The end-of-run screen from main._end_run's summary: ribbon, run stats, the build, rewards and drops.
+func show_result(d: Dictionary) -> void:
 	if map_open:
 		toggle_map()
-	var head := text.get_slice("\n", 0)
-	_result_title.text = head
-	_result_title.add_theme_color_override("font_color", GOLD if head == "VICTORY" else CRIMSON)
-	_result_label.text = text.substr(head.length()).strip_edges().replace("\n\n", "\n")
+	var won: bool = d["won"]
+	_result_title.text = "VICTORY" if won else "DEFEAT"
+	_result_title.add_theme_color_override("font_color", UiKit.GOLD if won else Color("fff1d6"))
+	for ch in _result_box.get_children():
+		ch.queue_free()
+	var t: int = d["time"]
+	var stats := HBoxContainer.new()
+	stats.alignment = BoxContainer.ALIGNMENT_CENTER
+	stats.add_theme_constant_override("separation", 12)
+	_result_box.add_child(stats)
+	stats.add_child(UiKit.chip("damage", "%d kills" % d["kills"]))
+	stats.add_child(UiKit.chip("bell", "%02d:%02d" % [t / 60, t % 60]))
+	stats.add_child(UiKit.chip("exp", "Lv %d" % d["level"]))
+	stats.add_child(UiKit.chip("chest", str(d["chests"])))
+	# the build: weapons and tomes as icon slots with their level
+	var build := HBoxContainer.new()
+	build.alignment = BoxContainer.ALIGNMENT_CENTER
+	build.add_theme_constant_override("separation", 3)
+	_result_box.add_child(build)
+	for group in [d["weapons"], d["tomes"]]:
+		for id in group:
+			var sl := UiKit.slot(UiKit.option_icon({"def": {"id": id}}), 30.0, UiKit.CYAN if group == d["weapons"] else UiKit.PURPLE)
+			var lv := UiKit.label(str(group[id]), 10, UiKit.IVORY)
+			lv.position = Vector2(20, 16)
+			sl.add_child(lv)
+			sl.tooltip_text = String(GameData.weapon_by_id(id).get("name", id)) if group == d["weapons"] else String(GameData.tome_by_id(id).get("name", id))
+			build.add_child(sl)
+		if group == d["weapons"] and not d["tomes"].is_empty():
+			var gap := Control.new()
+			gap.custom_minimum_size = Vector2(6, 0)
+			build.add_child(gap)
+	_result_box.add_child(UiKit.header("REWARDS" if won else "REWARDS (50%)", 12, "gift"))
+	var rw := HBoxContainer.new()
+	rw.alignment = BoxContainer.ALIGNMENT_CENTER
+	rw.add_theme_constant_override("separation", 4)
+	_result_box.add_child(rw)
+	var rewards: Dictionary = d["rewards"]
+	for k in rewards:
+		if int(rewards[k]) <= 0:
+			continue
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		col.add_child(UiKit.slot(k, 34.0))
+		var n := UiKit.label("+%d" % int(rewards[k]), 10, UiKit.IVORY)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(n)
+		rw.add_child(col)
+	for it in d["items"]:
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 0)
+		var sl := UiKit.item_slot(it, 34.0)
+		sl.tooltip_text = GameData.item_name(it)
+		sl.mouse_filter = Control.MOUSE_FILTER_PASS
+		col.add_child(sl)
+		var n := UiKit.label("NEW", 10, UiKit.GREEN)
+		n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(n)
+		rw.add_child(col)
+	if String(d.get("note", "")) != "":
+		var note := UiKit.label(d["note"], 10, UiKit.GREEN)
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_result_box.add_child(note)
+	var seed_l := UiKit.label("Seed %d" % d["seed"], 10, Color(1, 1, 1, 0.4))
+	seed_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_result_box.add_child(seed_l)
 	_result_panel.visible = true
 	_pause_panel.visible = false
 	_choice_panel.visible = false
@@ -508,8 +570,15 @@ func _edge_arrow(vs: Vector2, cam_center: Vector2, target: Vector2, col: Color, 
 
 
 func _bar(r: Rect2, ratio: float, col: Color) -> void:
-	view.draw_rect(r.grow(1), Color(0, 0, 0, 0.7))
-	view.draw_rect(Rect2(r.position, Vector2(r.size.x * clamp(ratio, 0.0, 1.0), r.size.y)), col)
+	# pixel bar: black outline, dark well, fill with a light top row
+	r = Rect2(r.position.floor(), r.size.floor())
+	view.draw_rect(r.grow(1), Color("05030c"))
+	view.draw_rect(r, Color("2a2148"))
+	var w := floorf(r.size.x * clampf(ratio, 0.0, 1.0))
+	view.draw_rect(Rect2(r.position, Vector2(w, r.size.y)), col)
+	view.draw_rect(Rect2(r.position, Vector2(w, 1)), col.lightened(0.45))
+	if r.size.y > 4:
+		view.draw_rect(Rect2(r.position + Vector2(0, r.size.y - 1), Vector2(w, 1)), col.darkened(0.35))
 
 
 func _text(p: Vector2, s: String, col: Color, size: int, centered: bool) -> void:
@@ -533,7 +602,7 @@ func _make_button(text: String, size: Vector2, cb: Callable) -> Button:
 	b.custom_minimum_size = size
 	b.size = size
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", UiKit.fs(9))
+	b.add_theme_font_size_override("font_size", UiKit.tfs(9))
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, UiKit.button_style("normal", st))
 	b.add_theme_font_override("font", UiKit.BOLD_FONT)
@@ -544,7 +613,10 @@ func _make_button(text: String, size: Vector2, cb: Callable) -> Button:
 
 func _centered_panel() -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", _style(GOLD))
+	var st := UiKit.style(UiKit.PURPLE, 10.0)
+	st.border_w = 3
+	st.rivets = true
+	p.add_theme_stylebox_override("panel", st)
 	p.set_anchors_preset(Control.PRESET_CENTER)
 	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	p.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -584,16 +656,14 @@ func _build_pause_panel() -> void:
 	var box := VBoxContainer.new()
 	_pause_panel.add_child(box)
 	box.add_theme_constant_override("separation", 5)
-	var l := UiKit.title("PAUSED", 14)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(l)
+	box.add_child(UiKit.ribbon("PAUSED", 16))
 	var info := Label.new()
 	info.name = "Info"
 	info.add_theme_font_size_override("font_size", UiKit.fs(9))
 	box.add_child(info)
-	box.add_child(UiKit.button("Resume", Vector2(220, 26), toggle_pause, "primary"))
-	box.add_child(UiKit.button("New run (new map)", Vector2(220, 22), func(): game.restart()))
-	box.add_child(UiKit.button("Abandon run (no rewards)", Vector2(220, 22), func(): game.return_to_academy()))
+	box.add_child(UiKit.button("RESUME", Vector2(220, 30), toggle_pause, "primary"))
+	box.add_child(UiKit.button("NEW RUN", Vector2(220, 26), func(): game.restart(), "info"))
+	box.add_child(UiKit.button("ABANDON (NO REWARDS)", Vector2(220, 26), func(): game.return_to_academy(), "danger"))
 	_pause_panel.visibility_changed.connect(func():
 		if _pause_panel.visible:
 			info.text = "Seed %d\nEsc/P pause · M map · Space dash · WASD move" % game.seed_value)
@@ -604,17 +674,17 @@ func _build_result_panel() -> void:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 5)
 	_result_panel.add_child(box)
-	_result_title = UiKit.title("", 16)
-	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_result_title)
-	_result_label = Label.new()
-	_result_label.add_theme_font_size_override("font_size", UiKit.fs(8))
-	_result_label.custom_minimum_size = Vector2(380, 0)
-	_result_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_result_label)
-	var academy := UiKit.button("Return to Academy", Vector2(0, 28), func(): game.return_to_academy(), "primary")
+	var rb := UiKit.ribbon("", 24)
+	rb.custom_minimum_size = Vector2(0, 34)
+	box.add_child(rb)
+	_result_title = rb.get_child(0)
+	_result_box = VBoxContainer.new()
+	_result_box.custom_minimum_size = Vector2(400, 0)
+	_result_box.add_theme_constant_override("separation", 5)
+	box.add_child(_result_box)
+	var academy := UiKit.button("RETURN TO ACADEMY", Vector2(0, 30), func(): game.return_to_academy(), "primary")
 	box.add_child(academy)
-	var again := UiKit.button("Run again (new map)", Vector2(0, 24), func(): game.restart())
+	var again := UiKit.button("RUN AGAIN", Vector2(0, 26), func(): game.restart(), "info")
 	box.add_child(again)
 	for b in [academy, again]:
-		b.add_theme_font_size_override("font_size", UiKit.fs(10))
+		b.add_theme_font_size_override("font_size", UiKit.tfs(10))

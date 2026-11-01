@@ -17,20 +17,24 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
-**UI pixel ala Overgeared Hero + kartu level up baru.**
-- Seluruh UI (layar utama, semua halaman, panel, HUD saat run) diganti ke gaya pixel: panel ungu gelap bergaris
-  diagonal, garis tepi hitam tegas, bevel ungu, judul pita merah, tombol X merah berbentuk wajik, tombol utama
-  berbingkai emas, tombol hijau untuk aksi. Posisi menu tetap seperti layout HoK.
-- 64 ikon pixel baru (resource, menu, semua senjata, semua tome, stat) dibuat dengan PixelLab.
-- Font pixel: DotGothic16 (teks) + Silkscreen (judul/tombol). Ukuran font dikunci ke grid pixel supaya tajam.
-- **Level up**: tidak ada lagi panel besar dengan 3 tombol lebar. Sekarang 3 kartu ringkas: jenis (WEAPON/TOME),
-  level (NEW atau LV 2>3), ikon besar, nama, efek, petunjuk combo (emas), strip rarity di bawah. Shrine Ley
-  memakai kartu yang sama (BOON).
-- Slot senjata/tome di kiri atas saat run sekarang berupa ikon + angka level (gembok untuk slot terkunci).
-- [ ] Teks terbaca jelas di HP (tidak terlalu kecil / buram)?
-- [ ] Kartu level up enak dibaca dan dipilih dengan jempol?
-- [ ] Ikon-ikonnya cocok dengan senjata/tome-nya? Ada yang mirip game lain?
-- [ ] Ada layar yang masih terasa kosong atau terlalu penuh?
+**UI revisi 2: font Galmuri, lebih berwarna, lebih sedikit teks, lebih besar.**
+- Font diganti ke **Galmuri** (pilihan B): Galmuri 9 untuk teks, Galmuri 11 Bold untuk judul/tombol.
+- Panel lebih terang (ungu dengan garis diagonal lebar), baris di dalam panel gelap, judul seksi berupa bar gelap
+  dengan ikon, paku emas di sudut panel overlay. Tombol berwarna sesuai fungsi: emas = utama, hijau = aksi,
+  merah = hapus/batal, biru = info.
+- Teks dikurangi: stat, biaya, hadiah, slot, dan level sekarang berupa **ikon + angka**. Penjelasan panjang dipindah
+  ke tooltip.
+- Ornamen: peta akademi tetap terlihat (redup) di belakang halaman, gambar banner baru untuk Rift (Ruined
+  Courtyard) dan Expedition, karakter besar di halaman Characters/Rift.
+- Halaman yang diubah: Characters (stat ikon, Enhance/Equipment/Bond pakai slot ikon), Rift (banner, hadiah ikon,
+  kit karakter), Expedition (kartu misi + ikon hadiah, timer bar, CLAIM/RECALL), Codex (grid ikon, resep evolusi
+  bergambar), panel bangunan (biaya dalam slot ikon), Lessons (kartu 2 kolom), Workshop (tas berupa grid item),
+  Dormitory (kartu penghuni), menu pause dan layar hasil run (ikon stat, build, hadiah).
+- Kartu level up tetap (sudah oke), cuma fontnya ikut Galmuri.
+- [ ] Font Galmuri terbaca jelas di HP?
+- [ ] Masih terasa terlalu banyak teks? Halaman mana?
+- [ ] Warna sudah tidak monoton?
+- [ ] Tombol cukup besar untuk jempol?
 
 **Sebelumnya: tahap 3: layar utama = peta akademi.**
 - Layar utama sekarang **peta akademi** yang bisa digeser. Bangunan dibuat dengan PixelLab; yang masih runtuh

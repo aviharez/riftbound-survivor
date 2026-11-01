@@ -1,9 +1,9 @@
 class_name UiKit
 extends RefCounted
 ## Shared menu look: pixel-art UI (Syifa's reference: Overgeared Hero). Hard-edged PixelStyle frames (black
-## outline, purple border with bevel, notched corners, striped dark fill), pixel fonts (DotGothic16 body,
-## Silkscreen Bold titles/buttons, SIL OFL) and pixel icons (assets/ui/icons, PixelLab). Font sizes snap to the
-## fonts' pixel grids (8 / 16 / 24) so the letters stay crisp blocks.
+## outline, purple border with bevel, notched corners, striped fill), Galmuri pixel fonts (Galmuri 9 body,
+## Galmuri 11 Bold titles/buttons, SIL OFL) and pixel icons (assets/ui/icons, PixelLab). Font sizes snap to the
+## fonts' pixel grids (`fs`, `tfs`) so the letters stay crisp blocks.
 
 const NAVY := Color("221a40")
 const GOLD := Color("ffd062")
@@ -22,9 +22,14 @@ const ICON_DIR := "res://assets/ui/icons/"
 static var _icons := {}
 
 
-## Font sizes on the pixel grid of both fonts: 8 (small), 16 (big), 24 (huge).
+## Font sizes on the fonts' pixel grids (whole virtual pixels, crisp at any integer screen scale):
+## body Galmuri 9 = 10 / 20, titles and buttons Galmuri 11 Bold = 12 / 24.
 static func fs(size: int) -> int:
-	return 8 if size < 12 else (16 if size < 22 else 24)
+	return 10 if size < 15 else 20
+
+
+static func tfs(size: int) -> int:
+	return 12 if size < 18 else 24
 
 
 static func label(text: String, size: int, col: Color) -> Label:
@@ -34,7 +39,7 @@ static func label(text: String, size: int, col: Color) -> Label:
 	l.add_theme_color_override("font_color", col)
 	l.add_theme_color_override("font_outline_color", Color("05030c"))
 	l.add_theme_constant_override("outline_size", 2)
-	l.add_theme_constant_override("line_spacing", -4)   # DotGothic16's line box is tall for its 8 px letters
+	l.add_theme_constant_override("line_spacing", 0)
 	return l
 
 
@@ -42,72 +47,101 @@ static func label(text: String, size: int, col: Color) -> Label:
 static func title(text: String, size: int, col := IVORY) -> Label:
 	var l := label(text, size, col)
 	l.add_theme_font_override("font", TITLE_FONT)
+	l.add_theme_font_size_override("font_size", tfs(size))
 	l.add_theme_constant_override("outline_size", 3)
 	return l
 
 
-## Panel style. `border` CYAN = selected, GREY = disabled, GOLD = highlighted frame, else the purple frame.
+## Panel style. `border` CYAN = selected, GREY = disabled, GOLD = highlighted frame, NAVY = dark inset well
+## (rows inside a panel), else the main purple panel.
 static func style(border: Color, margin := 8.0) -> PixelStyle:
 	var sb := PixelStyle.new()
 	sb.drop = 0
 	if border == CYAN:
-		sb.border = Color("49c6f0")
-		sb.light = Color("b5f3ff")
-		sb.shade = Color("1f6d93")
-		sb.glow = Color(0.45, 0.9, 1.0, 0.55)
-		sb.fill = Color("1d2f5a")
-		sb.fill_dark = Color("233a6c")
+		sb.border = Color("ffd062")
+		sb.light = Color("fff3c2")
+		sb.shade = Color("a8721c")
+		sb.glow = Color(1.0, 0.85, 0.35, 0.5)
+		sb.fill = Color("4a3a9a")
+		sb.fill_dark = Color("5444aa")
 	elif border == GREY:
-		sb.border = Color("3e3a52")
-		sb.light = Color("55506c")
+		sb.border = Color("4a4560")
+		sb.light = Color("625c7c")
 		sb.shade = Color("2a2638")
-		sb.fill = Color("1a1726")
-		sb.fill_dark = Color("1e1a2c")
+		sb.fill = Color("221e33")
+		sb.fill_dark = Color("26223a")
 	elif border == GOLD:
-		sb.border = Color("d9a032")
+		sb.border = Color("e2a93a")
 		sb.light = Color("ffe08a")
 		sb.shade = Color("8a5a14")
+	elif border == NAVY:
+		sb.border = Color("3e3082")
+		sb.light = Color("5040a0")
+		sb.shade = Color("181034")
+		sb.fill = Color("1b1440")
+		sb.fill_dark = Color("201848")
+		sb.border_w = 1
 	sb.set_content_margin_all(margin)
 	return sb
 
 
-## Button looks: "normal" (purple menu button), "primary" (gold-framed dark call to action), "accent" (green confirm).
+## A dark inset row / box inside a panel; returns [panel, vbox].
+static func well(margin := 5.0) -> Array:
+	return panel(margin, NAVY)
+
+
+## Button looks: "normal" (lavender), "primary" (gold-framed dark call to action), "accent" (green confirm),
+## "danger" (red), "info" (blue).
 static func button_style(kind: String, state: String) -> PixelStyle:
 	var sb := PixelStyle.new()
 	sb.set_content_margin_all(4.0)
 	sb.drop = 0 if state == "pressed" else 2
 	if state == "disabled":
-		sb.border = Color("3e3a52")
-		sb.light = Color("55506c")
+		sb.border = Color("4a4560")
+		sb.light = Color("625c7c")
 		sb.shade = Color("2a2638")
-		sb.fill = Color("1c1929")
-		sb.fill_dark = Color("201c2e")
+		sb.fill = Color("2a2640")
+		sb.fill_dark = Color("2e2a46")
 		return sb
 	match kind:
 		"normal":
-			sb.fill = Color("35296a")
-			sb.fill_dark = Color("3c2f78")
-			sb.border = Color("5b47b5")
-			sb.light = Color("8a76e0")
-			sb.shade = Color("241a4e")
+			sb.fill = Color("5640b0")
+			sb.fill_dark = Color("5e48bc")
+			sb.border = Color("a08cf0")
+			sb.light = Color("d6ccff")
+			sb.shade = Color("33257a")
 		"primary":
 			sb.fill = Color("3a2412")
-			sb.fill_dark = Color("4a2f16")
+			sb.fill_dark = Color("452b15")
 			sb.border = Color("f2b53a")
 			sb.light = Color("ffe08a")
 			sb.shade = Color("9a6512")
 			sb.border_w = 3
 		"accent":
-			sb.fill = Color("1d4c44")
-			sb.fill_dark = Color("235a50")
-			sb.border = Color("46c27a")
-			sb.light = Color("8ff0a8")
-			sb.shade = Color("1f6a3c")
+			sb.fill = Color("1f8a5a")
+			sb.fill_dark = Color("249864")
+			sb.border = Color("6dffa8")
+			sb.light = Color("c8ffe0")
+			sb.shade = Color("135a38")
+		"danger":
+			sb.fill = Color("a3302a")
+			sb.fill_dark = Color("b03832")
+			sb.border = Color("ff8a6a")
+			sb.light = Color("ffd0c0")
+			sb.shade = Color("5a1612")
+		"info":
+			sb.fill = Color("2a5fb0")
+			sb.fill_dark = Color("3068bc")
+			sb.border = Color("8fd0ff")
+			sb.light = Color("d8f0ff")
+			sb.shade = Color("17356a")
 	if state == "hover":
 		sb.fill = sb.fill.lightened(0.12)
+		sb.fill_dark = sb.fill_dark.lightened(0.12)
 		sb.border = sb.border.lightened(0.2)
 	elif state == "pressed":
 		sb.fill = sb.fill.darkened(0.2)
+		sb.fill_dark = sb.fill_dark.darkened(0.2)
 	return sb
 
 
@@ -116,7 +150,7 @@ static func button(text: String, min_size: Vector2, cb: Callable, kind := "norma
 	b.text = text
 	b.custom_minimum_size = min_size
 	b.focus_mode = Control.FOCUS_NONE
-	b.add_theme_font_size_override("font_size", 8)
+	b.add_theme_font_size_override("font_size", 12)
 	b.add_theme_font_override("font", BOLD_FONT)
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, button_style(kind, st))
@@ -147,21 +181,23 @@ static func panel(margin := 8.0, border := PURPLE) -> Array:
 	return [p, box]
 
 
-## A section header: pixel title between two rules.
-static func header(text: String, size := 8) -> Control:
+## A section header: dark bar with a gold title and an optional icon.
+static func header(text: String, size := 12, icon_name := "") -> Control:
+	var p := PanelContainer.new()
+	var sb := style(NAVY, 2.0)
+	sb.pattern = false
+	sb.fill = Color("120c2c")
+	sb.content_margin_left = 5
+	p.add_theme_stylebox_override("panel", sb)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	for i in 2:
-		var line := ColorRect.new()
-		line.color = Color("5b47b5")
-		line.custom_minimum_size = Vector2(0, 1)
-		line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		line.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(line)
-		if i == 0:
-			var t := title(text, size, GOLD)
-			row.add_child(t)
-	return row
+	row.add_theme_constant_override("separation", 4)
+	p.add_child(row)
+	if icon_name != "" and icon_tex(icon_name) != null:
+		row.add_child(icon_rect(icon_name, 16))
+	var t := title(text, size, GOLD)
+	t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(t)
+	return p
 
 
 ## A full-screen dimmed overlay with a centred pixel panel; returns [overlay, content VBox, title Label].
@@ -201,6 +237,7 @@ static func overlay(parent: Control, width: float, heading := "", close := Calla
 	var p := PanelContainer.new()
 	var ps := style(PURPLE, 10.0)
 	ps.border_w = 3
+	ps.rivets = true
 	if heading != "":
 		ps.content_margin_top = 18
 	p.add_theme_stylebox_override("panel", ps)
@@ -278,7 +315,7 @@ static func refresh_portrait(c: Control) -> void:
 
 
 ## A dark square item slot with an icon (cards, gear, inventory).
-static func slot(icon_name: String, px: float, frame := PURPLE) -> Control:
+static func slot(icon_name: String, px: float, frame := PURPLE) -> Panel:
 	var c := Panel.new()
 	c.custom_minimum_size = Vector2(px, px)
 	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -320,6 +357,105 @@ static func bar(k: float, w: float, col := CYAN) -> Control:
 		c.draw_rect(Rect2(inner.position, Vector2(fw, inner.size.y)), col)
 		c.draw_rect(Rect2(inner.position, Vector2(fw, 1)), col.lightened(0.45)))
 	return c
+
+
+## An icon + value pair (stats, resources). Returns the HBox; the value label is its child 1.
+static func chip(icon_name: String, text: String, col := IVORY) -> HBoxContainer:
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 2)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	r.add_child(icon_rect(icon_name, 16))
+	var l := label(text, 10, col)
+	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	r.add_child(l)
+	return r
+
+
+## Resource icons + amounts for a cost dictionary, red when the save cannot pay that part.
+static func cost_chips(cost: Dictionary, save := {}) -> HBoxContainer:
+	var r := HBoxContainer.new()
+	r.add_theme_constant_override("separation", 6)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for k in cost:
+		if int(cost[k]) <= 0:
+			continue
+		var ok := save.is_empty() or int(save.get(k, 0)) >= int(cost[k])
+		r.add_child(chip(k if icon_tex(k) != null else "materials", str(int(cost[k])), IVORY if ok else RED))
+	return r
+
+
+## Rank pips: filled gold squares for the ranks owned, dark ones for the rest.
+static func pips(n: int, total: int, col := GOLD) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(total * 8, 8)
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(func():
+		for i in total:
+			var r := Rect2(i * 8, 1, 6, 6)
+			c.draw_rect(r.grow(1), Color("05030c"))
+			c.draw_rect(r, col if i < n else Color("2a2148"))
+			if i < n:
+				c.draw_rect(Rect2(r.position, Vector2(6, 1)), col.lightened(0.5)))
+	return c
+
+
+## A button holding an icon row (label + cost chips) instead of plain text; returns [button, content HBox].
+static func rich_button(min_size: Vector2, cb: Callable, kind := "primary") -> Array:
+	var b := button("", min_size, cb, kind)
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 4)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+	return [b, row]
+
+
+## The pixel icon for a stat key (equipment, lessons, boons).
+static func stat_icon(stat: String) -> String:
+	match stat:
+		"damage_pct", "damage": return "damage"
+		"crit": return "crit"
+		"attack_speed_pct": return "haste"
+		"max_hp": return "hp"
+		"armor": return "armor"
+		"speed_pct": return "speed"
+		"luck": return "fortune"
+		"xp_pct": return "study"
+		"pickup_pct": return "attraction"
+		"regen": return "mending"
+		"gold_pct": return "greed"
+	return "exp"
+
+
+## An equipment piece as a rarity-framed icon slot (its main stat's icon).
+static func item_slot(it: Dictionary, px := 38.0) -> Panel:
+	var base := GameData.equip_base(String(it["base"]))
+	var col: Color = GameData.GEAR_RARITY_COLORS[int(it["rarity"])]
+	var sl: Panel = slot(stat_icon(String(base["stat"])), px)
+	var sb := rarity_style(col, 0.0)
+	sb.fill = col.darkened(0.78)
+	sb.fill_dark = col.darkened(0.72)
+	sl.add_theme_stylebox_override("panel", sb)
+	return sl
+
+
+## A framed banner illustration (assets/ui/banner_*.png, PixelLab) scaled by whole pixels to fit w x h.
+static func banner(path: String, w: float, h: float) -> Control:
+	var p := PanelContainer.new()
+	var sb := style(GOLD, 2.0)
+	sb.pattern = false
+	sb.fill = Color("05030c")
+	p.add_theme_stylebox_override("panel", sb)
+	var t := TextureRect.new()
+	t.texture = load(path) if ResourceLoader.exists(path) else null
+	t.custom_minimum_size = Vector2(w - 8, h - 8)
+	t.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	t.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	t.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(t)
+	return p
 
 
 ## "Gold 250, Arcane Shards 2" for a cost dictionary.
