@@ -4,11 +4,12 @@ extends RefCounted
 ## Autotests never write here; tests/test_academy.gd uses its own path.
 
 const DEFAULT_PATH := "user://riftbound_save.json"
-const VERSION := 5
+const VERSION := 6
 # v1 -> v2: "lessons" (Staff Room permanent upgrades, id -> rank); new buildings start at 0 (handled generally).
 # v2 -> v3: "shards" (Arcane Shards) and "characters" (id -> {exp, passive, weapon}: level EXP and enhance ranks).
 # v3 -> v4: equipment ("items" inventory, "equipped" char -> slot -> uid, "next_uid") and "essence" (location -> n).
 # v4 -> v5: character "bond" EXP, "dorm" (resident ids), "talked" (id -> date of the last talk), "expeditions".
+# v5 -> v6: "construction" (buildings being built: {id, end, total}) and "ads" ({day, count}: rewarded ads today).
 const RESOURCES := ["gold", "materials", "aether", "exp", "shards"]
 const ENHANCE_TRACKS := ["passive", "weapon"]
 
@@ -30,6 +31,7 @@ static func defaults() -> Dictionary:
 		"characters": {},
 		"items": [], "next_uid": 1, "equipped": {}, "essence": {},
 		"dorm": [], "talked": {}, "expeditions": [],
+		"construction": [], "ads": {"day": "", "count": 0},
 	}
 
 
@@ -69,6 +71,7 @@ static func load_data() -> Dictionary:
 			d["characters"][id][k] = int(st.get(k, 0))
 	_clean_equipment(d)
 	_clean_dorm(d)
+	_clean_construction(d)
 	d["version"] = VERSION
 	# a locked (or unknown) selected character falls back to Astra
 	if not character_unlocked(d, String(d["character"])):
@@ -134,6 +137,128 @@ static func upgrade(d: Dictionary, id: String) -> bool:
 		d[k] = int(d[k]) - int(cost[k])
 	d["buildings"][id] = building_level(d, id) + 1
 	return true
+
+
+# ------------------------------------------------------------------ construction (real-time timers)
+
+static func _clean_construction(d: Dictionary) -> void:
+	if typeof(d["construction"]) != TYPE_ARRAY:
+		d["construction"] = []
+	var keep: Array = []
+	for c in d["construction"]:
+		if typeof(c) == TYPE_DICTIONARY and not GameData.building_by_id(String(c.get("id", ""))).is_empty():
+			keep.append({"id": String(c["id"]), "end": int(c.get("end", 0)), "total": int(c.get("total", 1))})
+	d["construction"] = keep
+	if typeof(d["ads"]) != TYPE_DICTIONARY:
+		d["ads"] = {"day": "", "count": 0}
+	d["ads"] = {"day": String(d["ads"].get("day", "")), "count": int(d["ads"].get("count", 0))}
+
+
+## The building's running construction {id, end, total}, or {}.
+static func construction_of(d: Dictionary, id: String) -> Dictionary:
+	for c in d["construction"]:
+		if c["id"] == id:
+			return c
+	return {}
+
+
+static func builders_free(d: Dictionary) -> int:
+	return GameData.BUILDER_SLOTS - d["construction"].size()
+
+
+## Why the next level cannot start now: "" (it can), "max", "building", "builders" or "cost".
+static func build_block(d: Dictionary, id: String) -> String:
+	var cost := next_cost(d, id)
+	if cost.is_empty():
+		return "max"
+	if not construction_of(d, id).is_empty():
+		return "building"
+	if builders_free(d) <= 0:
+		return "builders"
+	if not can_afford(d, cost):
+		return "cost"
+	return ""
+
+
+## Pays and starts building the next level (it is gained when the timer ends). False changes nothing.
+static func start_build(d: Dictionary, id: String, now: int) -> bool:
+	if build_block(d, id) != "":
+		return false
+	var cost := next_cost(d, id)
+	for k in cost:
+		d[k] = int(d[k]) - int(cost[k])
+	var t := GameData.build_time(GameData.building_by_id(id), building_level(d, id))
+	d["construction"].append({"id": id, "end": now + t, "total": t})
+	return true
+
+
+static func build_left(d: Dictionary, id: String, now: int) -> int:
+	var c := construction_of(d, id)
+	return 0 if c.is_empty() else maxi(0, int(c["end"]) - now)
+
+
+## Finishes a construction whose time is up or nearly up (under FREE_FINISH_SEC): the level is gained.
+static func finish_build(d: Dictionary, id: String, now: int) -> bool:
+	var c := construction_of(d, id)
+	if c.is_empty() or build_left(d, id, now) > GameData.FREE_FINISH_SEC:
+		return false
+	d["construction"].erase(c)
+	d["buildings"][id] = building_level(d, id) + 1
+	return true
+
+
+## Completes every construction whose timer has ended; returns their building ids.
+static func complete_due(d: Dictionary, now: int) -> Array:
+	var done: Array = []
+	for c in d["construction"].duplicate():
+		if int(c["end"]) <= now:
+			finish_build(d, String(c["id"]), now)
+			done.append(String(c["id"]))
+	return done
+
+
+## How much one speed-up ad takes off `left` seconds.
+static func ad_speedup(left: int) -> int:
+	return maxi(GameData.AD_SPEEDUP_SEC, int(left * GameData.AD_SPEEDUP_SHARE))
+
+
+static func speed_up_build(d: Dictionary, id: String, now: int) -> void:
+	var c := construction_of(d, id)
+	if not c.is_empty():
+		c["end"] = int(c["end"]) - ad_speedup(build_left(d, id, now))
+
+
+static func speed_up_expedition(d: Dictionary, index: int, now: int) -> void:
+	if index >= 0 and index < d["expeditions"].size():
+		var e: Dictionary = d["expeditions"][index]
+		e["end"] = int(e["end"]) - ad_speedup(maxi(0, int(e["end"]) - now))
+
+
+# ------------------------------------------------------------------ rewarded ads (daily cap)
+
+static func ads_left(d: Dictionary, day: String) -> int:
+	if String(d["ads"]["day"]) != day:
+		return GameData.ADS_PER_DAY
+	return maxi(0, GameData.ADS_PER_DAY - int(d["ads"]["count"]))
+
+
+## Counts one watched ad; false when today's cap is used up.
+static func use_ad(d: Dictionary, day: String) -> bool:
+	if ads_left(d, day) <= 0:
+		return false
+	if String(d["ads"]["day"]) != day:
+		d["ads"] = {"day": day, "count": 0}
+	d["ads"]["count"] = int(d["ads"]["count"]) + 1
+	return true
+
+
+## Adds a second copy of a run's resource rewards (the "double rewards" ad); items and stats are not doubled.
+static func bank_bonus(d: Dictionary, rewards: Dictionary) -> void:
+	for k in RESOURCES:
+		d[k] = int(d[k]) + int(rewards.get(k, 0))
+	var ess: Dictionary = rewards.get("essence", {})
+	for loc in ess:
+		d["essence"][loc] = essence(d, loc) + int(ess[loc])
 
 
 ## Characters with an `unlock` building need it restored (Lv 1+); the rest are always available.

@@ -170,6 +170,11 @@ func _refresh_active() -> void:
 			cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			r.add_child(cb)
 		else:
+			var ab := UiKit.button("AD", Vector2(36, 26), _on_speed.bind(i), "info")
+			ab.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			ab.tooltip_text = "Watch an ad: -%s (%d left today)" % [time_text(mini(left, SaveData.ad_speedup(left))), SaveData.ads_left(save, SaveData.today())]
+			ab.disabled = SaveData.ads_left(save, SaveData.today()) <= 0
+			r.add_child(ab)
 			var rb := UiKit.button("SURE?" if _armed_recall == i else "RECALL", Vector2(60, 26), _on_recall.bind(i), "danger")
 			rb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			rb.tooltip_text = "Come back now, no reward"
@@ -247,6 +252,10 @@ func _on_collect(i: int) -> void:
 		_last.text = "%s is back: %s%s (+%d bond)" % [GameData.character_by_id(got["char"])["name"], rewards_text(got),
 			(" - " + ", ".join(items)) if not items.is_empty() else "", GameData.BOND_EXPEDITION]
 		shell.changed()
+
+
+func _on_speed(i: int) -> void:
+	shell.watch_ad("expedition_speedup", func(): SaveData.speed_up_expedition(shell.save, i, _now()))
 
 
 func _on_recall(i: int) -> void:

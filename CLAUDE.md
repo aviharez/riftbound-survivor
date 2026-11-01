@@ -104,6 +104,17 @@ Read it before starting any phase.**
   Big illustrations: `assets/illustrations/<id>.png` (spec in its README) replace the scaled sprite on the Characters page. Autotest flags
   `--char-level=15 --enhance=3,3 --gear=robe:4,wand:2`; the summary prints `char_level= enhance= max_hp= shards= equipment=`. Bump `SaveData.VERSION` and migrate in `load_data()` if the format changes;
   `tests/test_academy.gd` loads a hand-written v1 save to check the migration.
+- Construction (phase 4, design doc section 5): `SaveData.start_build` pays and adds `construction` {id, end, total}
+  (save v6); the level comes when the timer ends (`complete_due`, run every second by `Home._tick`) or by
+  `finish_build` once under `FREE_FINISH_SEC`. Times: `GameData.build_time` (`BUILD_TIMES` per level, character
+  buildings `BUILD_TIME_PER_GOLD`), `BUILDER_SLOTS` at once. `SaveData.upgrade` (instant) stays for tests only.
+  Map shows scaffolding + a timer bubble; `--academy-center=<id>` scrolls the map for screenshots.
+- Rewarded ads (design doc section 8): `scripts/meta/ads.gd` `Ads.show_rewarded(parent, placement, cb)` is a
+  2 s placeholder until an ad SDK plugin is added (swap its body, keep the callback). Daily cap `ADS_PER_DAY` in
+  save `ads` {day, count} (`SaveData.use_ad`). Hooks: building speed-up and expedition speed-up
+  (`Home.watch_ad`, `AD_SPEEDUP_SEC` / `AD_SPEEDUP_SHARE`), one revive per run (`main.on_player_died` ->
+  `Hud.show_revive`, `AD_REVIVE_HP`), double run rewards on the result screen (`SaveData.bank_bonus`, resources
+  only). Never in autotests. Android notifications for finished timers need a plugin: not done yet.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.
@@ -158,8 +169,9 @@ Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, R
 (swarm level per minute, wraiths, threat meter), academy (Library, Training Ground, Staff Room, 6 character
 buildings + Workshop + Dormitory), **all 13 characters** with v3 sprites + walk/idle animations and mechanical
 traits (phase 1 done), **phase 2 meta systems** (character level, enhance, equipment + crafting, bond with 65 story
-scenes, dormitory, expeditions), **phase 3 UI + home map** (academy hub map with tappable buildings made in phase 3 at Syifa's request; next:
-construction timers + ad hooks (rest of phase 4), then phase 5 locations / danger / quests; some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+scenes, dormitory, expeditions), **phase 3 UI + home map** (academy hub map with tappable buildings made in phase 3 at Syifa's request),
+**phase 4 construction timers + rewarded-ad hooks** (placeholder ads, no notifications yet); next: phase 5
+locations / danger / quests (Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
 The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
 Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).

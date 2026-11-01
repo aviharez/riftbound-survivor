@@ -215,6 +215,41 @@ func _init() -> void:
 	var bonus_mods: Array = SaveData.char_run_bonus(loaded, "astra")["mods"]
 	check(bonus_mods.size() == GameData.CHAR_LEVEL_MODS.size() + GameData.BOND_LEVEL_MODS.size(), "bond mods reach the run bonus")
 
+	# --- v6: construction timers and rewarded-ad bookkeeping ---
+	d = SaveData.defaults()
+	d["gold"] = 5000
+	d["materials"] = 1000
+	d["aether"] = 200
+	check(SaveData.start_build(d, "library", 100), "library construction starts")
+	check(SaveData.building_level(d, "library") == 0 and d["gold"] == 5000 - 400, "paid now, level comes later")
+	check(SaveData.build_block(d, "training") == "builders" and not SaveData.start_build(d, "training", 100), "one builder")
+	check(SaveData.build_block(d, "library") == "building", "cannot start the same building twice")
+	var t1 := GameData.build_time(GameData.building_by_id("library"), 0)
+	check(SaveData.build_left(d, "library", 100) == t1, "timer length from BUILD_TIMES")
+	if t1 <= GameData.FREE_FINISH_SEC:
+		check(SaveData.finish_build(d, "library", 100), "short first build can be finished free")
+	else:
+		check(SaveData.complete_due(d, 100 + t1) == ["library"], "construction completes when due")
+	check(SaveData.building_level(d, "library") == 1 and d["construction"].is_empty(), "library Lv1 after construction")
+	check(SaveData.start_build(d, "library", 200), "library Lv2 construction")
+	var t2 := GameData.build_time(GameData.building_by_id("library"), 1)
+	check(not SaveData.finish_build(d, "library", 200), "long build cannot be finished free at once")
+	SaveData.speed_up_build(d, "library", 200)
+	check(SaveData.build_left(d, "library", 200) == maxi(0, t2 - SaveData.ad_speedup(t2)), "an ad takes time off")
+	check(SaveData.complete_due(d, 200 + t2) == ["library"] and SaveData.building_level(d, "library") == 2, "completes when the timer ends")
+	check(GameData.build_time(GameData.building_by_id("frost_tower"), 0) > GameData.FREE_FINISH_SEC, "character buildings take a while")
+	check(SaveData.start_build(d, "frost_tower", 300), "frost tower construction")
+	SaveData.save_data(d)
+	loaded = SaveData.load_data()
+	check(loaded["construction"].size() == 1 and typeof(loaded["construction"][0]["end"]) == TYPE_INT, "construction survives save/load")
+	for i in GameData.ADS_PER_DAY:
+		SaveData.use_ad(d, "2026-11-02")
+	check(SaveData.ads_left(d, "2026-11-02") == 0 and not SaveData.use_ad(d, "2026-11-02"), "daily ad cap")
+	check(SaveData.ads_left(d, "2026-11-03") == GameData.ADS_PER_DAY, "the cap resets the next day")
+	var g0: int = d["gold"]
+	SaveData.bank_bonus(d, {"gold": 100, "essence": {"courtyard": 3}})
+	check(d["gold"] == g0 + 100 and SaveData.essence(d, "courtyard") == 3, "double rewards add the resources again")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveData.path))
 	print("academy tests: ", "PASS" if failures == 0 else "%d FAILED" % failures)
 	quit(1 if failures > 0 else 0)

@@ -17,6 +17,24 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Tahap 4 selesai: waktu pembangunan + iklan berhadiah (placeholder).**
+- Membangun / upgrade bangunan sekarang **butuh waktu nyata**. Biaya dibayar di awal, levelnya naik saat timer
+  habis. Level 1 = 5 menit, Lv 2 = 30 menit, Lv 3 = 2 jam, Lv 4 = 8 jam. Bangunan karakter 30–60 menit.
+  Sisa waktu di bawah 5 menit bisa langsung **FINISH** gratis.
+- Hanya **1 tukang**: satu bangunan dibangun dalam satu waktu (tombol lain jadi BUILDER BUSY).
+- Di peta, bangunan yang sedang dibangun pakai perancah kayu + gelembung timer. Saat sudah bisa diselesaikan,
+  gelembungnya hijau "DONE!". Quest di kiri atas ikut menampilkan timernya.
+- **Iklan berhadiah** (opsional, maks 10 per hari). Belum ada SDK iklan, jadi muncul layar "AD" 2 detik sebagai
+  pengganti:
+  - panel bangunan: tombol biru **AD -30m** (memotong 30 menit atau 25% sisa waktu, mana yang lebih besar);
+  - Expedition: tombol **AD** di samping RECALL;
+  - saat mati di Rift: **REVIVE (AD)** dengan 50% HP, sekali per run, atau GIVE UP;
+  - layar hasil run: **x2 REWARDS (AD)** (resource dobel; equipment tidak).
+- Belum ada: notifikasi Android saat timer selesai (butuh plugin, menyusul).
+- [ ] Waktu bangun terasa wajar? Terlalu lama / terlalu cepat?
+- [ ] Revive dan x2 rewards berjalan benar (cek gold di akademi bertambah dua kali)?
+- [ ] Batas 10 iklan per hari terasa pas?
+
 **UI revisi 2: font Galmuri, lebih berwarna, lebih sedikit teks, lebih besar.**
 - Font diganti ke **Galmuri** (pilihan B): Galmuri 9 untuk teks, Galmuri 11 Bold untuk judul/tombol.
 - Panel lebih terang (ungu dengan garis diagonal lebar), baris di dalam panel gelap, judul seksi berupa bar gelap

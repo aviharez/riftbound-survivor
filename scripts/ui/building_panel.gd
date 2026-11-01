@@ -14,6 +14,8 @@ var _effect: Label
 var _req: HBoxContainer
 var _build: Button
 var _pips: HBoxContainer
+var _timer_row: HBoxContainer
+var _speed: Button
 var _action: Button
 
 
@@ -60,6 +62,9 @@ func _init(s, parent: Control) -> void:
 	_req = HBoxContainer.new()
 	_req.add_theme_constant_override("separation", 6)
 	info.add_child(_req)
+	_timer_row = HBoxContainer.new()
+	_timer_row.add_theme_constant_override("separation", 6)
+	info.add_child(_timer_row)
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 6)
 	box.add_child(buttons)
@@ -68,6 +73,8 @@ func _init(s, parent: Control) -> void:
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons.add_child(sp)
+	_speed = UiKit.button("", Vector2(110, 34), _on_speed, "info")
+	buttons.add_child(_speed)
 	_build = UiKit.button("BUILD", Vector2(170, 34), _on_build, "primary")
 	_build.add_theme_font_size_override("font_size", UiKit.tfs(20))
 	buttons.add_child(_build)
@@ -106,6 +113,8 @@ func refresh() -> void:
 		ch.queue_free()
 	if cost.is_empty():
 		_req.add_child(UiKit.label("Fully restored.", 10, UiKit.GREEN))
+	elif not SaveData.construction_of(save, id).is_empty():
+		_req.add_child(UiKit.label("Paid. The builders are at work.", 10, UiKit.GREEN))
 	else:
 		# each requisition: icon slot with have / need under it (red while short)
 		for k in cost:
@@ -123,12 +132,42 @@ func refresh() -> void:
 			nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			col.add_child(nl)
 			_req.add_child(col)
-	if cost.is_empty():
-		_build.text = "COMPLETE"
-		_build.disabled = true
-	else:
-		_build.text = "BUILD" if lv == 0 else "UPGRADE"
-		_build.disabled = not SaveData.can_afford(save, cost)
+	# construction: timer bar, free finish, ad speed-up
+	var now := int(Time.get_unix_time_from_system())
+	var con := SaveData.construction_of(save, id)
+	for ch in _timer_row.get_children():
+		ch.queue_free()
+	_speed.visible = false
+	match SaveData.build_block(save, id):
+		"max":
+			_build.text = "COMPLETE"
+			_build.disabled = true
+		"building":
+			var left := SaveData.build_left(save, id, now)
+			_timer_row.add_child(UiKit.icon_rect("craft", 16))
+			var bar := UiKit.bar(1.0 - float(left) / maxf(1.0, float(con["total"])), 150.0, UiKit.GOLD)
+			bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			_timer_row.add_child(bar)
+			_timer_row.add_child(UiKit.label(ExpeditionPage.time_text(left), 10, UiKit.GOLD))
+			if left <= GameData.FREE_FINISH_SEC:
+				_build.text = "FINISH"
+				_build.disabled = false
+			else:
+				_build.text = "BUILDING"
+				_build.disabled = true
+				_speed.visible = true
+				var ads := SaveData.ads_left(save, SaveData.today())
+				_speed.text = "AD -%s" % ExpeditionPage.time_text(mini(left, SaveData.ad_speedup(left))).get_slice(" ", 0)
+				_speed.tooltip_text = "Watch an ad to speed up (%d left today)" % ads
+				_speed.disabled = ads <= 0
+		"builders":
+			_build.text = "BUILDER BUSY"
+			_build.disabled = true
+			_timer_row.add_child(UiKit.label("One building at a time.", 10, UiKit.RED))
+		_:
+			_build.text = "BUILD" if lv == 0 else "UPGRADE"
+			_build.disabled = not SaveData.can_afford(save, cost)
+			_timer_row.add_child(UiKit.chip("bell", ExpeditionPage.time_text(GameData.build_time(b, lv)), UiKit.CYAN))
 	var act := _action_name(b)
 	_action.visible = act != ""
 	_action.text = act
@@ -164,9 +203,17 @@ func _draw_pic() -> void:
 
 
 func _on_build() -> void:
-	if SaveData.upgrade(shell.save, id):
+	var now := int(Time.get_unix_time_from_system())
+	var ok := SaveData.finish_build(shell.save, id, now) if not SaveData.construction_of(shell.save, id).is_empty() \
+		else SaveData.start_build(shell.save, id, now)
+	if ok:
 		shell.changed()
 		refresh()
+
+
+func _on_speed() -> void:
+	var bid := id
+	shell.watch_ad("build_speedup", func(): SaveData.speed_up_build(shell.save, bid, int(Time.get_unix_time_from_system())))
 
 
 func _on_action() -> void:

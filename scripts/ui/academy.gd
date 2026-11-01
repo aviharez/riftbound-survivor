@@ -9,7 +9,8 @@ extends Control
 ## --academy-shot=/tmp/a.png saves a screenshot and quits; --academy-demo uses an in-memory sample save;
 ## --academy-page=characters|rift|expedition|codex opens a page; --academy-tab=enhance|gear|bond picks the
 ## character tab; --academy-building=<id> opens a building; --academy-lessons / -workshop / -dorm / -settings
-## open those overlays; --academy-check opens everything once and quits (tests).
+## open those overlays; --academy-center=<id> scrolls the map to a building; --academy-check opens everything once
+## and quits (tests).
 
 const RUN_SCENE := "res://scenes/main.tscn"
 const NAV := [["characters", "Characters"], ["expedition", "Expedition"], ["codex", "Codex"]]
@@ -35,6 +36,8 @@ var _avatar: Control
 var _rift_char: Control
 var _reset_btn: Button
 var _armed := false
+var _toast: Label
+var _toast_t := 0.0
 
 
 func _ready() -> void:
@@ -57,6 +60,8 @@ func _ready() -> void:
 			pages["characters"].show_tab(a.get_slice("=", 1))
 		elif a.begins_with("--academy-building="):
 			building.open(a.get_slice("=", 1))
+		elif a.begins_with("--academy-center="):
+			map.center_on(GameData.ACADEMY_PLOTS[a.get_slice("=", 1)])
 	if "--academy-lessons" in args:
 		lessons.open(save)
 	if "--academy-workshop" in args:
@@ -108,6 +113,7 @@ func _demo_save() -> Dictionary:
 		SaveData.move_in(d, id)
 	SaveData.add_bond(d, "selene", GameData.BOND_EXP[3] + 30)
 	var now := int(Time.get_unix_time_from_system())
+	SaveData.start_build(d, "training", now - 600)
 	SaveData.start_expedition(d, "lyra", "crystals", now - 3 * 3600)
 	SaveData.start_expedition(d, "kael", "scout", now - 7200)
 	d["runs"] = 6
@@ -175,6 +181,22 @@ func _build() -> void:
 	building = BuildingPanel.new(self, self)
 	pages["characters"].build_overlays(self)
 	_build_settings()
+	_toast = UiKit.label("", 12, UiKit.GOLD)
+	_toast.add_theme_font_override("font", UiKit.TITLE_FONT)
+	_toast.add_theme_constant_override("outline_size", 4)
+	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_toast.offset_top = 52
+	_toast.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_toast)
+	# one tick a second: finish due constructions, keep timers on open panels moving
+	var tick := Timer.new()
+	tick.wait_time = 1.0
+	tick.autostart = true
+	tick.timeout.connect(_tick)
+	add_child(tick)
+	_tick()
 
 
 func _build_home_hud() -> void:
@@ -382,6 +404,37 @@ func _build_settings() -> void:
 
 # ------------------------------------------------------------------ state
 
+func _tick() -> void:
+	var done := SaveData.complete_due(save, int(Time.get_unix_time_from_system()))
+	for bid in done:
+		toast("%s restored!" % GameData.building_by_id(bid)["name"])
+	if not done.is_empty():
+		changed()
+	elif building != null and building.is_open():
+		building.refresh()
+
+
+func _process(delta: float) -> void:
+	if _toast_t > 0.0:
+		_toast_t -= delta
+		_toast.modulate.a = clampf(_toast_t, 0.0, 1.0)
+
+
+func toast(text: String) -> void:
+	_toast.text = text
+	_toast_t = 3.0
+
+
+## Rewarded ad hook (optional, daily cap): counts the ad, plays it, then runs `reward` and saves.
+func watch_ad(placement: String, reward: Callable) -> void:
+	if not SaveData.use_ad(save, SaveData.today()):
+		toast("No more ads today")
+		return
+	Ads.show_rewarded(self, placement, func():
+		reward.call()
+		changed())
+
+
 func show_page(id: String) -> void:
 	if id != "home" and not pages.has(id):
 		id = "home"
@@ -452,16 +505,23 @@ func quests() -> Array:
 		if now >= int(e["end"]):
 			out.append({"text": "%s is back from %s" % [GameData.character_by_id(e["char"])["name"], GameData.expedition_by_id(e["mission"])["name"]],
 				"ready": true, "go": show_page.bind("expedition")})
+	for c in save["construction"]:
+		var left := SaveData.build_left(save, c["id"], now)
+		var bname: String = GameData.building_by_id(c["id"])["name"]
+		if left <= GameData.FREE_FINISH_SEC:
+			out.append({"text": "Finish the %s" % bname, "ready": true, "go": _focus_building.bind(c["id"])})
+		else:
+			out.append({"text": "%s: %s left" % [bname, ExpeditionPage.time_text(left)], "go": _focus_building.bind(c["id"])})
 	var best := ""
 	var best_cost := INF
 	for b in GameData.BUILDINGS:
 		var cost := SaveData.next_cost(save, b["id"])
-		if cost.is_empty():
+		if cost.is_empty() or not SaveData.construction_of(save, b["id"]).is_empty():
 			continue
-		if SaveData.can_afford(save, cost):
+		if SaveData.build_block(save, b["id"]) == "":
 			out.append({"text": "Restore the %s" % b["name"] if SaveData.building_level(save, b["id"]) == 0 else "Upgrade the %s" % b["name"],
 				"ready": true, "go": _focus_building.bind(b["id"])})
-		elif int(cost["gold"]) < best_cost:
+		elif SaveData.build_block(save, b["id"]) == "cost" and int(cost["gold"]) < best_cost:
 			best_cost = int(cost["gold"])
 			best = b["id"]
 	if best != "":

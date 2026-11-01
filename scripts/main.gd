@@ -76,6 +76,7 @@ var _shots_taken := 0
 var _shot_times: Array = [3.0, 160.0]
 var _finishing := false
 var _choice_shot_done := false
+var _revived := false
 var _auto_portal_at := 240.0
 var _swarm_at := -1.0  # --swarm-at=30: start the Final Swarm early (autotest only)
 var _extra_weapons: Array = []  # --weapons=meteor,void: extra weapons at Lv 1 (autotest screenshots)
@@ -517,7 +518,39 @@ func on_pot_broken(pos: Vector2) -> void:
 
 
 func on_player_died() -> void:
+	# one revive per run for a rewarded ad (never in autotests; daily ad cap)
+	if not _auto and not _revived and not run_over:
+		var save := SaveData.load_data()
+		if SaveData.ads_left(save, SaveData.today()) > 0:
+			hud.show_revive(_revive, func(): _end_run(false))
+			return
 	_end_run(false)
+
+
+func _revive() -> void:
+	var save := SaveData.load_data()
+	if not SaveData.use_ad(save, SaveData.today()):
+		_end_run(false)
+		return
+	SaveData.save_data(save)
+	_revived = true
+	Ads.show_rewarded(self, "revive", func():
+		player.hp = player.stats["max_hp"] * GameData.AD_REVIVE_HP
+		player.iframes = 2.5
+		vfx.play("heal", player.position + Vector2(0, 6), 0.0, 1.0, Color.WHITE, GameData.VFX_LIGHT_BOOST, -1.0, player)
+		get_tree().paused = false)
+
+
+## The result screen's "double rewards" ad: banks the resource rewards a second time.
+func _double_rewards(rewards: Dictionary) -> void:
+	var save := SaveData.load_data()
+	if not SaveData.use_ad(save, SaveData.today()):
+		return
+	var loc: String = GameData.LOCATIONS[0]["id"]
+	var r := rewards.duplicate()
+	r["essence"] = {loc: int(rewards.get("essence", 0))}
+	SaveData.bank_bonus(save, r)
+	SaveData.save_data(save)
 
 
 # ------------------------------------------------------------------ chests & items
@@ -878,7 +911,8 @@ func _end_run(won: bool) -> void:
 	hud.show_result({"won": won, "kills": kills, "time": t, "level": level, "chests": chests_opened, "shrines": shrines_used,
 		"weapons": player.weapon_levels.duplicate(), "tomes": player.tomes.duplicate(), "seed": seed_value, "note": lv_line.strip_edges(),
 		"rewards": {"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain, "shards": shards, "essence": essence},
-		"items": drops})
+		"items": drops, "can_double": not _auto and SaveData.ads_left(SaveData.load_data(), SaveData.today()) > 0,
+		"double": _double_rewards})
 
 
 func return_to_academy() -> void:

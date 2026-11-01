@@ -33,9 +33,14 @@ func _init(s) -> void:
 
 
 var _centered := false
+var _pending_center := Vector2.INF
 
 
 func center_on(world: Vector2) -> void:
+	if size.x <= 0.0:
+		_pending_center = world   # not laid out yet: centre on the first frame instead
+		return
+	_centered = true
 	offset = world - size * 0.5
 	_clamp()
 	queue_redraw()
@@ -50,8 +55,7 @@ func _clamp() -> void:
 func _process(delta: float) -> void:
 	_t += delta
 	if not _centered and size.x > 0.0:
-		_centered = true
-		center_on(GameData.ACADEMY_MAIN_HALL + Vector2(0, 90))
+		center_on(_pending_center if _pending_center != Vector2.INF else GameData.ACADEMY_MAIN_HALL + Vector2(0, 90))
 	if not _pressed and _vel.length() > 5.0:
 		offset -= _vel * delta
 		_vel = _vel.lerp(Vector2.ZERO, minf(1.0, delta * 5.0))
@@ -136,6 +140,20 @@ func _draw_sprite(id: String, pos: Vector2, scale: float, tint := Color.WHITE) -
 
 func _draw_building(save: Dictionary, id: String, pos: Vector2) -> void:
 	var lv := SaveData.building_level(save, id)
+	if not SaveData.construction_of(save, id).is_empty():
+		# under construction: the building half-built (warm, see-through) with scaffold poles in front
+		var ruin2: String = GameData.ACADEMY_RUINS[abs(hash(id)) % GameData.ACADEMY_RUINS.size()]
+		if lv == 0:
+			_draw_sprite(ruin2, pos + Vector2(0, 6), 0.85)
+		_draw_sprite(id, pos - Vector2(0, 2), 1.0, Color(1.0, 0.85, 0.6, 0.75))
+		var wood := Color("8a5a2c")
+		for x in [-34, -12, 12, 34]:
+			draw_rect(Rect2(pos + Vector2(x - 1, -30), Vector2(3, 56)), Color("05030c"))
+			draw_rect(Rect2(pos + Vector2(x, -29), Vector2(1, 54)), wood)
+		for y in [-18, 6]:
+			draw_rect(Rect2(pos + Vector2(-36, y - 1), Vector2(73, 3)), Color("05030c"))
+			draw_rect(Rect2(pos + Vector2(-35, y), Vector2(71, 1)), wood.lightened(0.2))
+		return
 	if lv > 0:
 		_draw_sprite(id, pos, 1.0)
 		return
@@ -166,9 +184,25 @@ func _draw_plate(save: Dictionary, id: String, pos: Vector2) -> void:
 	draw_string_outline(font, at + Vector2(19, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color("05030c"))
 	draw_string(font, at + Vector2(19, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
 	var max_lv: int = b["costs"].size()
-	# "ready" marker when the next level is affordable
-	var cost := SaveData.next_cost(save, id)
-	if lv < max_lv and SaveData.can_afford(save, cost):
+	# construction timer bubble above the building
+	if not SaveData.construction_of(save, id).is_empty():
+		var left := SaveData.build_left(save, id, int(Time.get_unix_time_from_system()))
+		var done := left <= GameData.FREE_FINISH_SEC
+		var txt := "DONE!" if done else ExpeditionPage.time_text(left)
+		var tw := floorf(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x) + 26
+		var bob2 := roundf(sin(_t * 3.0 + pos.x) * 1.5)
+		var br := Rect2((pos + Vector2(-tw * 0.5, -62 + bob2)).floor(), Vector2(tw, 18))
+		draw_rect(br.grow(1), Color("05030c"))
+		draw_rect(br, Color("6dffa8") if done else Color("f2b53a"))
+		draw_rect(br.grow(-1), Color("1f8a5a") if done else Color("3a2412"))
+		var hammer := UiKit.icon_tex("craft")
+		if hammer != null:
+			draw_texture_rect(hammer, Rect2(br.position + Vector2(2, 1), Vector2(16, 16)), false)
+		draw_string_outline(font, br.position + Vector2(20, 14), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color("05030c"))
+		draw_string(font, br.position + Vector2(20, 14), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE if done else Color("ffd062"))
+		return
+	# "ready" marker when the next level can be started
+	if lv < max_lv and SaveData.build_block(save, id) == "":
 		var bob := sin(_t * 4.0 + pos.x) * 2.0
 		var c := pos + Vector2(26, -44 + bob)
 		draw_circle(c, 7, Color(0.1, 0.6, 0.2))

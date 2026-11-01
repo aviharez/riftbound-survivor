@@ -430,6 +430,20 @@ static func character_by_id(id: String) -> Dictionary:
 # --- Academy (meta progression, saved between runs) ---
 # Level names follow the concept doc's building progression.
 const BUILDING_STATES := ["Ruins", "Repaired", "Functional"]
+# Construction (design doc section 5): building level L+1 takes BUILD_TIMES[L] seconds of real time; buildings that
+# bring a character back take BUILD_TIME_PER_GOLD seconds per gold of their cost. The last FREE_FINISH_SEC can be
+# finished for free; BUILDER_SLOTS buildings can be under construction at once.
+const BUILD_TIMES := [300, 1800, 7200, 28800]
+const BUILD_TIME_PER_GOLD := 2.4
+const FREE_FINISH_SEC := 300
+const BUILDER_SLOTS := 1
+# Rewarded ads (design doc section 8): optional only, never forced. A speed-up ad takes AD_SPEEDUP_SEC or
+# AD_SPEEDUP_SHARE of the remaining time, whichever is more. ADS_PER_DAY caps all rewarded ads together.
+const ADS_PER_DAY := 10
+const AD_SPEEDUP_SEC := 1800
+const AD_SPEEDUP_SHARE := 0.25
+const AD_REVIVE_HP := 0.5          # revive with this share of max HP (once per run)
+const AD_PLACEHOLDER_SEC := 2.0    # length of the stand-in "ad" until an ad SDK is added
 # unlocks: "tome" / "weapon" (+1 slot per level), "character" (Lv 1 brings back `character`),
 # "lessons" (the Staff Room: teachers sell permanent upgrades, LESSONS below; each level raises the rank cap).
 const BUILDINGS := [
@@ -712,6 +726,13 @@ static func expedition_by_id(id: String) -> Dictionary:
 static func lesson_cost(rank: int) -> Dictionary:
 	var k := pow(LESSON_COST_GROWTH, rank - 1)
 	return {"exp": int(round(LESSON_COST_EXP * k)), "gold": int(round(LESSON_COST_GOLD * k))}
+
+
+## Seconds to build level `lv` + 1 of building `b`.
+static func build_time(b: Dictionary, lv: int) -> int:
+	if b["unlocks"] == "character":
+		return int(float(b["costs"][lv]["gold"]) * BUILD_TIME_PER_GOLD)
+	return int(BUILD_TIMES[mini(lv, BUILD_TIMES.size() - 1)])
 
 
 static func building_by_id(id: String) -> Dictionary:

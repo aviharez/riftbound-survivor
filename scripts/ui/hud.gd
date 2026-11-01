@@ -34,6 +34,7 @@ var _choice_cb: Callable
 var _pause_panel: PanelContainer
 var _result_panel: PanelContainer
 var _result_box: VBoxContainer
+var _overlay_root: Control
 var _result_title: Label
 var _dash_btn: Button
 var _map_btn: Button
@@ -254,6 +255,39 @@ func _choice_card(opt: Dictionary) -> Button:
 	return b
 
 
+## "You fell": revive once for an ad, or give up (ends the run).
+func show_revive(on_revive: Callable, on_give_up: Callable) -> void:
+	if map_open:
+		toggle_map()
+	_choice_panel.visible = false
+	get_tree().paused = true
+	var o := UiKit.overlay(self_control(), 260, "YOU FELL")
+	var dim: Control = o[0]
+	var box: VBoxContainer = o[1]
+	var l := UiKit.label("Watch an ad to get back up with %d%% HP?" % int(GameData.AD_REVIVE_HP * 100), 10, UiKit.IVORY)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.custom_minimum_size = Vector2(230, 0)
+	box.add_child(l)
+	box.add_child(UiKit.button("REVIVE (AD)", Vector2(0, 30), func():
+		dim.queue_free()
+		on_revive.call(), "accent"))
+	box.add_child(UiKit.button("GIVE UP", Vector2(0, 26), func():
+		dim.queue_free()
+		on_give_up.call(), "danger"))
+	dim.visible = true
+
+
+## A full-screen Control under the HUD layer for overlays (built on demand).
+func self_control() -> Control:
+	if _overlay_root == null:
+		_overlay_root = Control.new()
+		_overlay_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_overlay_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(_overlay_root)
+	return _overlay_root
+
+
 func choices_open() -> bool:
 	return _choice_panel.visible
 
@@ -333,6 +367,17 @@ func show_result(d: Dictionary) -> void:
 		var note := UiKit.label(d["note"], 10, UiKit.GREEN)
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_result_box.add_child(note)
+	if d.get("can_double", false):
+		var dbl := UiKit.button("x2 REWARDS (AD)", Vector2(0, 26), func(): pass, "info")
+		var rewards_copy: Dictionary = rewards.duplicate()
+		var cb: Callable = d["double"]
+		dbl.pressed.connect(func():
+			dbl.disabled = true
+			dbl.text = "WATCHING AD..."
+			Ads.show_rewarded(self, "double_rewards", func():
+				cb.call(rewards_copy)
+				dbl.text = "REWARDS DOUBLED!"))
+		_result_box.add_child(dbl)
 	var seed_l := UiKit.label("Seed %d" % d["seed"], 10, Color(1, 1, 1, 0.4))
 	seed_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_result_box.add_child(seed_l)
