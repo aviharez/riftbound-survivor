@@ -120,6 +120,16 @@ Read it before starting any phase.**
   `main` (`run_mods`), `recommended_level`. Save v7: `progress` (loc -> highest danger won), selected `location` /
   `danger`; `SaveData.location_unlocked` / `danger_unlocked` / `record_victory` (called by `bank_run`). Crafting
   uses the essence of `CRAFT_ESSENCE[rarity]`. Autotests: `--loc=forest --danger=3` (summary prints `loc= danger=`).
+  Each location has 4 enemies (PixelLab pixflux 48 px sprites in `assets/enemies/<id>.png`, drawn instead of the
+  hand-made grids; flags `dash` / `split` / `spread` / `blink` in `ENEMY_TYPES`, timings `ENEMY_DASH_*` /
+  `ENEMY_BLINK_*`), a boss from `GameData.BOSSES` (v3 sprites `assets/characters/boss_<id>/`, `patterns` from
+  ring / dash / summon / spiral / volley / blink; `main.boss_cfg`), map colours `TILESETS` (`World.setup(map, tiles)`)
+  and a banner `assets/ui/banner_<loc>.png`. Codex bestiary hides enemies of locked locations.
+- Quests (phase 5f): save v8 `counters` (lifetime: kills, chests, runs, wins, bosses, talks, expeditions, builds,
+  enhances, crafts; counted inside SaveData) and `quests` {day, base, claimed, story}. `GameData.DAILY_QUESTS`
+  (3 a day picked by the date, progress = counter growth since `roll_day`) and `STORY_QUESTS` (claimed in order,
+  kinds counter / building / clear / char_level). Home quest panel: notifications + next story quest + dailies,
+  CLAIM buttons (`SaveData.claim_quest`).
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.
@@ -175,8 +185,10 @@ Done: map/run loop, chests, shrines (beam while unused), tomes, items, elites, R
 buildings + Workshop + Dormitory), **all 13 characters** with v3 sprites + walk/idle animations and mechanical
 traits (phase 1 done), **phase 2 meta systems** (character level, enhance, equipment + crafting, bond with 65 story
 scenes, dormitory, expeditions), **phase 3 UI + home map** (academy hub map with tappable buildings made in phase 3 at Syifa's request),
-**phase 4 construction timers + rewarded-ad hooks** (placeholder ads, no notifications yet); next: phase 5
-locations / danger / quests (Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
+**phase 4 construction timers + rewarded-ad hooks** (placeholder ads, no notifications yet), **phase 5**
+(5 locations x 5 danger, 16 new enemies, 4 new bosses, tilesets, banners, quests, per-location codex). Syifa said
+"kerjakan semuanya" (2 Nov): after phase 5 come alpha evolutions + remaining weapons, animation review, ad SDK +
+notification plugins, audio (Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
 The 6 alpha weapons have no evolutions yet (the doc names them: Lunar Cross, Infinity Loop, Familiar Legion,
 Celestial Ray, Plague Garden, Runic Chain); 5 tomes are still unpaired (Power, Fortune, Study, Greed, Cursed).

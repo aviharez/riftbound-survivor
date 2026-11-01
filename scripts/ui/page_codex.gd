@@ -109,7 +109,8 @@ func _show(t: String) -> void:
 				_pick_weapon(first)
 		"enemies":
 			for e in GameData.CODEX_ENEMIES:
-				_add_entry(e["name"], _pick_enemy.bind(e["id"]), _enemy_tex(e["id"]), true)
+				var seen := SaveData.location_unlocked(shell.save, String(e.get("loc", "courtyard")))
+				_add_entry(e["name"] if seen else "???", _pick_enemy.bind(e["id"]), _enemy_tex(e["id"]), seen)
 			if _art_kind != "enemy":
 				_pick_enemy(GameData.CODEX_ENEMIES[0]["id"])
 
@@ -131,8 +132,16 @@ func _add_entry(text: String, cb: Callable, icon: Texture2D, open: bool) -> void
 	_list.add_child(b)
 
 
+static func _boss_cfg(id: String) -> Dictionary:
+	return GameData.BOSSES["guardian"] if id == "boss" else GameData.BOSSES.get(id, {})
+
+
 func _enemy_tex(id: String) -> Texture2D:
-	return CharacterArt.texture("boss", "south") if id == "boss" else PixelSprites.texture(id)
+	var b := _boss_cfg(id)
+	if not b.is_empty():
+		return CharacterArt.texture(String(b["sprite"]), "south")
+	var path := "res://assets/enemies/%s.png" % id
+	return load(path) if ResourceLoader.exists(path) else PixelSprites.texture(id)
 
 
 func _pick_char(id: String) -> void:
@@ -196,9 +205,15 @@ func _pick_enemy(id: String) -> void:
 	_art_kind = "enemy"
 	_art_id = id
 	_clear_combo()
-	_detail_sub.text = "Boss" if id == "boss" else "Monster"
 	for e in GameData.CODEX_ENEMIES:
 		if e["id"] == id:
+			var loc := String(e.get("loc", "courtyard"))
+			_detail_sub.text = "%s · %s" % [GameData.location_by_id(loc)["name"], "Boss" if not _boss_cfg(id).is_empty() else "Monster"]
+			if not SaveData.location_unlocked(shell.save, loc):
+				_detail_title.text = "???"
+				_detail.text = "Not met yet. Reach the %s." % GameData.location_by_id(loc)["name"]
+				_art.queue_redraw()
+				return
 			_detail_title.text = e["name"].to_upper()
 			var stats := ""
 			if GameData.ENEMY_TYPES.has(id):
@@ -206,9 +221,9 @@ func _pick_enemy(id: String) -> void:
 				_combo.add_child(UiKit.chip("hp", str(int(t["hp"]))))
 				_combo.add_child(UiKit.chip("speed", str(int(t["speed"]))))
 				_combo.add_child(UiKit.chip("damage", str(int(t["dmg"]))))
-			elif id == "boss":
-				_combo.add_child(UiKit.chip("hp", str(int(GameData.BOSS["hp"]))))
-				_combo.add_child(UiKit.chip("damage", str(int(GameData.BOSS["dmg"]))))
+			elif not _boss_cfg(id).is_empty():
+				_combo.add_child(UiKit.chip("hp", str(int(_boss_cfg(id)["hp"]))))
+				_combo.add_child(UiKit.chip("damage", str(int(_boss_cfg(id)["dmg"]))))
 			_detail.text = e["desc"] + stats
 	_art.queue_redraw()
 
@@ -222,7 +237,7 @@ func _draw_art() -> void:
 		"char":
 			tex = CharacterArt.portrait(_art_id)
 		"enemy":
-			tex = CharacterArt.texture("boss", "south") if _art_id == "boss" else PixelSprites.texture(_art_id)
+			tex = _enemy_tex(_art_id)
 		"weapon":
 			tex = UiKit.icon_tex(_art_id)
 	if tex == null:
@@ -234,6 +249,10 @@ func _draw_art() -> void:
 	var tint := Color.WHITE
 	if _art_kind == "char" and not SaveData.character_unlocked(shell.save, _art_id):
 		tint = Color(0.05, 0.05, 0.12)
+	if _art_kind == "enemy":
+		for e in GameData.CODEX_ENEMIES:
+			if e["id"] == _art_id and not SaveData.location_unlocked(shell.save, String(e.get("loc", "courtyard"))):
+				tint = Color(0.05, 0.05, 0.12)
 	_art.draw_texture_rect(tex, Rect2(r.get_center() - s * 0.5, s), false, tint)
 
 

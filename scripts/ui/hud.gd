@@ -491,7 +491,7 @@ func _draw_timer(vs: Vector2) -> void:
 	var b = game.enemies.boss
 	if b != null and b.spawn_t <= 0.0:
 		_bar(Rect2(cx - 120, 26, 240, 6), b.hp / b.max_hp, CRIMSON)
-		_text(Vector2(cx, 44), GameData.BOSS["name"], Color(1, 0.6, 0.6), 8, true)
+		_text(Vector2(cx, 44), game.boss_cfg["name"], Color(1, 0.6, 0.6), 8, true)
 	else:
 		_bar(Rect2(cx - 120, 26, 240, 3), 1.0 - rem / GameData.RUN_TIME, Color(0.6, 0.4, 0.9))
 		for s in GameData.SURGES:

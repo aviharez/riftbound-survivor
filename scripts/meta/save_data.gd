@@ -4,13 +4,15 @@ extends RefCounted
 ## Autotests never write here; tests/test_academy.gd uses its own path.
 
 const DEFAULT_PATH := "user://riftbound_save.json"
-const VERSION := 7
+const VERSION := 8
 # v1 -> v2: "lessons" (Staff Room permanent upgrades, id -> rank); new buildings start at 0 (handled generally).
 # v2 -> v3: "shards" (Arcane Shards) and "characters" (id -> {exp, passive, weapon}: level EXP and enhance ranks).
 # v3 -> v4: equipment ("items" inventory, "equipped" char -> slot -> uid, "next_uid") and "essence" (location -> n).
 # v4 -> v5: character "bond" EXP, "dorm" (resident ids), "talked" (id -> date of the last talk), "expeditions".
 # v5 -> v6: "construction" (buildings being built: {id, end, total}) and "ads" ({day, count}: rewarded ads today).
 # v6 -> v7: "progress" (location id -> highest danger won), selected "location" and "danger".
+# v7 -> v8: "counters" (lifetime totals for quests) and "quests" {day, base (counters at the day start), claimed,
+#           story (claimed story quest ids)}.
 const RESOURCES := ["gold", "materials", "aether", "exp", "shards"]
 const ENHANCE_TRACKS := ["passive", "weapon"]
 
@@ -34,6 +36,7 @@ static func defaults() -> Dictionary:
 		"dorm": [], "talked": {}, "expeditions": [],
 		"construction": [], "ads": {"day": "", "count": 0},
 		"progress": {}, "location": "courtyard", "danger": 1,
+		"counters": {}, "quests": {"day": "", "base": {}, "claimed": [], "story": []},
 	}
 
 
@@ -75,6 +78,7 @@ static func load_data() -> Dictionary:
 	_clean_dorm(d)
 	_clean_construction(d)
 	_clean_progress(d)
+	_clean_quests(d)
 	d["version"] = VERSION
 	# a locked (or unknown) selected character falls back to Astra
 	if not character_unlocked(d, String(d["character"])):
@@ -184,6 +188,113 @@ static func record_victory(d: Dictionary, loc: String, danger: int) -> String:
 	return "danger" if danger < GameData.DANGERS.size() else ""
 
 
+# ------------------------------------------------------------------ quests
+
+static func _clean_quests(d: Dictionary) -> void:
+	if typeof(d["counters"]) != TYPE_DICTIONARY:
+		d["counters"] = {}
+	for k in d["counters"].keys():
+		d["counters"][k] = int(d["counters"][k])
+	# saves from before quests: start the lifetime counters from the run record
+	if d["counters"].is_empty() and int(d["runs"]) > 0:
+		d["counters"] = {"runs": int(d["runs"]), "wins": int(d["victories"])}
+	var q = d["quests"]
+	if typeof(q) != TYPE_DICTIONARY:
+		q = {}
+	var base = q.get("base", {})
+	var clean_base := {}
+	if typeof(base) == TYPE_DICTIONARY:
+		for k in base:
+			clean_base[k] = int(base[k])
+	d["quests"] = {"day": String(q.get("day", "")), "base": clean_base,
+		"claimed": Array(q.get("claimed", [])) if typeof(q.get("claimed", [])) == TYPE_ARRAY else [],
+		"story": Array(q.get("story", [])) if typeof(q.get("story", [])) == TYPE_ARRAY else []}
+
+
+static func count(d: Dictionary, counter: String, n := 1) -> void:
+	d["counters"][counter] = int(d["counters"].get(counter, 0)) + n
+
+
+static func counter(d: Dictionary, name: String) -> int:
+	return int(d["counters"].get(name, 0))
+
+
+## Starts a new quest day if `day` changed: today's dailies count from the current counters.
+static func roll_day(d: Dictionary, day: String) -> void:
+	if String(d["quests"]["day"]) == day:
+		return
+	d["quests"]["day"] = day
+	d["quests"]["base"] = d["counters"].duplicate()
+	d["quests"]["claimed"] = []
+
+
+## Today's daily quests (picked by the date, the same all day).
+static func daily_quests(day: String) -> Array:
+	var pool: Array = GameData.DAILY_QUESTS.duplicate()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(day)
+	var out: Array = []
+	for i in mini(GameData.DAILY_QUEST_COUNT, pool.size()):
+		out.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
+	return out
+
+
+## [progress, goal] of a daily or story quest.
+static func quest_progress(d: Dictionary, q: Dictionary) -> Array:
+	if q.has("counter") and String(q.get("kind", "daily")) in ["daily", "counter"]:
+		var now := counter(d, String(q["counter"]))
+		if not q.has("kind"):   # daily: growth since the day started
+			now -= int(d["quests"]["base"].get(q["counter"], 0))
+		return [mini(now, int(q["goal"])), int(q["goal"])]
+	match String(q.get("kind", "")):
+		"building":
+			return [mini(building_level(d, String(q["building"])), int(q["level"])), int(q["level"])]
+		"clear":
+			return [1 if cleared(d, String(q["loc"])) >= int(q["danger"]) else 0, 1]
+		"char_level":
+			var best := 1
+			for c in GameData.CHARACTERS:
+				best = maxi(best, char_level(d, c["id"]))
+			return [mini(best, int(q["level"])), int(q["level"])]
+	return [0, 1]
+
+
+static func quest_done(d: Dictionary, q: Dictionary) -> bool:
+	var p := quest_progress(d, q)
+	return p[0] >= p[1]
+
+
+## The next story quests not claimed yet (in order).
+static func story_quests(d: Dictionary) -> Array:
+	var out: Array = []
+	for q in GameData.STORY_QUESTS:
+		if not q["id"] in d["quests"]["story"]:
+			out.append(q)
+			if out.size() >= GameData.STORY_QUESTS_SHOWN:
+				break
+	return out
+
+
+## Pays a finished quest's reward once. Returns the reward ({} if not claimable).
+static func claim_quest(d: Dictionary, q: Dictionary, day: String) -> Dictionary:
+	if not quest_done(d, q):
+		return {}
+	var story := q.has("kind")
+	var list: Array = d["quests"]["story"] if story else d["quests"]["claimed"]
+	if q["id"] in list:
+		return {}
+	if not story and (String(d["quests"]["day"]) != day or not q in daily_quests(day)):
+		return {}
+	list.append(q["id"])
+	for k in q["reward"]:
+		d[k] = int(d[k]) + int(q["reward"][k])
+	return q["reward"]
+
+
+static func quest_claimed(d: Dictionary, q: Dictionary) -> bool:
+	return q["id"] in (d["quests"]["story"] if q.has("kind") else d["quests"]["claimed"])
+
+
 # ------------------------------------------------------------------ construction (real-time timers)
 
 static func _clean_construction(d: Dictionary) -> void:
@@ -234,6 +345,7 @@ static func start_build(d: Dictionary, id: String, now: int) -> bool:
 		d[k] = int(d[k]) - int(cost[k])
 	var t := GameData.build_time(GameData.building_by_id(id), building_level(d, id))
 	d["construction"].append({"id": id, "end": now + t, "total": t})
+	count(d, "builds")
 	return true
 
 
@@ -402,6 +514,7 @@ static func enhance(d: Dictionary, id: String, track: String) -> bool:
 	for k in cost:
 		d[k] = int(d[k]) - int(cost[k])
 	char_state(d, id)[track] = int(char_state(d, id)[track]) + 1
+	count(d, "enhances")
 	return true
 
 
@@ -473,6 +586,7 @@ static func talk(d: Dictionary, id: String, day: String) -> bool:
 		return false
 	d["talked"][id] = day
 	add_bond(d, id, GameData.BOND_TALK)
+	count(d, "talks")
 	return true
 
 
@@ -496,6 +610,7 @@ static func start_expedition(d: Dictionary, id: String, mission: String, now: in
 	if d["expeditions"].size() >= expedition_slots(d):
 		return false
 	d["expeditions"].append({"char": id, "mission": mission, "start": now, "end": now + int(float(m["hours"]) * 3600.0)})
+	count(d, "expeditions")
 	return true
 
 
@@ -665,6 +780,7 @@ static func craft(d: Dictionary, base_id: String, rarity: int, loc: String, rng:
 	d["materials"] = int(d["materials"]) - int(cost["materials"])
 	d["essence"][loc] = essence(d, loc) - int(cost["essence"])
 	var uid := add_item(d, GameData.roll_item(rng, rarity, base_id))
+	count(d, "crafts")
 	return item_by_uid(d, uid)
 
 
@@ -696,7 +812,12 @@ static func bank_run(d: Dictionary, rewards: Dictionary, summary: Dictionary) ->
 	for it in rewards.get("items", []):
 		add_item(d, it)   # a full inventory loses the extra drops (the result screen says so)
 	d["runs"] = int(d["runs"]) + 1
+	count(d, "runs")
+	count(d, "kills", int(summary.get("kills", 0)))
+	count(d, "chests", int(summary.get("chests", 0)))
+	count(d, "bosses", 1 if summary.get("boss", false) else 0)
 	if summary.get("victory", false):
+		count(d, "wins")
 		d["victories"] = int(d["victories"]) + 1
 		record_victory(d, String(summary.get("location", "courtyard")), int(summary.get("danger", 1)))
 	d["best_kills"] = max(int(d["best_kills"]), int(summary.get("kills", 0)))

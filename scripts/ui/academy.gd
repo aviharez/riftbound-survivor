@@ -484,76 +484,90 @@ func _refresh_home() -> void:
 	UiKit.refresh_portrait(_rift_char)
 	for ch in _quests.get_children():
 		ch.queue_free()
+	SaveData.roll_day(save, SaveData.today())
 	for q in quests():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 3)
+		_quests.add_child(row)
 		var b := Button.new()
 		b.flat = true
 		b.focus_mode = Control.FOCUS_NONE
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		b.text = ("> " if q.get("ready", false) else "· ") + q["text"]
-		b.custom_minimum_size = Vector2(146, 12)
+		b.text = q["text"]
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(100, 12)
 		b.add_theme_font_size_override("font_size", UiKit.fs(8))
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var col: Color = UiKit.GREEN if q.get("ready", false) else UiKit.IVORY
+		var col: Color = UiKit.GREEN if q.get("ready", false) else (UiKit.GOLD if q.get("story", false) else UiKit.IVORY)
 		for k in ["font_color", "font_hover_color", "font_pressed_color"]:
 			b.add_theme_color_override(k, col)
 		b.add_theme_color_override("font_outline_color", Color(0, 0, 0.1, 0.8))
 		b.add_theme_constant_override("outline_size", 2)
 		b.pressed.connect(q["go"])
-		_quests.add_child(b)
+		row.add_child(b)
+		if q.has("quest"):
+			var qd: Dictionary = q["quest"]
+			if SaveData.quest_claimed(save, qd):
+				row.add_child(UiKit.label("Done", 10, Color(1, 1, 1, 0.4)))
+			elif SaveData.quest_done(save, qd):
+				var cb := UiKit.button("CLAIM", Vector2(46, 18), _claim.bind(qd), "accent")
+				cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(cb)
+			else:
+				var p := SaveData.quest_progress(save, qd)
+				var pl := UiKit.label("%s/%s" % [_short(p[0]), _short(p[1])], 10, UiKit.CYAN)
+				pl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(pl)
 
 
-## The running goals shown on the home screen (proper quests with rewards come with the locations phase).
+func _claim(q: Dictionary) -> void:
+	var got := SaveData.claim_quest(save, q, SaveData.today())
+	if got.is_empty():
+		return
+	var parts: Array = []
+	for k in got:
+		parts.append("+%d %s" % [int(got[k]), UiKit.resource_name(k)])
+	toast("  ".join(parts))
+	changed()
+
+
+## Home-screen quest list: things waiting for the player (expeditions back, construction), the next story quest
+## and today's daily quests (rows with "quest" get a progress count or a CLAIM button).
 func quests() -> Array:
 	var out: Array = []
 	var now := int(Time.get_unix_time_from_system())
 	for e in save["expeditions"]:
 		if now >= int(e["end"]):
-			out.append({"text": "%s is back from %s" % [GameData.character_by_id(e["char"])["name"], GameData.expedition_by_id(e["mission"])["name"]],
-				"ready": true, "go": show_page.bind("expedition")})
+			out.append({"text": "%s is back!" % GameData.character_by_id(e["char"])["name"], "ready": true, "go": show_page.bind("expedition")})
 	for c in save["construction"]:
 		var left := SaveData.build_left(save, c["id"], now)
 		var bname: String = GameData.building_by_id(c["id"])["name"]
 		if left <= GameData.FREE_FINISH_SEC:
 			out.append({"text": "Finish the %s" % bname, "ready": true, "go": _focus_building.bind(c["id"])})
 		else:
-			out.append({"text": "%s: %s left" % [bname, ExpeditionPage.time_text(left)], "go": _focus_building.bind(c["id"])})
-	var best := ""
-	var best_cost := INF
-	for b in GameData.BUILDINGS:
-		var cost := SaveData.next_cost(save, b["id"])
-		if cost.is_empty() or not SaveData.construction_of(save, b["id"]).is_empty():
-			continue
-		if SaveData.build_block(save, b["id"]) == "":
-			out.append({"text": "Restore the %s" % b["name"] if SaveData.building_level(save, b["id"]) == 0 else "Upgrade the %s" % b["name"],
-				"ready": true, "go": _focus_building.bind(b["id"])})
-		elif SaveData.build_block(save, b["id"]) == "cost" and int(cost["gold"]) < best_cost:
-			best_cost = int(cost["gold"])
-			best = b["id"]
-	if best != "":
-		var cost := SaveData.next_cost(save, best)
-		out.append({"text": "Restore the %s (gold %d / %d)" % [GameData.building_by_id(best)["name"], int(save["gold"]), int(cost["gold"])],
-			"go": _focus_building.bind(best)})
-	var cid := String(save["character"])
-	for track in SaveData.ENHANCE_TRACKS:
-		var cost := SaveData.next_enhance_cost(save, cid, track)
-		if not cost.is_empty() and SaveData.can_afford(save, cost):
-			out.append({"text": "Enhance %s's %s" % [GameData.character_by_id(cid)["name"], "passive" if track == "passive" else "signature weapon"],
-				"ready": true, "go": func(): pages["characters"].select(cid); show_page("characters")})
-			break
-	var day := SaveData.today()
-	for id in save["dorm"]:
-		if SaveData.can_talk(save, id, day):
-			out.append({"text": "Talk to the residents (Dormitory)", "ready": true, "go": func(): dorm.open(save)})
-			break
-	# the next step in the Rift: the first location / danger not won yet
-	for l in GameData.LOCATIONS:
-		if not SaveData.location_unlocked(save, l["id"]):
-			break
-		var won := SaveData.cleared(save, l["id"])
-		if won < GameData.DANGERS.size():
-			out.append({"text": "Win %s, Danger %d" % [l["name"], won + 1], "go": show_page.bind("rift")})
-			break
-	return out.slice(0, 4)
+			out.append({"text": "%s %s" % [bname, ExpeditionPage.time_text(left)], "go": _focus_building.bind(c["id"])})
+	for q in SaveData.story_quests(save):
+		out.append({"text": q["text"], "story": true, "quest": q, "go": _quest_go.bind(q)})
+	for q in SaveData.daily_quests(SaveData.today()):
+		var g := int(q["goal"])
+		out.append({"text": String(q["text"]) % g, "quest": q, "go": _quest_go.bind(q)})
+	return out
+
+
+## Where tapping a quest takes you.
+func _quest_go(q: Dictionary) -> void:
+	match String(q.get("kind", "")):
+		"building":
+			_focus_building(String(q["building"]))
+			return
+		"char_level":
+			show_page("characters")
+			return
+	match String(q.get("counter", "")):
+		"talks": dorm.open(save)
+		"expeditions": show_page("expedition")
+		"builds": pass
+		_: show_page("rift")
 
 
 func _focus_building(id: String) -> void:

@@ -612,18 +612,39 @@ const LOCATIONS := [
 		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "courtyard",
 		"desc": "The ruined grounds where the Rift first opened."},
 	{"id": "forest", "name": "Whispering Forest", "essence": "Sylvan Essence", "tier": 1,
-		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "forest",
+		"enemies": ["sprout", "moth", "bramble", "wisp"], "boss": "thornmother", "tiles": "forest",
 		"desc": "The academy's old herb woods, where the trees whisper back."},
 	{"id": "library", "name": "Forgotten Library", "essence": "Ink Essence", "tier": 2,
-		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "library",
+		"enemies": ["inkblot", "quill_owl", "armor", "phantom"], "boss": "archivist", "tiles": "library",
 		"desc": "Sealed stacks under the academy. The books still bite."},
 	{"id": "cavern", "name": "Crystal Cavern", "essence": "Prism Essence", "tier": 3,
-		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "cavern",
+		"enemies": ["mite", "shardbat", "golem", "prism_eye"], "boss": "colossus", "tiles": "cavern",
 		"desc": "Glowing caves where the Rift grows crystals like weeds."},
 	{"id": "nexus", "name": "Rift Nexus", "essence": "Rift Essence", "tier": 4,
-		"enemies": ["slime", "bat", "brute", "caster"], "boss": "guardian", "tiles": "nexus",
+		"enemies": ["voidling", "rift_ray", "horror", "seer"], "boss": "sovereign", "tiles": "nexus",
 		"desc": "The heart of the Rift. Nothing here was ever an academy."},
 ]
+# Map colours per location (`tiles`). floor / floor_dot (small specks), wall / wall_top (lit top edge) /
+# wall_shade, deco (ruin tiles: stone, carpet, crystal floor) / deco_line, rift (floor under the cracks) and
+# style: extra pattern (grass, leaves, planks + book spines, sparkles, void specks). Cracks keep RIFT_CRACK.
+const RIFT_CRACK := Color(0.75, 0.25, 0.95)
+const TILESETS := {
+	"courtyard": {"floor": Color(0.27, 0.42, 0.22), "floor_dot": Color(0.36, 0.55, 0.28), "wall": Color(0.2, 0.2, 0.27),
+		"wall_top": Color(0.38, 0.38, 0.48), "wall_shade": Color(0.12, 0.12, 0.16), "deco": Color(0.42, 0.42, 0.45),
+		"deco_line": Color(0.35, 0.35, 0.38), "rift": Color(0.24, 0.36, 0.2), "style": "grass"},
+	"forest": {"floor": Color(0.17, 0.3, 0.16), "floor_dot": Color(0.42, 0.3, 0.15), "wall": Color(0.07, 0.16, 0.09),
+		"wall_top": Color(0.2, 0.4, 0.17), "wall_shade": Color(0.04, 0.09, 0.05), "deco": Color(0.33, 0.38, 0.3),
+		"deco_line": Color(0.24, 0.34, 0.2), "rift": Color(0.15, 0.25, 0.15), "style": "leaves"},
+	"library": {"floor": Color(0.36, 0.23, 0.14), "floor_dot": Color(0.28, 0.17, 0.1), "wall": Color(0.24, 0.12, 0.09),
+		"wall_top": Color(0.45, 0.28, 0.16), "wall_shade": Color(0.13, 0.06, 0.05), "deco": Color(0.45, 0.12, 0.18),
+		"deco_line": Color(0.36, 0.08, 0.13), "rift": Color(0.3, 0.19, 0.12), "style": "planks"},
+	"cavern": {"floor": Color(0.12, 0.14, 0.24), "floor_dot": Color(0.45, 0.85, 1.0), "wall": Color(0.2, 0.2, 0.36),
+		"wall_top": Color(0.55, 0.9, 1.0), "wall_shade": Color(0.09, 0.08, 0.18), "deco": Color(0.3, 0.24, 0.46),
+		"deco_line": Color(0.42, 0.34, 0.6), "rift": Color(0.1, 0.12, 0.2), "style": "sparkle"},
+	"nexus": {"floor": Color(0.08, 0.05, 0.12), "floor_dot": Color(0.55, 0.2, 0.6), "wall": Color(0.17, 0.07, 0.21),
+		"wall_top": Color(0.9, 0.3, 0.85), "wall_shade": Color(0.05, 0.02, 0.07), "deco": Color(0.2, 0.14, 0.3),
+		"deco_line": Color(0.45, 0.25, 0.6), "rift": Color(0.1, 0.06, 0.14), "style": "void"},
+}
 const LOCATION_HP_PER_TIER := 0.9       # enemy HP x (1 + this x tier)
 const LOCATION_DMG_PER_TIER := 0.35
 const LOCATION_REWARD_PER_TIER := 0.6   # rewards x (1 + this x tier)
@@ -769,6 +790,41 @@ static func build_time(b: Dictionary, lv: int) -> int:
 	return int(BUILD_TIMES[mini(lv, BUILD_TIMES.size() - 1)])
 
 
+# --- Quests (design doc section 10, phase 5) ---
+# Daily: DAILY_QUEST_COUNT picked per day from DAILY_QUESTS; progress = how much a lifetime counter grew today.
+# Counters: kills, chests, runs, wins, bosses, talks, expeditions, builds, enhances, crafts.
+const DAILY_QUEST_COUNT := 3
+const DAILY_QUESTS := [
+	{"id": "d_kills", "text": "Defeat %d monsters", "counter": "kills", "goal": 400, "reward": {"gold": 250, "materials": 40}},
+	{"id": "d_runs", "text": "Play %d runs", "counter": "runs", "goal": 2, "reward": {"gold": 200, "aether": 10}},
+	{"id": "d_win", "text": "Win %d run", "counter": "wins", "goal": 1, "reward": {"gold": 300, "shards": 1}},
+	{"id": "d_chests", "text": "Open %d chests", "counter": "chests", "goal": 12, "reward": {"materials": 80}},
+	{"id": "d_boss", "text": "Defeat %d boss", "counter": "bosses", "goal": 1, "reward": {"aether": 20, "shards": 1}},
+	{"id": "d_talk", "text": "Talk with %d residents", "counter": "talks", "goal": 2, "reward": {"gold": 150, "exp": 60}},
+	{"id": "d_exped", "text": "Send %d expeditions", "counter": "expeditions", "goal": 2, "reward": {"materials": 60, "aether": 10}},
+	{"id": "d_build", "text": "Start %d construction", "counter": "builds", "goal": 1, "reward": {"gold": 200}},
+]
+# Story quests, claimed in order (the first unclaimed ones show on the home screen). kind: building (id, level),
+# clear (loc, danger), char_level (any character), counter (counter, goal).
+const STORY_QUESTS := [
+	{"id": "s_first_run", "text": "Play your first run", "kind": "counter", "counter": "runs", "goal": 1, "reward": {"gold": 300, "materials": 60}},
+	{"id": "s_library", "text": "Restore the Library", "kind": "building", "building": "library", "level": 1, "reward": {"gold": 300, "aether": 15}},
+	{"id": "s_court1", "text": "Win the Ruined Courtyard", "kind": "clear", "loc": "courtyard", "danger": 1, "reward": {"gold": 500, "shards": 2}},
+	{"id": "s_training", "text": "Restore the Training Ground", "kind": "building", "building": "training", "level": 1, "reward": {"gold": 400, "materials": 80}},
+	{"id": "s_lv5", "text": "Raise a mage to Lv 5", "kind": "char_level", "level": 5, "reward": {"shards": 2, "exp": 150}},
+	{"id": "s_forest1", "text": "Win the Whispering Forest", "kind": "clear", "loc": "forest", "danger": 1, "reward": {"gold": 800, "shards": 3}},
+	{"id": "s_court3", "text": "Win the Courtyard on Danger 3", "kind": "clear", "loc": "courtyard", "danger": 3, "reward": {"gold": 800, "aether": 40}},
+	{"id": "s_workshop", "text": "Restore the Workshop", "kind": "building", "building": "workshop", "level": 1, "reward": {"materials": 200}},
+	{"id": "s_library1", "text": "Win the Forgotten Library", "kind": "clear", "loc": "library", "danger": 1, "reward": {"gold": 1200, "shards": 4}},
+	{"id": "s_lv12", "text": "Raise a mage to Lv 12", "kind": "char_level", "level": 12, "reward": {"shards": 4, "aether": 60}},
+	{"id": "s_cavern1", "text": "Win the Crystal Cavern", "kind": "clear", "loc": "cavern", "danger": 1, "reward": {"gold": 1800, "shards": 5}},
+	{"id": "s_kills", "text": "Defeat 10000 monsters", "kind": "counter", "counter": "kills", "goal": 10000, "reward": {"gold": 1500, "shards": 3}},
+	{"id": "s_nexus1", "text": "Win the Rift Nexus", "kind": "clear", "loc": "nexus", "danger": 1, "reward": {"gold": 3000, "shards": 8}},
+	{"id": "s_nexus5", "text": "Win the Rift Nexus on Danger 5", "kind": "clear", "loc": "nexus", "danger": 5, "reward": {"gold": 8000, "shards": 15}},
+]
+const STORY_QUESTS_SHOWN := 1
+
+
 static func location_by_id(id: String) -> Dictionary:
 	for l in LOCATIONS:
 		if l["id"] == id:
@@ -864,7 +920,40 @@ const ENEMY_TYPES := {
 	"wraith": {"hp": 12.0, "speed": 78.0, "radius": 6.0, "dmg": 8.0, "min_time": 0.0, "weight": 0.0, "swarm_only": true,
 		"color": Color(0.6, 0.85, 1.0), "xp": 1, "ghost": true},
 	"caster": {"hp": 14.0, "speed": 34.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.85, 0.25, 0.55), "xp": 2, "ranged": true},
+	# Locations 2-5 (PixelLab sprites in assets/enemies/<sprite or id>.png). Behaviour flags:
+	# dash = charges after a short telegraph (ENEMY_DASH_*), split = [type, count] on death,
+	# spread = bullets per volley (ranged), blink = teleports next to the player now and then (ENEMY_BLINK_*).
+	# Whispering Forest
+	"sprout": {"hp": 9.0, "speed": 46.0, "radius": 6.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.5, 0.9, 0.3), "xp": 1},
+	"moth": {"hp": 7.0, "speed": 74.0, "radius": 6.0, "dmg": 5.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.6, 0.5, 0.7), "xp": 1},
+	"bramble": {"hp": 45.0, "speed": 30.0, "radius": 10.0, "dmg": 13.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.3, 0.6, 0.3), "xp": 3, "dash": true},
+	"wisp": {"hp": 14.0, "speed": 34.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.6, 1.0, 0.4), "xp": 2, "ranged": true, "spread": 3},
+	# Forgotten Library
+	"inkblot": {"hp": 12.0, "speed": 36.0, "radius": 7.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.15, 0.12, 0.2), "xp": 1, "split": ["inkdrop", 2]},
+	"inkdrop": {"hp": 4.0, "speed": 58.0, "radius": 4.0, "dmg": 3.0, "min_time": 0.0, "weight": 0.0, "color": Color(0.15, 0.12, 0.2), "xp": 0, "sprite": "inkblot", "spawn_only": true},
+	"quill_owl": {"hp": 7.0, "speed": 76.0, "radius": 6.0, "dmg": 5.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.6, 0.4, 0.3), "xp": 1},
+	"armor": {"hp": 60.0, "speed": 24.0, "radius": 10.0, "dmg": 14.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.6, 0.6, 0.7), "xp": 3},
+	"phantom": {"hp": 16.0, "speed": 32.0, "radius": 7.0, "dmg": 4.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.6, 0.4, 0.9), "xp": 2, "ranged": true, "blink": true},
+	# Crystal Cavern
+	"mite": {"hp": 10.0, "speed": 52.0, "radius": 6.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.3, 0.8, 0.9), "xp": 1},
+	"shardbat": {"hp": 8.0, "speed": 80.0, "radius": 6.0, "dmg": 6.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.4, 0.5, 0.9), "xp": 1},
+	"golem": {"hp": 70.0, "speed": 26.0, "radius": 11.0, "dmg": 16.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.7, 0.5, 0.8), "xp": 4, "dash": true},
+	"prism_eye": {"hp": 15.0, "speed": 30.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.8, 0.7, 1.0), "xp": 2, "ranged": true, "spread": 5},
+	# Rift Nexus
+	"voidling": {"hp": 12.0, "speed": 48.0, "radius": 6.0, "dmg": 7.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.5, 0.2, 0.6), "xp": 1, "split": ["voidmite", 2]},
+	"voidmite": {"hp": 4.0, "speed": 64.0, "radius": 4.0, "dmg": 3.0, "min_time": 0.0, "weight": 0.0, "color": Color(0.5, 0.2, 0.6), "xp": 0, "sprite": "voidling", "spawn_only": true},
+	"rift_ray": {"hp": 9.0, "speed": 84.0, "radius": 6.0, "dmg": 6.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.4, 0.7, 1.0), "xp": 1, "ghost": true},
+	"horror": {"hp": 80.0, "speed": 30.0, "radius": 11.0, "dmg": 18.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.4, 0.1, 0.3), "xp": 4, "dash": true},
+	"seer": {"hp": 18.0, "speed": 32.0, "radius": 7.0, "dmg": 4.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.8, 0.3, 0.9), "xp": 2, "ranged": true, "spread": 3, "blink": true},
 }
+const ENEMY_DASH_EVERY := 4.5      # seconds between charges
+const ENEMY_DASH_RANGE := 170.0    # only charges when the player is this close
+const ENEMY_DASH_TELEGRAPH := 0.55
+const ENEMY_DASH_TIME := 0.35
+const ENEMY_DASH_SPEED := 4.0      # x its walking speed
+const ENEMY_BLINK_EVERY := 6.0
+const ENEMY_BLINK_DIST := 110.0
+const ENEMY_SPREAD_ANGLE := 0.22   # radians between bullets of a volley
 # Codex entries for the bestiary (Codex page).
 const CODEX_ENEMIES := [
 	{"id": "slime", "name": "Rift Slime", "desc": "Purple ooze that seeps from every Rift crack. Weak alone, endless together."},
@@ -873,18 +962,54 @@ const CODEX_ENEMIES := [
 	{"id": "caster", "name": "Hex Caster", "desc": "Hangs back and throws curse bolts. Close the gap or dodge with a dash."},
 	{"id": "wraith", "name": "Swarm Wraith", "desc": "Only in the Final Swarm. Drifts through walls; there is no hiding."},
 	{"id": "boss", "name": "Corrupted Guardian", "desc": "The academy's old guardian, twisted by the Rift. Rings of bullets, telegraphed dashes and summons; enrages at low health."},
+	{"id": "sprout", "name": "Angry Sprout", "loc": "forest", "desc": "Seedlings that pulled themselves out of the herb beds. They swarm."},
+	{"id": "moth", "name": "Dusk Moth", "loc": "forest", "desc": "Drawn to spell light. Fast and fluttery."},
+	{"id": "bramble", "name": "Bramble Brute", "loc": "forest", "desc": "A walking thicket. Lowers its head, then charges in a straight line."},
+	{"id": "wisp", "name": "Forest Wisp", "loc": "forest", "desc": "Throws three green flames at once."},
+	{"id": "thornmother", "name": "Thornmother", "loc": "forest", "desc": "The forest's guardian dryad. Thorn spirals, aimed volleys and sprout summons."},
+	{"id": "inkblot", "name": "Inkblot", "loc": "library", "desc": "Spilled ink that crawls. Splits into two drops when popped."},
+	{"id": "quill_owl", "name": "Quill Owl", "loc": "library", "desc": "Library owls gone feral. Dive from the shelves."},
+	{"id": "armor", "name": "Hollow Armor", "loc": "library", "desc": "An empty suit of armor still on guard duty. Very sturdy."},
+	{"id": "phantom", "name": "Stack Phantom", "loc": "library", "desc": "A ghostly librarian that blinks next to you, then shoots."},
+	{"id": "archivist", "name": "The Archivist", "loc": "library", "desc": "Keeper of the sealed stacks. Rings of pages, spirals and blinking ambushes."},
+	{"id": "mite", "name": "Crystal Mite", "loc": "cavern", "desc": "Tiny crystal crawlers. Quick and everywhere."},
+	{"id": "shardbat", "name": "Shard Bat", "loc": "cavern", "desc": "Bats with wings of glass. They hit hard for their size."},
+	{"id": "golem", "name": "Crystal Golem", "loc": "cavern", "desc": "Rock and crystal. Charges when you get close."},
+	{"id": "prism_eye", "name": "Prism Eye", "loc": "cavern", "desc": "Splits its light into a fan of five bolts."},
+	{"id": "colossus", "name": "Crystal Colossus", "loc": "cavern", "desc": "The cavern's heart walking. Huge rings, crushing dashes and mite swarms."},
+	{"id": "voidling", "name": "Voidling", "loc": "nexus", "desc": "Rift smoke with too many eyes. Splits when struck down."},
+	{"id": "rift_ray", "name": "Rift Ray", "loc": "nexus", "desc": "Glides through walls like the wraiths do."},
+	{"id": "horror", "name": "Rift Horror", "loc": "nexus", "desc": "A beast from the other side. Charges, and hits like a wall."},
+	{"id": "seer", "name": "Void Seer", "loc": "nexus", "desc": "Blinks beside you and fires a fan of void bolts."},
+	{"id": "sovereign", "name": "Rift Sovereign", "loc": "nexus", "desc": "Whatever rules the Rift. Every pattern at once, faster when hurt."},
 ]
 const ELITE_SCALE := 1.6
 const ELITE_HP_MULT := 12.0
 const ELITE_AFFIXES := ["swift", "warded", "splitter"]
 const ELITE_GOLD := 8
 
-const BOSS := {
-	"name": "Corrupted Guardian", "hp": 2500.0, "radius": 22.0, "sprite_scale": 1.5, "speed": 35.0, "dmg": 20.0,
-	"ring_bullets": 16, "bullet_speed": 90.0, "bullet_dmg": 10.0,
-	"dash_telegraph": 0.8, "dash_speed": 400.0, "dash_time": 0.5, "summon": 6,
-	"gap": 1.6, "gap_enraged": 0.9,
+# Bosses, one per location (LOCATIONS[*]["boss"]). `patterns` cycle in order: ring (bullets all around),
+# dash (telegraphed charge), summon (`summon` x `summon_type`), spiral (`spiral_waves` rotated rings),
+# volley (`volley` aimed bullets in a fan), blink (teleports next to the player, then a ring).
+# HP here is before the location tier / danger multipliers. `sprite` = assets/characters/<sprite>/.
+const BOSSES := {
+	"guardian": {"name": "Corrupted Guardian", "sprite": "boss", "hp": 2500.0, "radius": 22.0, "sprite_scale": 1.5, "speed": 35.0, "dmg": 20.0,
+		"ring_bullets": 16, "bullet_speed": 90.0, "bullet_dmg": 10.0, "dash_telegraph": 0.8, "dash_speed": 400.0, "dash_time": 0.5,
+		"summon": 6, "summon_type": "slime", "patterns": ["ring", "dash", "summon"], "gap": 1.6, "gap_enraged": 0.9},
+	"thornmother": {"name": "Thornmother", "sprite": "boss_thornmother", "hp": 2500.0, "radius": 22.0, "sprite_scale": 1.5, "speed": 32.0, "dmg": 20.0,
+		"ring_bullets": 14, "bullet_speed": 85.0, "bullet_dmg": 10.0, "dash_telegraph": 0.8, "dash_speed": 380.0, "dash_time": 0.5,
+		"summon": 8, "summon_type": "sprout", "spiral_waves": 3, "volley": 5, "patterns": ["spiral", "volley", "summon", "dash"], "gap": 1.5, "gap_enraged": 0.85},
+	"archivist": {"name": "The Archivist", "sprite": "boss_archivist", "hp": 2500.0, "radius": 20.0, "sprite_scale": 1.5, "speed": 30.0, "dmg": 18.0,
+		"ring_bullets": 18, "bullet_speed": 80.0, "bullet_dmg": 10.0, "dash_telegraph": 0.8, "dash_speed": 380.0, "dash_time": 0.5,
+		"summon": 6, "summon_type": "inkblot", "spiral_waves": 4, "volley": 5, "patterns": ["ring", "blink", "spiral", "summon"], "gap": 1.5, "gap_enraged": 0.85},
+	"colossus": {"name": "Crystal Colossus", "sprite": "boss_colossus", "hp": 2800.0, "radius": 24.0, "sprite_scale": 1.7, "speed": 28.0, "dmg": 24.0,
+		"ring_bullets": 24, "bullet_speed": 75.0, "bullet_dmg": 12.0, "dash_telegraph": 0.9, "dash_speed": 430.0, "dash_time": 0.55,
+		"summon": 10, "summon_type": "mite", "spiral_waves": 3, "volley": 7, "patterns": ["ring", "dash", "volley", "summon", "dash"], "gap": 1.6, "gap_enraged": 0.9},
+	"sovereign": {"name": "Rift Sovereign", "sprite": "boss_sovereign", "hp": 3000.0, "radius": 22.0, "sprite_scale": 1.6, "speed": 36.0, "dmg": 24.0,
+		"ring_bullets": 20, "bullet_speed": 95.0, "bullet_dmg": 12.0, "dash_telegraph": 0.7, "dash_speed": 450.0, "dash_time": 0.5,
+		"summon": 8, "summon_type": "voidling", "spiral_waves": 4, "volley": 7, "patterns": ["spiral", "blink", "volley", "dash", "summon", "ring"], "gap": 1.3, "gap_enraged": 0.7},
 }
+const BOSS: Dictionary = BOSSES["guardian"]   # the Ruined Courtyard boss (older code paths)
 const PORTAL_CHARGE := 3.0
 const PORTAL_SUMMON_DELAY := 2.0
 

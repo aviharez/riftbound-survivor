@@ -17,6 +17,29 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Tahap 5f: quest dengan hadiah.**
+- Panel QUESTS di layar utama sekarang berisi: pemberitahuan (ekspedisi pulang, bangunan selesai), **1 quest
+  cerita** (kuning, berurutan: main run pertama, pulihkan Library, menangkan Courtyard, dst.) dan **3 quest harian**
+  (ganti setiap hari: kalahkan 400 monster, buka 12 chest, menang 1 run, ngobrol di asrama, dll.).
+- Angka di kanan = progres. Saat selesai muncul tombol hijau **CLAIM** → hadiah langsung masuk.
+- Ketuk teks quest untuk langsung ke tempatnya (halaman Rift, bangunan, asrama, dll.).
+- [ ] Hadiah quest terasa pas? Quest harian terlalu mudah / susah?
+
+**Tahap 5b–5e: empat lokasi baru dengan musuh, boss, dan warna peta sendiri.**
+- **Whispering Forest:** Angry Sprout, Dusk Moth, Bramble Brute (menyeruduk setelah ancang-ancang garis merah),
+  Forest Wisp (3 api sekaligus). Boss **Thornmother**.
+- **Forgotten Library:** Inkblot (pecah jadi 2 tetes saat mati), Quill Owl, Hollow Armor (sangat tebal), Stack
+  Phantom (teleport ke dekatmu lalu menembak). Boss **The Archivist**.
+- **Crystal Cavern:** Crystal Mite, Shard Bat, Crystal Golem (menyeruduk), Prism Eye (5 tembakan berbentuk kipas).
+  Boss **Crystal Colossus**.
+- **Rift Nexus:** Voidling (pecah), Rift Ray (tembus tembok), Rift Horror (menyeruduk), Void Seer (teleport dan
+  tembakan kipas). Boss **Rift Sovereign**.
+- Setiap boss punya pola sendiri: cincin peluru, spiral, tembakan terarah, teleport, seruduk, dan memanggil anak buah.
+- Codex > MONSTERS: musuh dari lokasi yang belum terbuka tampil sebagai siluet "???".
+- [ ] Musuh baru mudah dikenali? Ada yang mirip karakter game/anime terkenal?
+- [ ] Seruduk dan teleport adil (ada ancang-ancang yang terlihat)?
+- [ ] Warna peta tiap lokasi enak dilihat?
+
 **Tahap 5a: tingkat danger + pilih lokasi.**
 - Halaman Rift: tab lokasi 1–5 (yang terkunci abu-abu) dan tombol **DANGER 1–5**. Hijau = sudah dimenangkan,
   merah = belum, abu-abu = terkunci.

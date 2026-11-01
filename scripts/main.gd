@@ -47,6 +47,7 @@ var shrines_used := 0
 var difficulty := 1.0
 var location_id := "courtyard"
 var danger := 1
+var boss_cfg: Dictionary = GameData.BOSSES["guardian"]
 var run_mods := {"hp": 1.0, "dmg": 1.0, "spawn": 1.0, "elite": 1.0, "reward": 1.0}   # GameData.run_mods(location, danger)
 var final_swarm := false
 var final_swarm_t := 0.0
@@ -119,13 +120,14 @@ func _ready() -> void:
 	if character_id == "":
 		character_id = "astra"
 	run_mods = GameData.run_mods(location_id, danger)
+	boss_cfg = GameData.BOSSES[GameData.location_by_id(location_id)["boss"]]
 
 	var t0 := Time.get_ticks_msec()
 	var map := MapGenerator.new().generate(seed_value)
 	print("[run] seed=%d map %d ms, rerolls=%d" % [seed_value, Time.get_ticks_msec() - t0, map["rerolls"]])
 
 	world = _add(World.new())
-	world.setup(map)
+	world.setup(map, String(GameData.location_by_id(location_id)["tiles"]))
 	fog = Fog.new()
 	fog.setup(world.w, world.h)
 	interactables = _add(Interactables.new())
@@ -838,7 +840,7 @@ func summon_boss(pos: Vector2) -> void:
 	screen_fx.hitstop(0.12)
 	var b := enemies.spawn_boss(pos, (1.0 + GameData.HP_SCALE_PER_MIN * elapsed / 60.0) * float(run_mods["hp"]))
 	b.dmg *= float(run_mods["dmg"])
-	hud.banner("%s has emerged!" % GameData.BOSS["name"], Color(1, 0.3, 0.35), 3.0)
+	hud.banner("%s has emerged!" % boss_cfg["name"], Color(1, 0.3, 0.35), 3.0)
 
 
 func _on_boss_killed(pos: Vector2) -> void:
@@ -922,7 +924,7 @@ func _end_run(won: bool) -> void:
 		SaveData.bank_run(save, {"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain,
 			"shards": shards, "char_exp": exp_gain, "essence": {loc: essence}, "items": drops},
 			{"victory": won, "kills": kills, "time": t, "level": level, "seed": seed_value, "character": character_id,
-			"location": location_id, "danger": danger,
+			"location": location_id, "danger": danger, "chests": chests_opened, "boss": boss_killed,
 			"gold": academy_gold, "materials": materials, "aether": aether, "exp": exp_gain, "shards": shards})
 		SaveData.save_data(save)
 	hud.show_result({"won": won, "kills": kills, "time": t, "level": level, "chests": chests_opened, "shrines": shrines_used,

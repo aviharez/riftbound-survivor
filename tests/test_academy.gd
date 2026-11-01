@@ -271,6 +271,34 @@ func _init() -> void:
 	check(loaded["location"] == "courtyard" and loaded["danger"] == 1, "a locked selection falls back on load")
 	check(SaveData.craft_loc(0) == "courtyard" and SaveData.craft_loc(2) == "forest", "higher rarities use later essences")
 
+	# --- v8: quests ---
+	d = SaveData.defaults()
+	SaveData.roll_day(d, "2026-11-02")
+	var dailies := SaveData.daily_quests("2026-11-02")
+	check(dailies.size() == GameData.DAILY_QUEST_COUNT and dailies == SaveData.daily_quests("2026-11-02"), "three dailies, stable for the day")
+	var story := SaveData.story_quests(d)
+	check(story.size() == 1 and story[0]["id"] == "s_first_run" and not SaveData.quest_done(d, story[0]), "first story quest open")
+	check(SaveData.claim_quest(d, story[0], "2026-11-02").is_empty(), "cannot claim an unfinished quest")
+	SaveData.bank_run(d, {}, {"victory": true, "kills": 450, "chests": 13, "boss": true, "location": "courtyard", "danger": 1})
+	check(SaveData.counter(d, "kills") == 450 and SaveData.counter(d, "wins") == 1 and SaveData.counter(d, "bosses") == 1, "runs count kills, wins, bosses")
+	check(SaveData.quest_done(d, story[0]), "first run quest done")
+	var g0q: int = d["gold"]
+	var got_q := SaveData.claim_quest(d, story[0], "2026-11-02")
+	check(int(d["gold"]) == g0q + int(got_q.get("gold", 0)) and SaveData.claim_quest(d, story[0], "2026-11-02").is_empty(), "story reward paid once")
+	check(SaveData.story_quests(d)[0]["id"] != "s_first_run", "the next story quest shows")
+	var all_daily := {"id": "d_kills", "text": "", "counter": "kills", "goal": 400, "reward": {"gold": 250}}
+	check(SaveData.quest_progress(d, all_daily)[0] == 400, "daily progress counts today's growth")
+	SaveData.roll_day(d, "2026-11-03")
+	check(SaveData.quest_progress(d, all_daily)[0] == 0, "a new day starts the dailies over")
+	SaveData.talk(d, "astra", "2026-11-03") # not a resident: no count
+	d["buildings"]["dormitory"] = 1
+	SaveData.move_in(d, "astra")
+	SaveData.talk(d, "astra", "2026-11-03")
+	check(SaveData.counter(d, "talks") == 1, "talks are counted")
+	SaveData.save_data(d)
+	loaded = SaveData.load_data()
+	check(loaded["counters"]["kills"] == 450 and typeof(loaded["counters"]["kills"]) == TYPE_INT and loaded["quests"]["story"].size() == 1, "quests survive save/load")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveData.path))
 	print("academy tests: ", "PASS" if failures == 0 else "%d FAILED" % failures)
 	quit(1 if failures > 0 else 0)

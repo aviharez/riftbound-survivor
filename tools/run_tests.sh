@@ -36,6 +36,10 @@ run alpha_weapons "\[autotest\] done" --fixed-fps 60 -- --autotest --seed=31337 
 run selene "char=selene trait_procs=[1-9]" --fixed-fps 60 -- --autotest --seed=4242 --char=selene --lessons=might:3,vigor:2 --slots=4
 run noah "char=noah trait_procs=[1-9]" --fixed-fps 60 -- --autotest-die --seed=77 --char=noah
 run danger_cavern "loc=cavern danger=3" --fixed-fps 60 -- --autotest --seed=4242 --loc=cavern --danger=3
+# every location's enemies and boss (the boss-autotest kills the boss, so each pattern runs)
+for l in forest library nexus; do
+  run "boss_$l" "loc=$l danger=2" --fixed-fps 60 -- --autotest-boss --seed=31337 --loc=$l --danger=2
+done
 # characters added in the art phase: every trait must fire at least once
 for c in raika wren celeste lumi; do
   run "trait_$c" "char=$c trait_procs=[1-9]" --fixed-fps 60 -- --autotest-die --seed=77 --char=$c

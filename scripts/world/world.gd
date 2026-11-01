@@ -29,7 +29,11 @@ func _process(delta: float) -> void:
 		_ground_mat.set_shader_parameter("time", _time)
 
 
-func setup(m: Dictionary) -> void:
+var tiles: Dictionary = GameData.TILESETS["courtyard"]
+
+
+func setup(m: Dictionary, tiles_id := "courtyard") -> void:
+	tiles = GameData.TILESETS.get(tiles_id, GameData.TILESETS["courtyard"])
 	_ground_mat = ShaderMaterial.new()
 	_ground_mat.shader = load("res://shaders/rift_ground.gdshader")
 	material = _ground_mat
@@ -57,31 +61,56 @@ func _bake_textures(s: int) -> void:
 			var t := grid[y * w + x]
 			var r := Rect2i(x * p, y * p, p, p)
 			var v := rng.randf_range(-0.03, 0.03)
+			var T := tiles
 			match t:
 				GameData.T_WALL:
-					var base := Color(0.2, 0.2, 0.27)
+					var base: Color = T["wall"]
 					img.fill_rect(r, base.lightened(v))
+					if T["style"] == "planks":
+						# bookshelves: coloured spines in rows
+						for row in 2:
+							for k in 3:
+								if rng.randf() < 0.8:
+									var spine := Color.from_hsv(rng.randf(), 0.5, 0.45)
+									img.fill_rect(Rect2i(x * p + 1 + k * 2, y * p + 1 + row * 4, 1, 3), spine)
+					elif T["style"] == "sparkle" and rng.randf() < 0.25:
+						img.fill_rect(Rect2i(x * p + rng.randi_range(1, 5), y * p + rng.randi_range(2, 5), 2, 2), T["wall_top"])
+					elif T["style"] == "leaves" and rng.randf() < 0.5:
+						img.fill_rect(Rect2i(x * p + rng.randi_range(0, 5), y * p + rng.randi_range(0, 5), 3, 2), Color(T["wall_top"]).darkened(0.25))
 					# lit top edge where the wall faces open floor below
 					if y + 1 < h and grid[(y + 1) * w + x] != GameData.T_WALL:
-						img.fill_rect(Rect2i(x * p, y * p + p - 2, p, 2), Color(0.12, 0.12, 0.16))
+						img.fill_rect(Rect2i(x * p, y * p + p - 2, p, 2), T["wall_shade"])
 					if y > 0 and grid[(y - 1) * w + x] != GameData.T_WALL:
-						img.fill_rect(Rect2i(x * p, y * p, p, 2), Color(0.38, 0.38, 0.48))
-					minimap_image.set_pixel(x, y, Color(0.32, 0.32, 0.42))
+						img.fill_rect(Rect2i(x * p, y * p, p, 2), T["wall_top"])
+					minimap_image.set_pixel(x, y, Color(base).lightened(0.25))
 				GameData.T_RUINS:
-					img.fill_rect(r, Color(0.42, 0.42, 0.45).lightened(v))
+					img.fill_rect(r, Color(T["deco"]).lightened(v))
 					if rng.randf() < 0.5:
-						img.fill_rect(Rect2i(x * p, y * p, p, 1), Color(0.35, 0.35, 0.38))
-						img.fill_rect(Rect2i(x * p, y * p, 1, p), Color(0.35, 0.35, 0.38))
-					minimap_image.set_pixel(x, y, Color(0.5, 0.5, 0.55))
+						img.fill_rect(Rect2i(x * p, y * p, p, 1), T["deco_line"])
+						img.fill_rect(Rect2i(x * p, y * p, 1, p), T["deco_line"])
+					minimap_image.set_pixel(x, y, Color(T["deco"]).lightened(0.15))
 				GameData.T_RIFT:
-					img.fill_rect(r, Color(0.24, 0.36, 0.2).lightened(v))
-					img.fill_rect(Rect2i(x * p + rng.randi_range(1, 4), y * p + rng.randi_range(1, 4), 3, 1), Color(0.75, 0.25, 0.95))
+					img.fill_rect(r, Color(T["rift"]).lightened(v))
+					img.fill_rect(Rect2i(x * p + rng.randi_range(1, 4), y * p + rng.randi_range(1, 4), 3, 1), GameData.RIFT_CRACK)
 					minimap_image.set_pixel(x, y, Color(0.4, 0.3, 0.5))
 				_:
-					img.fill_rect(r, Color(0.27, 0.42, 0.22).lightened(v))
-					if rng.randf() < 0.35:
-						img.fill_rect(Rect2i(x * p + rng.randi_range(0, 6), y * p + rng.randi_range(0, 6), 1, 2), Color(0.36, 0.55, 0.28))
-					minimap_image.set_pixel(x, y, Color(0.3, 0.45, 0.26))
+					img.fill_rect(r, Color(T["floor"]).lightened(v))
+					match String(T["style"]):
+						"planks":
+							img.fill_rect(Rect2i(x * p, y * p + (3 if x % 2 == 0 else 7), p, 1), T["floor_dot"])
+						"sparkle":
+							if rng.randf() < 0.12:
+								img.set_pixel(x * p + rng.randi_range(0, 7), y * p + rng.randi_range(0, 7), T["floor_dot"])
+						"void":
+							if rng.randf() < 0.18:
+								img.fill_rect(Rect2i(x * p + rng.randi_range(0, 6), y * p + rng.randi_range(0, 6), 2, 1), T["floor_dot"])
+						"leaves":
+							if rng.randf() < 0.4:
+								img.fill_rect(Rect2i(x * p + rng.randi_range(0, 6), y * p + rng.randi_range(0, 6), 2, 1), T["floor_dot"])
+						_:
+							if rng.randf() < 0.35:
+								img.fill_rect(Rect2i(x * p + rng.randi_range(0, 6), y * p + rng.randi_range(0, 6), 1, 2), T["floor_dot"])
+					minimap_image.set_pixel(x, y, Color(T["floor"]).lightened(0.05))
 	ground_texture = ImageTexture.create_from_image(img)
 	minimap_texture = ImageTexture.create_from_image(minimap_image)
 
