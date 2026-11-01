@@ -88,6 +88,41 @@ func _init() -> void:
 	check(loaded["buildings"].has("frost_tower") and loaded["buildings"]["frost_tower"] == 0, "new buildings start in ruins")
 	check(loaded["character"] == "astra", "locked character in an old save falls back to astra")
 
+	check(loaded["shards"] == 0 and loaded["characters"] is Dictionary and loaded["characters"].is_empty(), "v1 save gets shards / characters")
+
+	# --- migration: a version 2 save (lessons, no shards / characters)
+	f = FileAccess.open(SaveData.path, FileAccess.WRITE)
+	f.store_string(JSON.stringify({"version": 2, "gold": 10.0, "materials": 0.0, "aether": 0.0, "exp": 0.0,
+		"buildings": {}, "runs": 0.0, "victories": 0.0, "best_kills": 0.0, "last_run": {}, "character": "astra",
+		"lessons": {"might": 2.0}}))
+	f.close()
+	loaded = SaveData.load_data()
+	check(loaded["lessons"]["might"] == 2 and loaded["shards"] == 0 and loaded["characters"].is_empty(), "v2 save migrated")
+
+	# --- character level + enhance
+	d = SaveData.reset()
+	check(GameData.char_exp_for(1) == 0 and GameData.char_exp_for(2) == int(GameData.CHAR_EXP_FIRST), "level EXP curve starts at CHAR_EXP_FIRST")
+	check(GameData.char_level_for(GameData.char_exp_for(7)) == 7 and GameData.char_level_for(GameData.char_exp_for(7) - 1) == 6, "level from EXP")
+	check(SaveData.char_level(d, "astra") == 1 and SaveData.enhance_cap(d, "astra") == 0, "new character Lv 1, no enhance")
+	check(not SaveData.enhance(d, "astra", "passive"), "no enhance below Lv %d" % GameData.ENHANCE_LEVEL_STEP)
+	SaveData.bank_run(d, {"gold": 3000, "shards": 20, "char_exp": GameData.char_exp_for(10)}, {"victory": true, "kills": 1, "character": "astra"})
+	check(SaveData.char_level(d, "astra") == 10 and SaveData.char_level(d, "lyra") == 1, "run EXP goes to the played character only")
+	check(d["shards"] == 20, "shards banked")
+	check(SaveData.enhance_cap(d, "astra") == 2, "Lv 10 -> enhance cap 2")
+	check(SaveData.enhance(d, "astra", "passive") and SaveData.enhance(d, "astra", "passive"), "two passive ranks")
+	check(not SaveData.enhance(d, "astra", "passive"), "passive capped by level")
+	check(SaveData.enhance(d, "astra", "weapon"), "weapon rank 1")
+	check(not SaveData.enhance(d, "astra", "nonsense"), "unknown track refused")
+	var paid: int = GameData.ENHANCE_COST_SHARDS[0] * 2 + GameData.ENHANCE_COST_SHARDS[1]
+	check(d["shards"] == 20 - paid, "shards spent (%d)" % d["shards"])
+	var bonus := SaveData.char_run_bonus(d, "astra")
+	check(bonus["level"] == 10 and bonus["passive"] == 2 and bonus["weapon"] == 1, "run bonus (%s)" % [bonus])
+	SaveData.add_char_exp(d, "astra", 10000000)
+	check(SaveData.char_level(d, "astra") == GameData.CHAR_MAX_LEVEL, "level capped")
+	SaveData.save_data(d)
+	loaded = SaveData.load_data()
+	check(loaded["characters"]["astra"]["passive"] == 2 and typeof(loaded["characters"]["astra"]["exp"]) == TYPE_INT, "character progress survives save/load")
+
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveData.path))
 	print("academy tests: ", "PASS" if failures == 0 else "%d FAILED" % failures)
 	quit(1 if failures > 0 else 0)

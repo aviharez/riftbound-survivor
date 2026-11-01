@@ -6,7 +6,8 @@ extends Control
 ## Command-line (after `--`): any --autotest* flag skips straight to the run;
 ## --academy-shot=/tmp/a.png saves a screenshot of this screen and quits.
 ## --academy-demo uses an in-memory sample save (never written) with some buildings restored, for screenshots;
-## --academy-lessons opens the Staff Room lessons; --academy-scroll scrolls both strips to their end.
+## --academy-lessons opens the Staff Room lessons; --academy-scroll scrolls both strips to their end;
+## --academy-character opens the selected character's level / enhance panel.
 
 const NAVY := Color(0.06, 0.08, 0.18, 0.94)
 const GOLD := Color(0.86, 0.7, 0.32)
@@ -26,6 +27,8 @@ var _demo := false   # --academy-demo: the sample save is never written
 var _lessons_panel: Control   # full-screen dimmed overlay holding the lessons panel
 var _lesson_rows := {}   # lesson id -> {label, button}
 var _lessons_header: Label
+var _char_panel: CharacterPanel
+var _char_btn: Button
 
 
 func _ready() -> void:
@@ -44,11 +47,16 @@ func _ready() -> void:
 		save["buildings"]["frost_tower"] = 1
 		save["lessons"] = {"might": 2, "vigor": 1}
 		save["character"] = "selene"
+		save["shards"] = 9
+		SaveData.add_char_exp(save, "selene", GameData.char_exp_for(7) + 40)
+		SaveData.char_state(save, "selene")["passive"] = 1
 		_demo = true
 	_build()
 	_refresh()
 	if "--academy-lessons" in args:
 		_on_open_lessons()
+	if "--academy-character" in args:
+		_on_open_character()
 	if "--academy-scroll" in args:
 		await get_tree().process_frame
 		for sc in find_children("*", "ScrollContainer", true, false):
@@ -100,9 +108,15 @@ func _build() -> void:
 			b.icon = tex
 		chars.add_child(b)
 		_char_buttons[c["id"]] = b
+	var detail_row := HBoxContainer.new()
+	detail_row.add_theme_constant_override("separation", 8)
+	root.add_child(detail_row)
 	_char_detail = _label("", 8, IVORY)
 	_char_detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	root.add_child(_char_detail)
+	_char_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_row.add_child(_char_detail)
+	_char_btn = _button("Level & Enhance", Vector2(110, 28), _on_open_character)
+	detail_row.add_child(_char_btn)
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -132,6 +146,9 @@ func _build() -> void:
 	enter.add_theme_font_size_override("font_size", 12)
 	bottom.add_child(enter)
 	_build_lessons_panel()
+	_char_panel = CharacterPanel.new(self, func():
+		_persist()
+		_refresh())
 
 
 ## A sideways-scrolling strip (touch-drag on phones) holding `content`.
@@ -246,7 +263,7 @@ func _refresh() -> void:
 		var open := SaveData.character_unlocked(save, id)
 		var on: bool = id == sel
 		if open:
-			btn.text = "%s\n%s" % [c["name"], c["school"]]
+			btn.text = "%s  Lv %d\n%s" % [c["name"], SaveData.char_level(save, id), c["school"]]
 		else:
 			btn.text = "%s\nLocked" % c["name"]
 		btn.modulate = Color.WHITE if open else Color(0.55, 0.55, 0.65)
@@ -255,7 +272,9 @@ func _refresh() -> void:
 	var cdef := GameData.character_by_id(sel)
 	_char_detail.text = "%s  ·  %s  ·  %s\nStarter weapon: %s   ·   %s: %s" % [cdef["role"], cdef["school"], _stat_line(cdef),
 		GameData.weapon_by_id(cdef["starter"])["name"], cdef["passive"], cdef["passive_desc"]]
-	_res_label.text = "Gold %d   Materials %d   Aether %d   EXP %d" % [save["gold"], save["materials"], save["aether"], save["exp"]]
+	_res_label.text = "Gold %d   Materials %d   Aether %d   EXP %d   Shards %d" % [save["gold"], save["materials"], save["aether"], save["exp"], save["shards"]]
+	if _char_panel != null and _char_panel.is_open():
+		_char_panel.refresh()
 	for b in GameData.BUILDINGS:
 		var id: String = b["id"]
 		var c: Dictionary = _cards[id]
@@ -358,6 +377,10 @@ func _on_pick_character(id: String) -> void:
 	save["character"] = id
 	_persist()
 	_refresh()
+
+
+func _on_open_character() -> void:
+	_char_panel.open(save, String(save.get("character", "astra")))
 
 
 func _on_upgrade(id: String) -> void:

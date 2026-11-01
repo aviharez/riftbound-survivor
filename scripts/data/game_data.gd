@@ -488,6 +488,55 @@ static func lesson_by_id(id: String) -> Dictionary:
 
 
 ## Cost of buying `rank` (1-based) of a lesson.
+# --- Character progression (persistent, per character; saved in SaveData "characters") ---
+# Character level: character EXP comes from runs played with that character (same amount as the academy EXP).
+const CHAR_MAX_LEVEL := 30
+const CHAR_EXP_FIRST := 120.0      # EXP from Lv 1 to Lv 2; each next level needs CHAR_EXP_GROWTH times more
+const CHAR_EXP_GROWTH := 1.16
+const CHAR_LEVEL_MODS := [["max_hp", 4.0], ["damage_pct", 0.02]]   # per level above 1, applied at run start
+# Enhance: two tracks per character, paid with gold + Arcane Shards. Rank N needs character level
+# N x ENHANCE_LEVEL_STEP. Passive = trait strength, signature = the starter weapon (and its evolution).
+const ENHANCE_MAX := 5
+const ENHANCE_LEVEL_STEP := 5
+const ENHANCE_COST_GOLD := [250, 500, 900, 1500, 2400]     # rank 1..5
+const ENHANCE_COST_SHARDS := [2, 4, 7, 11, 16]
+const ENHANCE_TRAIT_PER_RANK := 0.15       # trait damage / heal / chance x (1 + 0.15 x rank), cooldowns / that
+const ENHANCE_WEAPON_DMG := 0.08           # signature weapon damage +8% per rank
+const ENHANCE_WEAPON_CD := 0.04            # signature weapon attack speed +4% per rank
+# Arcane Shards from a run: the boss, plus one per ELITES_PER_SHARD elites killed (defeat keeps them all).
+const SHARDS_BOSS := 3
+const ELITES_PER_SHARD := 3
+
+
+## Total character EXP needed to reach `level` (Lv 1 = 0).
+static func char_exp_for(level: int) -> int:
+	var total := 0.0
+	for l in range(1, level):
+		total += CHAR_EXP_FIRST * pow(CHAR_EXP_GROWTH, l - 1)
+	return int(round(total))
+
+
+## Character level for a total EXP amount (capped at CHAR_MAX_LEVEL).
+static func char_level_for(exp: int) -> int:
+	var lv := 1
+	while lv < CHAR_MAX_LEVEL and exp >= char_exp_for(lv + 1):
+		lv += 1
+	return lv
+
+
+## Stat mods of a character level ([[stat, value], ...]).
+static func char_level_mods(level: int) -> Array:
+	var out: Array = []
+	for m in CHAR_LEVEL_MODS:
+		out.append([m[0], float(m[1]) * (level - 1)])
+	return out
+
+
+## Cost of enhance rank `rank` (1..ENHANCE_MAX).
+static func enhance_cost(rank: int) -> Dictionary:
+	return {"gold": ENHANCE_COST_GOLD[rank - 1], "shards": ENHANCE_COST_SHARDS[rank - 1]}
+
+
 static func lesson_cost(rank: int) -> Dictionary:
 	var k := pow(LESSON_COST_GROWTH, rank - 1)
 	return {"exp": int(round(LESSON_COST_EXP * k)), "gold": int(round(LESSON_COST_GOLD * k))}

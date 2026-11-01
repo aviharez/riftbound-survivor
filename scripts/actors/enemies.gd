@@ -108,10 +108,10 @@ func damage(e: Enemy, amount: float, crit := false) -> void:
 		return
 	var tr: String = game.player.character.get("trait", "")
 	if tr == "frostbite" and (e.slow_t > 0.0 or e.freeze_t > 0.0):
-		amount *= float(GameData.TRAITS["frostbite"]["mult"])   # Selene: slowed / frozen foes take more
+		amount *= 1.0 + (float(GameData.TRAITS["frostbite"]["mult"]) - 1.0) * game.player.trait_power   # Selene: slowed / frozen foes take more
 		game.weapons.trait_procs += 1
 	if tr == "duelist" and (e.elite or e.boss):
-		amount *= float(GameData.TRAITS["duelist"]["mult"])   # Sera: elites and bosses take more
+		amount *= 1.0 + (float(GameData.TRAITS["duelist"]["mult"]) - 1.0) * game.player.trait_power   # Sera: elites and bosses take more
 		game.weapons.trait_procs += 1
 	e.hp -= amount
 	e.flash = 0.08

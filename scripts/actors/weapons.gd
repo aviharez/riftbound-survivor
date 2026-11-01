@@ -49,11 +49,27 @@ func _ready() -> void:
 
 
 func level_damage(w: Dictionary, lv: int) -> float:
-	return game.player.dmg() * float(w["dmg"]) * (1.0 + float(w["lvl_dmg"]) * (lv - 1))
+	return game.player.dmg() * float(w["dmg"]) * (1.0 + float(w["lvl_dmg"]) * (lv - 1)) \
+		* (1.0 + GameData.ENHANCE_WEAPON_DMG * _signature_rank(w))
 
 
 func level_cooldown(w: Dictionary, lv: int) -> float:
-	return float(w["cd"]) / (1.0 + float(w["lvl_cd"]) * (lv - 1)) / (1.0 + game.player.stats["attack_speed_pct"])
+	return float(w["cd"]) / (1.0 + float(w["lvl_cd"]) * (lv - 1)) / (1.0 + game.player.stats["attack_speed_pct"]) \
+		/ (1.0 + GameData.ENHANCE_WEAPON_CD * _signature_rank(w))
+
+
+## Signature-weapon enhance rank that applies to `w`: the character's starter weapon or its evolution.
+func _signature_rank(w: Dictionary) -> int:
+	var p: Player = game.player
+	if p.signature_rank <= 0:
+		return 0
+	var starter: String = p.character.get("starter", "")
+	return p.signature_rank if w.get("id", "") == starter or w.get("from", "") == starter else 0
+
+
+## Passive enhance: trait strength multiplier (damage, heal, chance; cooldowns are divided by it).
+func _tk() -> float:
+	return game.player.trait_power
 
 
 func level_size(w: Dictionary, lv: int) -> float:
@@ -112,7 +128,7 @@ func _process(delta: float) -> void:
 	if _trait() == "stargazer":
 		_star_t -= delta
 		if _star_t <= 0.0:
-			_star_t = float(GameData.TRAITS["stargazer"]["interval"])
+			_star_t = float(GameData.TRAITS["stargazer"]["interval"]) / _tk()
 			_stargazer()
 	if not _trait_queue.is_empty():
 		var q := _trait_queue
@@ -673,7 +689,7 @@ func trait_echo(e, amount: float) -> void:
 	trait_procs += 1
 	var d: Vector2 = other.pos - e.pos
 	game.vfx.play("zap_hit", other.pos, d.angle(), clampf(d.length() / 85.0, 0.3, 0.9), Color(0.7, 1.0, 1.0))
-	game.enemies.damage(other, amount * float(cfg["mult"]))
+	game.enemies.damage(other, amount * float(cfg["mult"]) * _tk())
 
 
 ## Kael, Retaliation: getting hit sends a sword wave through the foes around him.
@@ -681,12 +697,12 @@ func trait_on_hurt() -> void:
 	if _trait() != "retaliation" or _retaliate_cd > 0.0:
 		return
 	var cfg: Dictionary = GameData.TRAITS["retaliation"]
-	_retaliate_cd = float(cfg["cooldown"])
+	_retaliate_cd = float(cfg["cooldown"]) / _tk()
 	trait_procs += 1
 	var p: Player = game.player
 	var r: float = float(cfg["radius"]) * p.area()
 	for e in game.enemies.query_radius(p.position, r):
-		_hit(e, p.dmg() * float(cfg["dmg"]), Color(0.9, 1.6, 2.4))
+		_hit(e, p.dmg() * float(cfg["dmg"]) * _tk(), Color(0.9, 1.6, 2.4))
 	game.vfx.ring(p.position, Color(0.8, 1.4, 2.0), r, 0.3, 2.0)
 	for i in 8:
 		var dir := Vector2.from_angle(TAU * i / 8.0)
@@ -698,7 +714,7 @@ func trait_on_hurt() -> void:
 func trait_block() -> bool:
 	if _trait() != "page_guard" or _guard_cd > 0.0:
 		return false
-	_guard_cd = float(GameData.TRAITS["page_guard"]["cooldown"])
+	_guard_cd = float(GameData.TRAITS["page_guard"]["cooldown"]) / _tk()
 	trait_procs += 1
 	var p: Player = game.player
 	game.vfx.ring(p.position + Vector2(0, -6), Color(1.6, 1.5, 1.1), 16.0, 0.3, 1.5)
@@ -723,7 +739,7 @@ func _stargazer() -> void:
 	trait_procs += 1
 	var e = foes[randi() % foes.size()]
 	_strikes.append({"pos": e.pos, "t": 0.0, "delay": float(cfg["delay"]), "r": float(cfg["radius"]) * p.area(),
-		"dmg": p.dmg() * float(cfg["dmg"]), "fx": false})
+		"dmg": p.dmg() * float(cfg["dmg"]) * _tk(), "fx": false})
 
 
 ## Called by main for every kill: Lyra's Kindling, Nym's Thornheal, Noah's Plague, Raika, Vesper, Runa.
@@ -735,22 +751,22 @@ func trait_on_kill(e) -> void:
 				_static_kills = 0
 				_trait_queue.append({"kind": "static", "pos": e.pos})
 		"gravity_pull":
-			if randf() < float(GameData.TRAITS["gravity_pull"]["chance"]):
+			if randf() < minf(0.9, float(GameData.TRAITS["gravity_pull"]["chance"]) * _tk()):
 				_trait_queue.append({"kind": "gravity", "pos": e.pos})
 		"rune_ward":
-			if randf() < float(GameData.TRAITS["rune_ward"]["chance"]):
+			if randf() < minf(0.9, float(GameData.TRAITS["rune_ward"]["chance"]) * _tk()):
 				_trait_queue.append({"kind": "rune", "pos": e.pos})
 		"kindling":
-			if randf() < float(GameData.TRAITS["kindling"]["chance"]):
+			if randf() < minf(0.9, float(GameData.TRAITS["kindling"]["chance"]) * _tk()):
 				_trait_queue.append({"kind": "kindling", "pos": e.pos})
 		"thornheal":
 			if e.rooted_t > 0.0:
 				trait_procs += 1
-				game.player.heal(float(GameData.TRAITS["thornheal"]["heal"]))
+				game.player.heal(float(GameData.TRAITS["thornheal"]["heal"]) * _tk())
 				game.vfx.motes(e.pos, Color(0.8, 2.0, 0.6), 3, 20.0, 0.5, 2.5, -20.0)
 		"plague":
 			var cfg: Dictionary = GameData.TRAITS["plague"]
-			if _time - e.venom_hit_at <= float(cfg["poisoned_window"]) and randf() < float(cfg["chance"]):
+			if _time - e.venom_hit_at <= float(cfg["poisoned_window"]) and randf() < minf(0.9, float(cfg["chance"]) * _tk()):
 				_trait_queue.append({"kind": "plague", "pos": e.pos})
 
 
@@ -768,7 +784,7 @@ func _run_trait(t: Dictionary) -> void:
 				if cur == null:
 					break
 				done.append(cur)
-				_hit(cur, p.dmg() * float(cfg["dmg"]), Color(1.2, 1.8, 2.8))
+				_hit(cur, p.dmg() * float(cfg["dmg"]) * _tk(), Color(1.2, 1.8, 2.8))
 				var d: Vector2 = cur.pos - prev
 				game.vfx.play("zap_hit", cur.pos, d.angle(), clampf(d.length() / 85.0, 0.35, 1.2))
 				prev = cur.pos
@@ -789,7 +805,7 @@ func _run_trait(t: Dictionary) -> void:
 				if not (e.boss or e.elite):
 					var d: Vector2 = t["pos"] - e.pos
 					e.pos += d.limit_length(minf(float(cfg["pull"]), d.length()))
-				_hit(e, p.dmg() * float(cfg["dmg"]), Color(1.6, 0.9, 2.6))
+				_hit(e, p.dmg() * float(cfg["dmg"]) * _tk(), Color(1.6, 0.9, 2.6))
 			game.vfx.play("void_collapse", t["pos"], 0.0, r / BURST_REACH["void_collapse"] * 0.8, Color.WHITE, 0.5)
 		"rune":
 			var cfg: Dictionary = GameData.TRAITS["rune_ward"]
@@ -801,7 +817,7 @@ func _run_trait(t: Dictionary) -> void:
 			var size := p.area()
 			var fx: Dictionary = game.vfx.play("rune_sigil", t["pos"], 0.0, size * MINE_FX_SCALE * 0.8, Color(1, 1, 1, 0.45), 0.6, float(cfg["life"]))
 			_mines.append({"pos": t["pos"], "t": 0.0, "life": float(cfg["life"]), "arm": float(cfg["arm"]), "ward": true,
-				"r": float(cfg["radius"]) * size, "trig": float(cfg["trigger"]) * size, "dmg": p.dmg() * float(cfg["dmg"]), "fx": fx})
+				"r": float(cfg["radius"]) * size, "trig": float(cfg["trigger"]) * size, "dmg": p.dmg() * float(cfg["dmg"]) * _tk(), "fx": fx})
 		"overflow":
 			var cfg: Dictionary = GameData.TRAITS["overflow"]
 			var e = game.enemies.nearest(t["pos"], float(cfg["range"]), null)
@@ -809,12 +825,12 @@ func _run_trait(t: Dictionary) -> void:
 				return
 			var d: Vector2 = e.pos - t["pos"]
 			game.vfx.play("zap_hit", e.pos, d.angle(), clampf(d.length() / 85.0, 0.3, 0.9), Color(1.2, 0.9, 1.6))
-			game.enemies.damage(e, t["amount"])
+			game.enemies.damage(e, t["amount"] * _tk())
 		"kindling":
 			var cfg: Dictionary = GameData.TRAITS["kindling"]
 			var r: float = float(cfg["radius"]) * p.area()
 			for e in game.enemies.query_radius(t["pos"], r):
-				_hit(e, p.dmg() * float(cfg["dmg"]), Color(2.4, 1.1, 0.3))
+				_hit(e, p.dmg() * float(cfg["dmg"]) * _tk(), Color(2.4, 1.1, 0.3))
 			game.vfx.play("solar_burst", t["pos"], 0.0, r / 44.0)
 		"plague":
 			var cfg: Dictionary = GameData.TRAITS["plague"]
@@ -823,7 +839,7 @@ func _run_trait(t: Dictionary) -> void:
 			var r: float = float(cfg["radius"]) * p.area()
 			var fx: Dictionary = game.vfx.play("venom_cloud", t["pos"], 0.0, r / 30.0, Color.WHITE, 0.8, float(cfg["duration"]))
 			_zones.append({"kind": "venom", "plague": true, "pos": t["pos"], "r": r, "t": 0.0, "life": float(cfg["duration"]),
-				"tick": float(cfg["tick"]), "tick_dmg": p.dmg() * float(cfg["dmg"]), "fx": fx})
+				"tick": float(cfg["tick"]), "tick_dmg": p.dmg() * float(cfg["dmg"]) * _tk(), "fx": fx})
 
 
 # ------------------------------------------------------------------ drawing

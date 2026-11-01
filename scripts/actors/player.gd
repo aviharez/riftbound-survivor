@@ -29,6 +29,8 @@ var iframes := 0.0
 var hurt_flash := 0.0
 var damage_dealt := 0.0
 var god_mode := false   # autotest only
+var trait_power := 1.0  # passive enhance: trait strength multiplier
+var signature_rank := 0 # signature-weapon enhance rank (starter weapon and its evolution)
 
 
 ## Applies a character's base stats and starter weapon. Call before the run starts.
