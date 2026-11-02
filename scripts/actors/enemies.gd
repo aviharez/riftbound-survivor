@@ -41,6 +41,7 @@ class Enemy:
 	var phase := 0.0            # animation offset, so a crowd of one type does not move in lockstep
 	var cast_t := 0.0           # boss: seconds left of its attack (cast) animation
 	var knock := Vector2.ZERO   # knockback velocity (Holy Nova), decays by ENEMY_KNOCK_DECAY
+	var face := 1.0             # +1 moving right, -1 moving left (sprite facing; set from its own motion)
 	# boss state machine
 	var state := "idle"
 	var state_t := 1.5
@@ -236,11 +237,16 @@ func _process(delta: float) -> void:
 		if e.freeze_t > 0.0:
 			e.freeze_t -= delta
 			continue
+		var old_x: float = e.pos.x
 		if e.boss:
 			_boss_update(e, delta)
 		else:
 			if not _act(e, ppos, delta):
 				_walk(e, ppos, delta, speed_mult)
+			# face where it actually goes (not where the player is), ignoring tiny jitters and knockback
+			var dx: float = e.pos.x - old_x
+			if absf(dx) > 0.15 * delta * 60.0 and e.knock == Vector2.ZERO:
+				e.face = signf(dx)
 			if e.ranged:
 				e.shoot_t -= delta
 				if e.shoot_t <= 0.0 and e.pos.distance_to(ppos) < 200.0:
@@ -436,19 +442,40 @@ func _draw() -> void:
 			draw_line(e.pos, e.pos + e.dash_dir * e.speed * GameData.ENEMY_DASH_SPEED * GameData.ENEMY_DASH_TIME, Color(2.0, 0.2, 0.2, 0.6), 2.0)
 		_draw_sprite(e, cam)
 		if e.elite:
-			var pulse := 0.6 + 0.4 * sin(Time.get_ticks_msec() * 0.008)
-			draw_texture_rect(game.vfx.glow_tex, Rect2(e.pos - Vector2(e.radius, e.radius) * 2.2, Vector2(e.radius, e.radius) * 4.4), false, Color(1.6, 0.25, 0.2, 0.45 * pulse))
-			draw_arc(e.pos, e.radius + 1.5, 0, TAU, 20, Color(2.0, 0.4, 0.3), 1.5)
-			if e.shield > 0:
-				draw_arc(e.pos, e.radius + 4.0, 0, TAU, 20, Color(0.5, 0.8, 1.0, 0.8), 1.0)
-			var w: float = e.radius * 2.2
-			draw_rect(Rect2(e.pos.x - w / 2, e.pos.y - e.radius - 6, w, 2), Color(0.2, 0, 0))
-			draw_rect(Rect2(e.pos.x - w / 2, e.pos.y - e.radius - 6, w * e.hp / e.max_hp, 2), Color(1, 0.3, 0.3))
+			_draw_elite_mark(e)
 	var tex: Texture2D = game.vfx.glow_tex
 	for b in bullets:
 		draw_texture_rect(tex, Rect2(b["pos"] - Vector2(9, 9), Vector2(18, 18)), false, Color(2.0, 0.3, 0.8, 0.8))
 		draw_circle(b["pos"], 2.6, Color(2.2, 0.5, 1.0))
 		draw_circle(b["pos"], 1.2, Color(2.6, 2.2, 2.4))
+
+
+## Elite marker (no red ring, Syifa found it ugly): a small gold crown over a pixel HP bar, blue pips for a
+## warded foe's shield hits. The elite itself is drawn bigger and slightly tinted.
+func _draw_elite_mark(e: Enemy) -> void:
+	var w: float = roundf(e.radius * 2.2)
+	var top := (e.pos + Vector2(-w * 0.5, -e.radius * 1.9 - 4)).round()
+	var bar := Rect2(top, Vector2(w, 2))
+	var ol := Color(0.02, 0.01, 0.05)
+	draw_rect(bar.grow(1), ol)
+	draw_rect(bar, Color(0.25, 0.05, 0.08))
+	draw_rect(Rect2(bar.position, Vector2(roundf(w * e.hp / e.max_hp), 2)), Color(1, 0.35, 0.35))
+	# crown: three gold points on a band, black outline
+	var c := Vector2(roundf(e.pos.x), bar.position.y - 6)
+	var gold := Color(1.0, 0.82, 0.3)
+	draw_rect(Rect2(c + Vector2(-5, 0), Vector2(11, 4)), ol)
+	draw_rect(Rect2(c + Vector2(-5, -3), Vector2(3, 4)), ol)
+	draw_rect(Rect2(c + Vector2(-1, -4), Vector2(3, 5)), ol)
+	draw_rect(Rect2(c + Vector2(3, -3), Vector2(3, 4)), ol)
+	draw_rect(Rect2(c + Vector2(-4, 1), Vector2(9, 2)), gold)
+	draw_rect(Rect2(c + Vector2(-4, -2), Vector2(1, 3)), gold)
+	draw_rect(Rect2(c + Vector2(0, -3), Vector2(1, 4)), gold)
+	draw_rect(Rect2(c + Vector2(4, -2), Vector2(1, 3)), gold)
+	draw_rect(Rect2(c + Vector2(0, 1), Vector2(1, 1)), Color(1.0, 0.35, 0.4))   # gem
+	for i in e.shield:
+		var p := Vector2(bar.end.x + 3 + i * 4, bar.position.y)
+		draw_rect(Rect2(p - Vector2(1, 1), Vector2(3, 3)), ol)
+		draw_rect(Rect2(p, Vector2(1, 1)), Color(0.5, 0.85, 1.0))
 
 
 var _art_cache := {}
@@ -489,7 +516,7 @@ func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 		tex = PixelSprites.texture(name, "bat" if name == "bat_up" else "")
 		scale = (e.radius * 2.6) / float(tex.get_width())
 	var tw := float(tex.get_width())
-	var flip := -1.0 if cam.x < e.pos.x else 1.0
+	var flip: float = e.face * (-1.0 if e.def.get("face_left", false) else 1.0)
 	# idle squash for slimes, hover bob for bats
 	var sy := 1.0
 	var lift := 0.0

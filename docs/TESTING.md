@@ -17,6 +17,15 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Elite, jejak jalan, arah musuh.**
+- Elite tidak lagi punya lingkaran/cahaya merah: sekarang mahkota emas kecil + bar HP di atas kepalanya
+  (tetap lebih besar dan sedikit kemerahan). Elite "warded" punya titik biru kecil per perisai.
+- Karakter meninggalkan jejak kilau kecil di kaki saat berjalan (warna aksen karakter).
+- Arah hadap musuh sekarang ikut arah geraknya sendiri. Sprout (hijau, Forest), Phantom dan Quill Owl yang
+  gambarnya menghadap kiri sudah dibalik dengan benar.
+- [ ] Musuh lain masih ada yang jalan mundur? Sebutkan namanya.
+- [ ] Mahkota elite kelihatan jelas? Jejak jalan terlalu ramai / kurang?
+
 **Cahaya dikurangi + HUD in-game baru + pot gold baru.**
 - Glow (bloom) dimatikan, dan semua efek cahaya (tembakan, partikel, aura elite/chest/boss) diredupkan sekitar
   separuhnya. Efek tetap berwarna, tapi tidak menyilaukan lagi.

@@ -20,6 +20,11 @@ const VFX_ADDITIVE := 0.6            # brightness of every additive layer (parti
 const VFX_HALO := 0.4                # opacity of the soft round halos (glow_tex) around shots, chests, elites
 const VFX_PARTICLE_SCALE := 1.0     # 0.5 halves particle counts
 const VFX_SHAKE := 1.0              # camera shake multiplier (0 = off)
+# Walking trail at the hero's feet (accent colour of the character)
+const WALK_TRAIL_EVERY := 0.05
+const WALK_TRAIL_SIZE := 3.5
+const WALK_TRAIL_LIFE := 0.4
+const WALK_TRAIL_ALPHA := 1.0
 const FOG_REVEAL_TILES := 11.0
 
 # Tile ids
@@ -989,20 +994,21 @@ const ENEMY_TYPES := {
 	"wraith": {"hp": 12.0, "speed": 78.0, "radius": 6.0, "dmg": 8.0, "min_time": 0.0, "weight": 0.0, "swarm_only": true,
 		"color": Color(0.6, 0.85, 1.0), "xp": 1, "ghost": true},
 	"caster": {"hp": 14.0, "speed": 34.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.85, 0.25, 0.55), "xp": 2, "ranged": true},
-	# Locations 2-5 (PixelLab sprites in assets/enemies/<sprite or id>.png). Behaviour flags:
+	# Locations 2-5 (PixelLab sprites in assets/enemies/<sprite or id>.png). face_left = the art walks to the
+	# left (it is mirrored when the foe moves right; the rest are drawn as they are when moving right). Behaviour flags:
 	# dash = charges after a short telegraph (ENEMY_DASH_*), split = [type, count] on death,
 	# spread = bullets per volley (ranged), blink = teleports next to the player now and then (ENEMY_BLINK_*).
 	# Whispering Forest
-	"sprout": {"hp": 9.0, "speed": 46.0, "radius": 6.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.5, 0.9, 0.3), "xp": 1},
+	"sprout": {"face_left": true, "hp": 9.0, "speed": 46.0, "radius": 6.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.5, 0.9, 0.3), "xp": 1},
 	"moth": {"hp": 7.0, "speed": 74.0, "radius": 6.0, "dmg": 5.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.6, 0.5, 0.7), "xp": 1},
 	"bramble": {"hp": 45.0, "speed": 30.0, "radius": 10.0, "dmg": 13.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.3, 0.6, 0.3), "xp": 3, "dash": true},
 	"wisp": {"hp": 14.0, "speed": 34.0, "radius": 7.0, "dmg": 3.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.6, 1.0, 0.4), "xp": 2, "ranged": true, "spread": 3},
 	# Forgotten Library
 	"inkblot": {"hp": 12.0, "speed": 36.0, "radius": 7.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.15, 0.12, 0.2), "xp": 1, "split": ["inkdrop", 2]},
 	"inkdrop": {"hp": 4.0, "speed": 58.0, "radius": 4.0, "dmg": 3.0, "min_time": 0.0, "weight": 0.0, "color": Color(0.15, 0.12, 0.2), "xp": 0, "sprite": "inkblot", "spawn_only": true},
-	"quill_owl": {"hp": 7.0, "speed": 76.0, "radius": 6.0, "dmg": 5.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.6, 0.4, 0.3), "xp": 1},
+	"quill_owl": {"face_left": true, "hp": 7.0, "speed": 76.0, "radius": 6.0, "dmg": 5.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.6, 0.4, 0.3), "xp": 1},
 	"armor": {"hp": 60.0, "speed": 24.0, "radius": 10.0, "dmg": 14.0, "min_time": 240.0, "weight": 3.0, "color": Color(0.6, 0.6, 0.7), "xp": 3},
-	"phantom": {"hp": 16.0, "speed": 32.0, "radius": 7.0, "dmg": 4.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.6, 0.4, 0.9), "xp": 2, "ranged": true, "blink": true},
+	"phantom": {"face_left": true, "hp": 16.0, "speed": 32.0, "radius": 7.0, "dmg": 4.0, "min_time": 300.0, "weight": 3.0, "color": Color(0.6, 0.4, 0.9), "xp": 2, "ranged": true, "blink": true},
 	# Crystal Cavern
 	"mite": {"hp": 10.0, "speed": 52.0, "radius": 6.0, "dmg": 6.0, "min_time": 0.0, "weight": 10.0, "color": Color(0.3, 0.8, 0.9), "xp": 1},
 	"shardbat": {"hp": 8.0, "speed": 80.0, "radius": 6.0, "dmg": 6.0, "min_time": 60.0, "weight": 5.0, "color": Color(0.4, 0.5, 0.9), "xp": 1},

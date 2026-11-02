@@ -112,7 +112,27 @@ func _process(delta: float) -> void:
 	position = game.world.move(position, dir * spd * delta, RADIUS)
 	if is_dashing():
 		game.vfx.trail(position + Vector2(0, -4), Color(character["colors"]["accent"]) * 1.8, 6.0, 0.25)
+	elif move_dir.length() > 0.1:
+		_walk_trail(delta)
 	queue_redraw()
+
+
+var _trail_t := 0.0
+var _trail_n := 0
+
+
+## A light trail of the character's accent colour at the feet while walking, with a small spark now and then.
+func _walk_trail(delta: float) -> void:
+	_trail_t -= delta
+	if _trail_t > 0.0:
+		return
+	_trail_t = GameData.WALK_TRAIL_EVERY
+	_trail_n += 1
+	var acc := Color(character["colors"]["accent"])
+	var feet := position + Vector2(randf_range(-2, 2), 5)
+	game.vfx.trail(feet, Color(acc.r * 2.0, acc.g * 2.0, acc.b * 2.0, GameData.WALK_TRAIL_ALPHA), GameData.WALK_TRAIL_SIZE, GameData.WALK_TRAIL_LIFE)
+	if _trail_n % 3 == 0:
+		game.vfx.motes(feet, Color(acc.r * 1.6, acc.g * 1.6, acc.b * 1.6, GameData.WALK_TRAIL_ALPHA), 1, 10.0, 0.5, 1.2, -14.0)
 
 
 var _walk_t := 0.0

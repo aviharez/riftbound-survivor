@@ -161,6 +161,9 @@ Read it before starting any phase.**
   round minimap (`_circle_tex` = textured polygon) with gold ring, round map / pause buttons, kills / gold chips,
   round dash button (`dash` icon, cooldown wedge), joystick ghost. Round controls are transparent Buttons
   (`_make_round_button`) under the drawing. Gold pots: PixelLab `assets/props/pot.png` at `POT_SPRITE_SIZE` with a twinkle.
+- Enemy facing follows its own motion (`Enemy.face`); rows whose art walks left have `face_left` (sprout,
+  phantom, quill_owl). Elites: gold crown + HP bar (`_draw_elite_mark`), no red ring/aura (Syifa). Hero walk
+  trail: `Player._walk_trail` (`WALK_TRAIL_*`, accent colour).
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.
