@@ -6,7 +6,8 @@ extends Node2D
 ## Barricade also act on the player's projectiles through `on_shot()` (called by Projectiles every frame).
 ## Data-oriented like the rest: plain dictionaries in arrays, drawn by this node (+ one additive child).
 
-const IDS := ["hex", "glacial", "riftstorm", "phantom", "sweep", "lens", "nova", "barricade"]
+const IDS := ["hex", "glacial", "riftstorm", "phantom", "sweep", "lens", "nova", "barricade",
+	"doom", "shatter", "cataclysm", "cavalry", "cage", "singularity", "dawn", "fortress"]   # + evolutions
 const STRIKE_REACH := 38.0   # meteor_strike's fire ring at scale 1 (riftbound/meteor-strike)
 
 var game: Node
@@ -17,6 +18,10 @@ var _sweeps: Array = []     # Prism Sweep {a0, t, time, len, width, dmg, hit}
 var _lenses: Array = []     # Gravity Lens {pos, r, t, life, bend, amp, dmg, tick}
 var _novas: Array = []      # Holy Nova waves {t, delay, time, r, dmg, knock, hit}
 var _walls: Array = []      # Crystal Barricade {a, b, n, t, life, push, dmg, tick}
+var _cages: Array = []      # Prismatic Cage {pos, r, sides, t, life, rot, turn, dmg, tick, tick_t, slow, width}
+var _shatters := 0          # Shatterfield bursts this second (caps chain reactions)
+var _shatter_t := 0.0
+var _doom_links: Array = [] # Doom Sigil: short violet threads from a dead foe to the foes it cursed {a, b, t}
 var _glow: Node2D
 var _time := 0.0
 var _knight_tex: Texture2D
@@ -44,6 +49,14 @@ func fire(id: String, w: Dictionary, lv: int) -> void:
 		"lens": _lens(w, lv)
 		"nova": _nova(w, lv)
 		"barricade": _barricade(w, lv)
+		"doom": _hex(w, lv)
+		"shatter": _glacial(w, lv)
+		"cataclysm": _cataclysm(w, lv)
+		"cavalry": _phantom(w, lv)
+		"cage": _cage(w, lv)
+		"singularity": _lens(w, lv)
+		"dawn": _nova(w, lv)
+		"fortress": _fortress(w, lv)
 
 
 func _p() -> Player:
@@ -69,6 +82,8 @@ func _hex(w: Dictionary, lv: int) -> void:
 			continue
 		e.hex_t = float(w["hex_time"])
 		e.hex_amp = maxf(e.hex_amp, amp)
+		if w.has("spread_r"):
+			e.set_meta("doom", true)   # Doom Sigil: the curse jumps on when this foe dies (on_kill)
 		weapons._hit(e, weapons.level_damage(w, lv), Color(1.6, 0.5, 2.4))
 		game.vfx.motes(e.pos, Color(1.4, 0.4, 2.2), 6, 30.0, 0.5, 2.0, -20.0)
 		marked += 1
@@ -82,8 +97,17 @@ func _glacial(w: Dictionary, lv: int) -> void:
 	Sfx.play("freeze")
 	game.screen_fx.shockwave(p.position, r * 1.5, 0.8, 0.4)
 	for e in game.enemies.query_radius(p.position, r):
-		weapons._hit(e, weapons.level_damage(w, lv), Color(0.8, 1.8, 2.6))
+		if w.has("shatter_mult") and e.freeze_t > 0.0:
+			# Shatterfield: a foe that is already frozen takes the heavy hit and bursts
+			weapons._hit(e, weapons.level_damage(w, lv) * float(w["shatter_mult"]), Color(0.8, 1.8, 2.6))
+			_shatter_burst(e.pos, w)
+		else:
+			weapons._hit(e, weapons.level_damage(w, lv), Color(0.8, 1.8, 2.6))
+		if not e.alive:
+			continue
 		e.slow_t = maxf(e.slow_t, float(w["slow"]))
+		if w.has("shatter_mult"):
+			e.set_meta("shatter", true)
 		if lv >= int(w["freeze_at"]):
 			weapons._freeze(e, float(w["freeze"]))
 
@@ -109,7 +133,8 @@ func _phantom(w: Dictionary, lv: int) -> void:
 		var dir: Vector2 = (foes[i].pos - p.position).normalized() if i < foes.size() else p.facing.rotated(0.5 * i)
 		_knights.append({"pos": p.position - dir * 20.0 + dir.orthogonal() * (i * 14.0), "dir": dir, "t": 0.0,
 			"life": float(w["life"]), "speed": float(w["speed"]), "width": float(w["width"]) * weapons.level_size(w, lv),
-			"dmg": weapons.level_damage(w, lv), "hit": [], "trail": []})
+			"dmg": weapons.level_damage(w, lv), "hit": [], "trail": [], "wait": float(w.get("stagger", 0.0)) * i,
+			"big": w.has("stagger")})
 	game.vfx.play("blink_out", p.position, 0.0, 0.5, Color(0.8, 0.6, 1.4))
 
 
@@ -131,7 +156,8 @@ func _lens(w: Dictionary, lv: int) -> void:
 		var spot: Vector2 = foes[randi() % foes.size()].pos if not foes.is_empty() \
 			else p.position + p.facing * float(w["range"]) * 0.5
 		_lenses.append({"pos": spot, "r": float(w["radius"]) * weapons.level_size(w, lv), "t": 0.0, "life": float(w["duration"]),
-			"bend": float(w["bend"]), "amp": float(w["lens_amp"]), "dmg": weapons.level_damage(w, lv), "tick": 0.0})
+			"bend": float(w["bend"]), "amp": float(w["lens_amp"]), "dmg": weapons.level_damage(w, lv), "tick": 0.0,
+			"pull": float(w.get("pull", 0.0)), "w": w})
 
 
 ## A golden wave of light rings out from the hero (a second one follows from Lv 5): every foe the wave front
@@ -140,7 +166,8 @@ func _nova(w: Dictionary, lv: int) -> void:
 	var r: float = float(w["radius"]) * weapons.level_size(w, lv)
 	for i in weapons.count_of(w, lv):
 		_novas.append({"t": -float(w["wave_gap"]) * i, "time": float(w["wave_time"]), "r": r,
-			"dmg": weapons.level_damage(w, lv), "knock": float(w["knock"]), "hit": {}, "started": false})
+			"dmg": weapons.level_damage(w, lv), "knock": float(w["knock"]), "hit": {}, "started": false,
+			"heal": float(w.get("heal_per_hit", 0.0)), "heal_cap": float(w.get("heal_cap", 0.0)), "healed": 0.0})
 
 
 ## A crystal wall across the line between the hero and the nearest foe.
@@ -169,6 +196,14 @@ func _process(delta: float) -> void:
 	_update_lenses(delta)
 	_update_novas(delta)
 	_update_walls(delta)
+	_update_cages(delta)
+	_shatter_t -= delta
+	if _shatter_t <= 0.0:
+		_shatter_t = 1.0
+		_shatters = 0
+	for l in _doom_links:
+		l["t"] += delta
+	_doom_links = _doom_links.filter(func(l): return l["t"] < 0.35)
 	queue_redraw()
 	_glow.queue_redraw()
 
@@ -182,6 +217,11 @@ func _update_strikes(delta: float) -> void:
 			s["bolt"] = 0.18
 			for e in game.enemies.query_radius(s["pos"], s["r"]):
 				weapons._hit(e, s["dmg"], Color(1.8, 0.7, 2.6))
+			if s.get("big", false):
+				# Cataclysm: the merged blast
+				game.vfx.play("void_collapse", s["pos"], 0.0, s["r"] / Weapons.BURST_REACH["void_collapse"], Color(0.9, 0.7, 1.0), 0.35)
+				game.screen_fx.shockwave(s["pos"], s["r"] * 1.6, 0.9, 0.45)
+				game.screen_fx.shake(0.15)
 			game.vfx.play("zap_hit", s["pos"], 0.0, s["r"] / 22.0, Color(1.0, 0.6, 1.4))
 			Sfx.play("zap")
 			game.vfx.flash(s["pos"], Color(1.6, 0.7, 2.4), s["r"] * 1.2, 0.15)
@@ -191,6 +231,9 @@ func _update_strikes(delta: float) -> void:
 
 func _update_knights(delta: float) -> void:
 	for k in _knights:
+		if k["wait"] > 0.0:
+			k["wait"] -= delta   # Spectral Cavalry: knights set off one after another
+			continue
 		k["t"] += delta
 		var step: Vector2 = k["dir"] * k["speed"] * delta
 		k["trail"].push_front(k["pos"])
@@ -234,6 +277,9 @@ func _update_lenses(delta: float) -> void:
 		l["t"] += delta
 		l["tick"] -= delta
 		for e in game.enemies.query_radius(l["pos"], l["r"]):
+			if l["pull"] > 0.0 and not e.boss and e.pos.distance_to(l["pos"]) > 6.0:
+				# Singularity Engine: foes are dragged toward the centre
+				e.pos = game.world.move(e.pos, (l["pos"] - e.pos).normalized() * l["pull"] * delta, e.radius * 0.6)
 			e.hex_t = maxf(e.hex_t, 0.25)
 			e.hex_amp = maxf(e.hex_amp, l["amp"])
 			if l["tick"] <= 0.0:
@@ -265,6 +311,11 @@ func _update_novas(delta: float) -> void:
 				var away: Vector2 = (e.pos - c).normalized() if e.pos != c else Vector2.RIGHT
 				e.knock = away * n["knock"] * GameData.ENEMY_KNOCK_DECAY
 			game.vfx.sparks(e.pos, Color(2.4, 2.0, 1.0), 3, 50.0, 0.2, 1.2)
+			if n["heal"] > 0.0 and n["healed"] < n["heal_cap"]:
+				# Sacred Dawn: each foe the wave hits heals the hero a little (capped per wave)
+				var h: float = minf(n["heal"], n["heal_cap"] - n["healed"])
+				n["healed"] += h
+				_p().heal(h)
 	_novas = _novas.filter(func(n): return n["t"] < n["time"] + 0.25)
 
 
@@ -299,7 +350,19 @@ func _update_walls(delta: float) -> void:
 
 ## Called by Projectiles for every player shot each frame: lenses bend it onto targets, walls bounce it.
 func on_shot(s: Dictionary, delta: float) -> void:
+	if s.has("orbit"):
+		_orbit_shot(s, delta)
+		return
 	for l in _lenses:
+		if l["pull"] > 0.0 and not s.get("orbited", false) and s["pos"].distance_to(l["pos"]) <= l["r"]:
+			# Singularity Engine: the shot is captured and circles the centre before it strikes
+			var lw: Dictionary = l["w"]
+			s["orbit"] = {"c": l["pos"], "a": (s["pos"] - l["pos"]).angle(), "t": 0.0, "r": float(lw["orbit_r"]),
+				"time": float(lw["orbit_time"]), "speed": float(lw["orbit_speed"]), "boost": float(lw["orbit_boost"]),
+				"v": s["vel"].length()}
+			s["orbited"] = true
+			_orbit_shot(s, delta)
+			return
 		if s["pos"].distance_to(l["pos"]) <= l["r"]:
 			var foe = game.enemies.nearest(s["pos"], l["r"] * 1.5, null)
 			if foe != null:
@@ -315,11 +378,158 @@ func on_shot(s: Dictionary, delta: float) -> void:
 			# shots coming back at the hero side bounce off the crystal (outbound ones pass through)
 			s["vel"] = s["vel"].bounce(wl["n"])
 			s["walled"] = _time + 0.2
+			if wl.get("boost", 0.0) > 0.0 and int(s.get("fort_bounces", 0)) < 4:
+				# Prismatic Fortress: each bounce off a fortress wall makes the shot stronger (up to 4 times)
+				s["fort_bounces"] = int(s.get("fort_bounces", 0)) + 1
+				s["dmg"] *= 1.0 + wl["boost"]
+				game.vfx.sparks(s["pos"], Color(1.2, 1.6, 2.6), 3, 60.0, 0.15, 1.2)
 			s["hit"].clear()
 
 
+## A shot held by a Singularity Engine: circles the centre, then flies at the nearest foe with a damage boost.
+func _orbit_shot(s: Dictionary, delta: float) -> void:
+	var o: Dictionary = s["orbit"]
+	o["t"] += delta
+	o["a"] += o["speed"] * delta
+	s["life"] = maxf(s["life"], 0.3)
+	var r: float = lerpf(s["pos"].distance_to(o["c"]), o["r"], minf(1.0, delta * 10.0))
+	s["pos"] = o["c"] + Vector2.from_angle(o["a"]) * r
+	s["vel"] = Vector2.from_angle(o["a"] + PI * 0.5) * o["v"]
+	if o["t"] >= o["time"]:
+		s.erase("orbit")
+		s["dmg"] *= 1.0 + o["boost"]
+		s["hit"].clear()
+		s["life"] = maxf(s["life"], s["life0"] * 0.7)
+		var foe = game.enemies.nearest(s["pos"], 220.0, null)
+		var dir: Vector2 = (foe.pos - s["pos"]).normalized() if foe != null else Vector2.from_angle(o["a"])
+		s["vel"] = dir * o["v"] * 1.2
+
+
+## Called by Weapons.trait_on_kill for every kill: Doom Sigil spreads its curse, Shatterfield bursts frozen foes.
+func on_kill(e) -> void:
+	var lv_of: Dictionary = _p().weapon_levels
+	if lv_of.has("doom") and e.has_meta("doom"):
+		var w := GameData.weapon_by_id("doom")
+		var near: Array = game.enemies.query_radius(e.pos, float(w["spread_r"]))
+		near.sort_custom(func(a, b): return a.pos.distance_squared_to(e.pos) < b.pos.distance_squared_to(e.pos))
+		var n := 0
+		for f in near:
+			if n >= int(w["spread_n"]) or f == e or not f.alive or f.has_meta("doom"):
+				continue
+			f.hex_t = float(w["hex_time"])
+			f.hex_amp = maxf(f.hex_amp, float(w["hex_amp"]))
+			f.set_meta("doom", true)
+			_doom_links.append({"a": e.pos, "b": f.pos, "t": 0.0})
+			weapons._hit(f, weapons.level_damage(w, 8) * float(w["spread_dmg"]), Color(1.6, 0.5, 2.4))
+			n += 1
+		if n > 0:
+			game.vfx.play("rune_burst", e.pos, 0.0, 0.5, Color(1.3, 0.5, 1.8))
+	if lv_of.has("shatter") and e.has_meta("shatter") and e.freeze_t > 0.0:
+		_shatter_burst(e.pos, GameData.weapon_by_id("shatter"))
+
+
+## Shatterfield: a frozen foe breaks into a crystal burst that hits the foes around it.
+func _shatter_burst(pos: Vector2, w: Dictionary) -> void:
+	if _shatters >= int(w["shatter_max"]):
+		return
+	_shatters += 1
+	var r: float = float(w["shatter_r"]) * _p().area()
+	game.vfx.play("frost_burst", pos, 0.0, r / Weapons.BURST_REACH["frost_burst"], Color(0.9, 1.1, 1.3))
+	game.vfx.sparks(pos, Color(1.0, 1.8, 2.6), 6, 90.0, 0.25, 1.4)
+	var dmg: float = weapons.level_damage(w, 8) * float(w["shatter_dmg"]) / float(w["dmg"])
+	for f in game.enemies.query_radius(pos, r):
+		if f.alive:
+			weapons._hit(f, dmg, Color(0.8, 1.8, 2.6))
+
+
+## Cataclysm: a ring of strikes around the biggest crowd, then one large blast where they meet.
+func _cataclysm(w: Dictionary, lv: int) -> void:
+	var p := _p()
+	var foes := _foes(float(w["range"]))
+	var c: Vector2 = p.position + p.facing * 90.0
+	if not foes.is_empty():
+		var best := -1
+		for f in foes.slice(0, 12):
+			var k: int = game.enemies.query_radius(f.pos, 60.0).size()
+			if k > best:
+				best = k
+				c = f.pos
+	var n := weapons.count_of(w, lv)
+	var size := weapons.level_size(w, lv)
+	var a0 := randf() * TAU
+	for i in n:
+		_strikes.append({"pos": c + Vector2.from_angle(a0 + TAU * i / n) * float(w["ring_r"]) * size * Vector2(1.0, 0.6),
+			"t": -0.06 * i, "delay": float(w["delay"]), "r": float(w["radius"]) * size, "dmg": weapons.level_damage(w, lv), "bolt": 0.0})
+	_strikes.append({"pos": c, "t": -0.06 * n - float(w["big_delay"]), "delay": float(w["delay"]), "r": float(w["big_r"]) * size,
+		"dmg": weapons.level_damage(w, lv) * float(w["big_dmg"]), "bolt": 0.0, "big": true})
+
+
+## Prismatic Cage: a turning hexagon of prism beams around a crowd.
+func _cage(w: Dictionary, lv: int) -> void:
+	var p := _p()
+	var foes := _foes(float(w["range"]))
+	var size := weapons.level_size(w, lv)
+	for i in weapons.count_of(w, lv):
+		var spot: Vector2 = foes[randi() % foes.size()].pos if not foes.is_empty() else p.position + p.facing * 80.0
+		_cages.append({"pos": spot, "r": float(w["radius"]) * size, "sides": int(w["sides"]), "t": 0.0, "life": float(w["duration"]),
+			"rot": randf() * TAU, "turn": float(w["turn"]), "dmg": weapons.level_damage(w, lv), "tick": 0.0,
+			"tick_t": float(w["tick"]), "slow": float(w["slow"]), "width": float(w["width"]) * size})
+		game.vfx.flash(spot, Color(1.6, 1.4, 2.2), 30.0, 0.15)
+	while _cages.size() > 3:
+		_cages.pop_front()
+
+
+func _cage_points(c: Dictionary) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in c["sides"] + 1:
+		pts.append(c["pos"] + Vector2.from_angle(c["rot"] + TAU * i / c["sides"]) * c["r"] * Vector2(1.0, 0.7))
+	return pts
+
+
+func _update_cages(delta: float) -> void:
+	for c in _cages:
+		c["t"] += delta
+		c["rot"] += c["turn"] * delta
+		c["tick"] -= delta
+		var tick: bool = c["tick"] <= 0.0
+		if tick:
+			c["tick"] = c["tick_t"]
+		var pts := _cage_points(c)
+		for e in game.enemies.query_radius(c["pos"], c["r"] + 12.0):
+			if not e.alive:
+				continue
+			var inside := Geometry2D.is_point_in_polygon(e.pos, pts.slice(0, c["sides"]))
+			if inside:
+				e.slow_t = maxf(e.slow_t, c["slow"])
+			if not tick:
+				continue
+			for i in c["sides"]:
+				var q := Geometry2D.get_closest_point_to_segment(e.pos, pts[i], pts[i + 1])
+				if q.distance_to(e.pos) <= c["width"] * 0.5 + e.radius:
+					weapons._hit(e, c["dmg"], Color(2.2, 1.2, 2.6))
+					break
+	_cages = _cages.filter(func(c): return c["t"] < c["life"])
+
+
+## Prismatic Fortress: four crystal walls in a diamond around the hero (each wall faces outward).
+func _fortress(w: Dictionary, lv: int) -> void:
+	var p := _p()
+	var size := weapons.level_size(w, lv)
+	var n := weapons.count_of(w, lv)
+	for i in n:
+		var dir := Vector2.from_angle(PI * 0.25 + TAU * i / n)
+		var mid: Vector2 = p.position + dir * float(w["ring_r"]) * size
+		var half: Vector2 = dir.orthogonal() * float(w["length"]) * size * 0.5
+		_walls.append({"a": mid - half, "b": mid + half, "n": dir, "t": 0.0, "life": float(w["duration"]),
+			"push": float(w["push"]), "dmg": weapons.level_damage(w, lv), "tick": 0.0, "tick_t": float(w["tick"]),
+			"boost": float(w["bounce_boost"])})
+		game.vfx.sparks(mid, Color(0.9, 1.6, 2.6), 6, 80.0, 0.3, 1.5)
+	while _walls.size() > 8:
+		_walls.pop_front()
+
+
 func clear_all() -> void:
-	for a in [_strikes, _knights, _sweeps, _lenses, _novas, _walls]:
+	for a in [_strikes, _knights, _sweeps, _lenses, _novas, _walls, _cages, _doom_links]:
 		a.clear()
 
 
@@ -330,7 +540,9 @@ func _draw() -> void:
 	if _knight_tex != null:
 		for k in _knights:
 			var fade: float = 1.0 - k["t"] / k["life"]
-			var sz := Vector2(36, 36)
+			if k["wait"] > 0.0:
+				continue
+			var sz := Vector2(44, 44) if k["big"] else Vector2(36, 36)
 			var flip := -1.0 if k["dir"].x < 0.0 else 1.0
 			for i in k["trail"].size():
 				draw_set_transform(k["trail"][i], 0.0, Vector2(flip, 1.0))
@@ -403,6 +615,20 @@ func _draw_glow() -> void:
 			var a: float = TAU * i / 12.0 + _time * 0.8
 			_glow.draw_circle(Vector2.from_angle(a) * front, 2.0, Color(2.0, 1.8, 1.0, 0.8 * fade))
 		_glow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# Prismatic Cage: a turning hexagon of rainbow beams over a faint floor fill
+	for c in _cages:
+		var k: float = clampf((c["life"] - c["t"]) / 0.4, 0.0, 1.0) * clampf(c["t"] / 0.2, 0.0, 1.0)
+		var pts := _cage_points(c)
+		_glow.draw_colored_polygon(pts.slice(0, c["sides"]), Color(0.35, 0.25, 0.55, 0.12 * k))
+		for i in c["sides"]:
+			var col := Color.from_hsv(fmod(_time * 0.5 + float(i) / c["sides"], 1.0), 0.5, 1.0)
+			_glow.draw_line(pts[i], pts[i + 1], Color(col.r * 0.4, col.g * 0.4, col.b * 0.4, 0.4 * k), c["width"] * 1.6)
+			_glow.draw_line(pts[i], pts[i + 1], Color(col.r, col.g, col.b, 0.75 * k), c["width"] * 0.5)
+			_glow.draw_circle(pts[i], 2.5, Color(1.4, 1.4, 1.6, 0.8 * k))
+	# Doom Sigil: violet threads from a dead foe to the foes its curse jumped to
+	for l in _doom_links:
+		var k: float = 1.0 - l["t"] / 0.35
+		_glow.draw_line(l["a"], l["b"], Color(1.2, 0.3, 1.8, 0.8 * k), 2.0)
 	# Hex marks: violet runes circling under marked foes
 	for e in game.enemies.list:
 		if e.hex_t > 0.0 and e.alive:

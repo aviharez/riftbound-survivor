@@ -17,6 +17,22 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Evolusi untuk 8 senjata arena (baru).** Syaratnya sama: senjata Lv 8 + tome pasangannya → chest berikutnya.
+Satu tome sekarang bisa dipasangkan ke 2 senjata.
+| Senjata | + Tome | Evolusi | Yang dicek |
+|---|---|---|---|
+| Hex Mark | Cursed | Doom Sigil | saat musuh berkutuk mati, benang ungu menyambar & kutukan pindah ke musuh dekat |
+| Glacial Burst | Expanse | Shatterfield | ledakan es besar; musuh yang sudah beku pecah jadi ledakan kristal |
+| Riftstorm | Power | Cataclysm | cincin petir mengelilingi kerumunan lalu menyatu jadi satu ledakan besar |
+| Phantom Knight | Swiftness | Spectral Cavalry | 5 ksatria menyerbu bergantian |
+| Prism Sweep | Multitude | Prismatic Cage | segi enam pelangi berputar di atas kerumunan, musuh di dalam melambat |
+| Gravity Lens | Attraction | Singularity Engine | musuh tertarik ke tengah; tembakanmu memutar dulu lalu menghantam |
+| Holy Nova | Mending | Sacred Dawn | 3 gelombang emas; tiap musuh yang kena menyembuhkan sedikit HP |
+| Crystal Barricade | Ricochet | Prismatic Fortress | 4 dinding kristal berbentuk belah ketupat; tembakan yang memantul makin kuat |
+- [ ] Tiap evolusi terasa lebih kuat & beda dari versi dasarnya?
+- [ ] Ledakan Cataclysm / Shatterfield tidak terlalu silau?
+- [ ] Ikon evolusinya cocok?
+
 **Efek dash baru.**
 - Bulatan cahaya saat dash dan efek "blink" di awal dash diganti dengan: bayangan siluet karakter (afterimage)
   berwarna aksen yang memudar di belakang, kepulan debu kecil di lantai saat mulai dash, dan 3 garis kecepatan.

@@ -20,7 +20,7 @@ const FAMILIAR_SCALE := 1.0   # 32 px PixelLab familiar (body ~24x18 px; hero is
 const BURST_REACH := {"solar_burst": 44.0, "frost_burst": 42.0, "void_collapse": 46.0}
 
 var game: Node
-var arena: WeaponsArena   # Hex Mark, Glacial Burst, Riftstorm, Phantom Knight, Prism Sweep, Lens, Gate, Barricade
+var arena: WeaponsArena   # the arena set (Hex Mark ... Crystal Barricade) and its 8 evolutions
 var _cd := {}            # weapon id -> seconds until next use
 var _time := 0.0
 var _strikes: Array = [] # pending meteor impacts {pos, t, delay, r, dmg}
@@ -807,6 +807,7 @@ func _stargazer() -> void:
 
 ## Called by main for every kill: Lyra's Kindling, Nym's Thornheal, Noah's Plague, Raika, Vesper, Runa.
 func trait_on_kill(e) -> void:
+	arena.on_kill(e)   # Doom Sigil / Shatterfield
 	# Plague Garden: a foe that dies poisoned by a garden cloud bursts into a small cloud of its own
 	if e.has_meta("garden") and _time - float(e.get_meta("garden")) < 1.0 and game.player.weapon_levels.has("plague"):
 		var w := GameData.weapon_by_id("plague")

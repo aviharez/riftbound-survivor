@@ -30,7 +30,13 @@ Read it before starting any phase.**
   meteor+Expanse=Starfall, blades+Vitality=Blade Halo, void+Attraction=Event Horizon, lance+Precision=Absolute Zero,
   seed+Mending=Worldroot Bloom, slash+Power=Lunar Cross, chakram+Swiftness=Infinity Loop, familiar+Study=Familiar
   Legion, beam+Fortune=Celestial Ray (ground trace zone), venom+Cursed=Plague Garden (kills inside spread clouds),
-  mine+Greed=Runic Chain (blasts set off nearby runes). The arena set has no evolutions yet. Level-up cards show a "COMBO + ... (owned) -> evolution" hint only when the
+  mine+Greed=Runic Chain (blasts set off nearby runes). Arena set (approved 2 Nov, tomes shared, code in
+  weapons_arena.gd): hex+Cursed=Doom Sigil (curse jumps on death, `on_kill`), glacial+Expanse=Shatterfield (frozen foes
+  burst, capped `shatter_max`/s), riftstorm+Power=Cataclysm (ring of strikes + merged blast), phantom+Swiftness=Spectral
+  Cavalry (`stagger`), sweep+Multitude=Prismatic Cage (`_cages`), lens+Attraction=Singularity Engine (pull + shots orbit,
+  `_orbit_shot`), nova+Mending=Sacred Dawn (heal per hit, capped), barricade+Ricochet=Prismatic Fortress (diamond of walls,
+  bounces boost shots). Evolution study (2 Nov, 16 `--evo-study` runs): Lv 8 is reached by ~3 min with 2 weapon slots;
+  failed evolutions were always a missing tome (tome slots full), never the level. Level-up cards show a "COMBO + ... (owned) -> evolution" hint only when the
   player already owns the other half (`GameData.combo_hint`; tome cards only while the tome is NEW); plain otherwise.
   `--tomes=ricochet,haste` gives autotest runs tomes from the start. Freeze (`Enemy.freeze_t`) stops a foe and its contact damage; bosses are only slowed.
 - Final Swarm scaling (swarm level per minute, wraiths, threat meter) is tuned by the `FINAL_SWARM_*` / `THREAT_NAMES` constants.
@@ -229,8 +235,8 @@ scenes, dormitory, expeditions), **phase 3 UI + home map** (academy hub map with
 Android notification plugins wait for Syifa (AdMob account / app id, switching CI to a Gradle build)
 (Syifa is still thinking about further UI changes); some walk/idle directions still need revision, Syifa said later), 14 weapons from the design doc (prototype 8 + alpha 6), **8 weapon evolutions** (custom top-down
 bursts solar-burst, frost-burst, void-collapse), pixelfx VFX, Android CI. No audio yet.
-All 14 base weapons of the first two sets evolve (every tome is paired); the 8 arena weapons do not evolve yet.
-Open question: whether Lv 8 is reached often enough in real runs to evolve (EVOLVE_LEVEL is one constant).
+All 22 base weapons evolve (the arena set shares tomes with the first two sets). Lv 8 is reached early in
+real-ish runs (see the evolution study above); open idea, not approved yet: weight up a paired tome on level-up cards.
 
 Syifa's next priorities, in order she listed:
 1. ~~Weapon evolutions~~ done (see Rules). Tune from her playtest feedback.
