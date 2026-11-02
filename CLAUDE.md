@@ -22,7 +22,7 @@ Read it before starting any phase.**
   player shots via `WeaponsArena.on_shot`, called from Projectiles). Optional `short` in a weapon row = 3-letter HUD label.
   `--weapons=meteor,void` gives extra weapons (evolved ids such as `solar` come evolved) and `--swarm-at=30` starts
   the Final Swarm early in an autotest run; `--ready-evolve` puts owned weapons at the evolve level with their tome
-  so the first chests evolve them; `--profile` prints load counters every 20 s of game time.
+  so the first chests evolve them; `--evo-study` (use with `--autotest-late`) picks cards like a player chasing evolutions, walks to XP gems and prints an `[evo-study]` timeline (level per minute, when weapons reach Lv 8, evolutions); `--profile` prints load counters every 20 s of game time.
 - Weapon evolutions (approved by Syifa): base weapon at `GameData.EVOLVE_LEVEL` (= max, 8) + its tome (any level)
   -> the next chest opened (any chest) gives the evolution instead of an item. Evolved rows are in `GameData.WEAPONS`
   with `evolved`/`from`/`tome`, weight 0, final numbers (lvl_* = 0); they replace the base weapon in its slot.

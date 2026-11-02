@@ -94,6 +94,10 @@ var char_bonus := {}            # {level, mods, passive, weapon} applied this ru
 var elites_killed := 0
 var equipment_dropped := 0
 var _extra_tomes: Array = []    # --tomes=ricochet,haste: tomes owned from the start (autotest; combo hint checks)
+var _evo_study := false          # --evo-study: autotest picks like a player chasing evolutions and logs the timeline
+var _evo_min := 0
+var _evo_gem_turn := false
+var _evo_log: Array = []        # "t=123 lv=20 bolt:8" / "t=140 EVOLVE prism" (printed in the autotest summary)
 var _ready_evolve := false      # --ready-evolve: owned weapons at the evolve level + their tomes
 var _profile := false           # --profile: print load counters every 20 s of game time
 var _profile_next := 20.0
@@ -229,6 +233,8 @@ func _parse_args() -> void:
 			_auto_portal_at = 640.0
 		elif a.begins_with("--swarm-at="):
 			_swarm_at = float(a.get_slice("=", 1))
+		elif a == "--evo-study":
+			_evo_study = true
 		elif a == "--profile":
 			_profile = true
 		elif a.begins_with("--lessons="):
@@ -657,6 +663,8 @@ func _evolve(base_id: String, at: Vector2) -> void:
 			levels[id] = player.weapon_levels[id]
 	player.weapon_levels = levels
 	evolutions.append(evo["id"])
+	if _evo_study:
+		_evo_log.append("t=%d EVOLVE %s" % [int(elapsed), evo["id"]])
 	weapons.on_evolved(base_id, evo["id"])
 	vfx.play("loot_beam", at, 0.0, 0.9, Color(1.0, 0.85, 0.4))
 	vfx.play("level_up", player.position + Vector2(0, 6), 0.0, 0.7, Color(1.0, 0.85, 0.4), GameData.VFX_LIGHT_BOOST, -1.0, player)
@@ -751,6 +759,8 @@ func _apply_offer(opt: Dictionary) -> void:
 				player.apply_mods([[d["stat"], float(opt["gain"])]])
 		"weapon":
 			player.weapon_levels[d["id"]] = int(player.weapon_levels.get(d["id"], 0)) + 1
+			if _evo_study and int(player.weapon_levels[d["id"]]) == GameData.EVOLVE_LEVEL:
+				_evo_log.append("t=%d lv=%d %s:%d" % [int(elapsed), level, d["id"], GameData.EVOLVE_LEVEL])
 		"fallback":
 			if d["kind"] == "heal":
 				player.heal(player.stats["max_hp"] * float(d["value"]))
@@ -977,7 +987,7 @@ func _autotest_step(delta: float) -> void:
 			_choice_shot_done = true
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(_shot_path.replace(".png", "_choice.png"))
-		hud.pick_choice(0)
+		hud.pick_choice(_auto_pick_index() if _evo_study else 0)
 	if run_over:
 		if _finishing:
 			return
@@ -988,6 +998,8 @@ func _autotest_step(delta: float) -> void:
 		print("[autotest] slots=%d/%d tomes=%s weapons=%s items=%d evolutions=%s char=%s trait_procs=%d lessons=%s char_level=%d enhance=%d,%d max_hp=%d shards=%d equipment=%d loc=%s danger=%d" % [tome_slots, weapon_slots, player.tomes, player.weapon_levels, items_owned.size(), evolutions,
 			character_id, weapons.trait_procs, _lessons_applied, char_bonus["level"], char_bonus["passive"], char_bonus["weapon"], int(player.stats["max_hp"]),
 			(GameData.SHARDS_BOSS if boss_killed else 0) + elites_killed / GameData.ELITES_PER_SHARD, equipment_dropped, location_id, danger])
+		if _evo_study:
+			print("[evo-study] level=%d weapons=%s tomes=%s log=%s" % [level, player.weapon_levels, player.tomes, _evo_log])
 		print("[autotest] done victory=%s elapsed=%.0f kills=%d level=%d chests=%d shrines=%d explored=%.2f enemies_alive=%d final_swarm=%s swarm_t=%.0f swarm_lv=%d threat=%s" % [
 			victory, elapsed, kills, level, chests_opened, shrines_used, fog.explored_ratio(), enemies.count(), final_swarm, final_swarm_t, swarm_level(), threat_name()])
 		get_tree().quit()
@@ -1034,8 +1046,50 @@ func _autotest_step(delta: float) -> void:
 				if not s["used"] and s["state"] == "idle":
 					target = s["pos"]
 					break
+	if _evo_study:
+		# a player walks over the gems around them: head to the nearest XP gem when nothing else is urgent
+		if int(elapsed) / 60 > _evo_min:
+			_evo_min = int(elapsed) / 60
+			_evo_log.append("m%d lv=%d" % [_evo_min, level])
+		if elapsed < GameData.RUN_TIME and (target == Vector2.INF or (_evo_gem_turn and enemies.boss == null and not interactables.exit_portal["active"])):
+			var best := INF
+			for pk in pickups.list:
+				if pk["kind"] == Pickups.Kind.XP:
+					var dd: float = pk["pos"].distance_squared_to(player.position)
+					if dd < best:
+						best = dd
+						target = pk["pos"]
+		_evo_gem_turn = not _evo_gem_turn
 	if target != Vector2.INF:
 		player.position = _walkable_near(target)
+
+
+## --evo-study pick: like a player chasing evolutions. Level the highest owned weapon first, then take a
+## tome that pairs with an owned weapon, then a new weapon, then anything else (first card).
+func _auto_pick_index() -> int:
+	var best := 0
+	var best_score := -1.0
+	for i in hud._choice_buttons.size():
+		var b: Button = hud._choice_buttons[i]
+		if not b.visible or not b.has_meta("option"):
+			continue
+		var opt: Dictionary = b.get_meta("option")
+		var d: Dictionary = opt.get("def", {})
+		var score := 0.0
+		match String(opt.get("kind", "")):
+			"weapon":
+				var lv := int(opt.get("level", 0))
+				score = 100.0 + lv * 10.0 if lv > 0 else 50.0
+			"tome":
+				score = 20.0 if int(opt.get("level", 0)) > 0 else 5.0   # a new unpaired tome would block a slot
+				for w in player.weapon_levels:
+					var evo := GameData.evolution_of(w)
+					if not evo.is_empty() and evo["tome"] == d.get("id", ""):
+						score = 90.0 if int(player.tomes.get(d["id"], 0)) == 0 else 25.0
+		if score > best_score:
+			best_score = score
+			best = i
+	return best
 
 
 func _maybe_shot(_final: bool) -> void:
