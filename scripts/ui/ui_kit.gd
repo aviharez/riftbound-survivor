@@ -105,6 +105,33 @@ static func frame_style(name: String, edge: float, pad: float) -> StyleBoxTextur
 	return sb
 
 
+## Mockup look (Syifa's GPT mockups, 2 Nov): PixelLab frames in assets/ui/frames, 9-sliced with these texture
+## margins [left, top, right, bottom]. panel_dark = dark plum window with gold corner filigree (drawn at half
+## scale in the HUD), tag = cream label, bar = dark bar with gold end caps, slot_small = gold item slot,
+## button = purple button.
+const FRAME_MARGINS := {
+	"panel_dark": [36, 36, 36, 36], "bar": [10, 5, 10, 5], "slot_small": [5, 5, 5, 5], "slot": [10, 10, 10, 10],
+	"tag": [8, 4, 8, 3], "button": [8, 8, 8, 8], "panel_ring": [36, 36, 36, 36],
+}
+static var _frames := {}
+
+
+## Cached 9-slice style of a mockup frame, optionally tinted (content margins = the frame's margins).
+static func frame(name: String, tint := Color.WHITE) -> StyleBoxTexture:
+	var key := name + tint.to_html()
+	if not _frames.has(key):
+		var sb := StyleBoxTexture.new()
+		sb.texture = load(FRAME_DIR + name + ".png")
+		var m: Array = FRAME_MARGINS[name]
+		sb.texture_margin_left = m[0]
+		sb.texture_margin_top = m[1]
+		sb.texture_margin_right = m[2]
+		sb.texture_margin_bottom = m[3]
+		sb.modulate_color = tint     # edges and centres are flat colours, so plain stretching keeps them crisp
+		_frames[key] = sb
+	return _frames[key]
+
+
 ## A dark inset row / box inside a panel; returns [panel, vbox].
 static func well(margin := 5.0) -> Array:
 	return panel(margin, NAVY)

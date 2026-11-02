@@ -748,6 +748,18 @@ const LOCATIONS := [
 # Map colours per location (`tiles`). floor / floor_dot (small specks), wall / wall_top (lit top edge) /
 # wall_shade, deco (ruin tiles: stone, carpet, crystal floor) / deco_line, rift (floor under the cracks) and
 # style: extra pattern (grass, leaves, planks + book spines, sparkles, void specks). Cracks keep RIFT_CRACK.
+# Painted ground (PixelLab art, scripts/world/ground_art.gd) per `tiles` id; locations without a row keep the
+# baked colours of TILESETS. Props: [file in props_dir, weight]. "small" decor lands on open ground with
+# small_chance per cell, "edge" props (tall) only on ground cells right below a wall, with edge_chance.
+# No prop within clear_radius cells of the spawn, portal, chests, shrines and pots.
+const GROUND_ART := {
+	"courtyard": {"dir": "res://assets/tiles/courtyard/", "props_dir": "res://assets/props/courtyard/",
+		"small_chance": 0.1, "edge_chance": 0.2, "plaza_chance": 0.12, "clear_radius": 2.5,
+		"grade": {"saturation": 0.78, "brightness": 0.92, "patch_amount": 0.13},
+		"plaza": [["lamp", 2], ["banner", 1.5], ["column", 1], ["barrels", 0.6], ["shrub", 1], ["flowers", 1]],
+		"small": [["flowers", 4], ["petals", 4], ["grass", 4], ["rocks", 2], ["bush", 1], ["shrub", 2], ["barrels", 0.4], ["statue", 0.3]],
+		"edge": [["lamp", 1], ["banner", 1], ["column", 1.5], ["wall", 1.5], ["shrub", 2], ["bush", 1]]},
+}
 const RIFT_CRACK := Color(0.75, 0.25, 0.95)
 const TILESETS := {
 	"courtyard": {"floor": Color(0.27, 0.42, 0.22), "floor_dot": Color(0.36, 0.55, 0.28), "wall": Color(0.2, 0.2, 0.27),

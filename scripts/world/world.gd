@@ -30,6 +30,7 @@ func _process(delta: float) -> void:
 
 
 var tiles: Dictionary = GameData.TILESETS["courtyard"]
+var art: GroundArt
 
 
 func setup(m: Dictionary, tiles_id := "courtyard") -> void:
@@ -42,11 +43,20 @@ func setup(m: Dictionary, tiles_id := "courtyard") -> void:
 	w = m["w"]
 	h = m["h"]
 	_bake_textures(int(m["effective_seed"]))
+	# painted PixelLab ground (tilesets + props) where the location has art; the baked texture stays for the minimap
+	art = null
+	if GroundArt.has_art(tiles_id):
+		material = null
+		art = GroundArt.new()
+		add_child(art)
+		art.setup(m, tiles_id)
 	_flow.resize(_flow_size * _flow_size)
 	queue_redraw()
 
 
 func _draw() -> void:
+	if art != null:
+		return
 	draw_texture_rect(ground_texture, Rect2(0, 0, w * GameData.TILE, h * GameData.TILE), false)
 
 

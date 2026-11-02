@@ -8,7 +8,7 @@ const GOLD := Color(0.86, 0.7, 0.32)
 const IVORY := Color(0.96, 0.94, 0.86)
 const CYAN := Color(0.4, 0.9, 1.0)
 const CRIMSON := Color(0.95, 0.25, 0.4)
-const MINIMAP_SIZE := 96.0      # diameter of the round minimap
+const MINIMAP_SIZE := 100.0     # side of the square minimap (mockup: gold filigree frame)
 const MINIMAP_TILES := 46.0
 const JOY_RADIUS := 34.0
 const DASH_R := 26.0            # round dash button radius
@@ -68,8 +68,12 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	var vs := view.size
 	_dash_btn.position = _dash_center(vs) - Vector2(DASH_R, DASH_R)
-	_map_btn.position = _map_btn_center(vs) - Vector2(SMALL_R, SMALL_R)
-	_pause_btn.position = _pause_btn_center(vs) - Vector2(SMALL_R, SMALL_R)
+	var mbr := _map_btn_rect(vs)
+	_map_btn.position = mbr.position
+	_map_btn.size = mbr.size
+	var pbr := _pause_btn_rect(vs)
+	_pause_btn.position = pbr.position
+	_pause_btn.size = pbr.size
 	_dash_btn.disabled = game.player.dash_cd > 0.0
 	_banner["t"] = max(0.0, _banner["t"] - delta)
 	for t in _toasts:
@@ -403,9 +407,9 @@ func _draw_view() -> void:
 	if not game.run_over:
 		_draw_joystick(vs)
 		_draw_dash(vs)
-		_draw_round_button(_map_btn_center(vs), SMALL_R, "map", _map_btn)
-		_draw_round_button(_pause_btn_center(vs), SMALL_R, "", _pause_btn)
-		_draw_pause_glyph(_pause_btn_center(vs))
+		_draw_rect_button(_map_btn_rect(vs), "map", "MAP", _map_btn)
+		_draw_rect_button(_pause_btn_rect(vs), "", "", _pause_btn)
+		_draw_pause_glyph(_pause_btn_center(vs) + (Vector2(0, 1) if _pause_btn.is_pressed() else Vector2.ZERO))
 	var y := vs.y - 110
 	for t in _toasts:
 		_text(Vector2(vs.x * 0.5, y), t["text"], Color(t["color"], min(1.0, t["t"])), 10, true)
@@ -422,51 +426,56 @@ func _draw_view() -> void:
 
 func _draw_player_panel() -> void:
 	var p: Player = game.player
-	# purple plate behind portrait and bars (the academy UI's panel style)
-	view.draw_style_box(_panel_style(), Rect2(3, 3, 172, 40))
-	# portrait in a gold frame
-	var pr := Rect2(8, 7, 32, 32)
-	_slot_frame(pr, UiKit.GOLD, Color("140f2a"))
+	# portrait in a gold slot frame (mockup: top-left, HP bar and level plate beside it)
+	var pr := Rect2(6, 5, 38, 38)
+	view.draw_style_box(UiKit.frame("slot_small"), pr)
 	var face := CharacterArt.portrait(p.character["id"])
+	var inner := pr.grow(-4)
 	if face != null:
 		var w := float(face.get_width())
 		var cs := w * 0.5   # head-and-shoulders crop, proportional to the sprite size
-		view.draw_texture_rect_region(face, pr.grow(-1), Rect2(w * 0.5 - cs * 0.5, 0, cs, cs))
+		view.draw_texture_rect_region(face, inner, Rect2(w * 0.5 - cs * 0.5, 0, cs, cs))
 	else:
-		view.draw_circle(pr.get_center(), 8, Color(0.98, 0.86, 0.78))
-	# level badge on the portrait's lower edge
-	var lv := "Lv%d" % game.level
-	var lw := font.get_string_size(lv, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(8)).x + 6.0
-	var lr := Rect2(roundf(pr.get_center().x - lw * 0.5), pr.end.y - 5, roundf(lw), 10)
-	_plate(lr, UiKit.GOLD, Color("3a2a10"))
-	_text(Vector2(lr.get_center().x, lr.position.y + 8), lv, UiKit.GOLD, 8, true)
-	# HP: heart icon + red bar with the numbers inside
-	_icon("hp", Rect2(44, 7, 16, 16))
-	_bar(Rect2(62, 10, 106, 10), p.hp / p.stats["max_hp"], Color(0.92, 0.26, 0.32))
-	_text(Vector2(115, 18), "%d/%d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
-	# EXP: star + cyan bar
-	UiKit.draw_icon(view, "exp", Vector2(52, 31), 5.0)
-	_bar(Rect2(62, 28, 106, 5), game.xp / game.xp_next, UiKit.CYAN)
-	# weapon row and tome row: pixel icon slots, filled / empty / locked (opens via academy buildings)
-	_slot_row(48.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35))
-	_slot_row(69.0, p.tomes, game.tome_slots, UiKit.CYAN)
+		view.draw_circle(inner.get_center(), 8, Color(0.98, 0.86, 0.78))
+	# HP: framed red bar with the numbers inside
+	var hb := Rect2(46, 5, 150, 17)
+	_frame_bar(hb, p.hp / p.stats["max_hp"], Color("d8505e"))
+	_text(Vector2(hb.get_center().x, hb.position.y + 12), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 8, true)
+	# level plate: EXP fills it, "Lv N" on top
+	var lb := Rect2(46, 24, 104, 15)
+	_frame_bar(lb, game.xp / game.xp_next, Color("7d5bb8"))
+	_text(Vector2(lb.get_center().x, lb.position.y + 11), "Lv %d" % game.level, Color("f0dca8"), 8, true)
+	# weapon row and tome row: gold slots, filled / empty / locked (opens via academy buildings)
+	_slot_row(46.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35))
+	_slot_row(70.0, p.tomes, game.tome_slots, UiKit.CYAN)
 	# owned items: small icon slots in their rarity colour, with a count when stacked
 	var x := 6.0
 	for id in game.items_owned:
 		var it: Dictionary = game.item_by_id(id)
 		var col: Color = GameData.RARITY_COLORS[int(it["rarity"])]
-		var r := Rect2(x, 92, 14, 14)
+		var r := Rect2(x, 95, 16, 16)
 		_slot_frame(r, col)
 		var tex := UiKit.icon_tex(String(id))
 		if tex != null:
 			view.draw_texture_rect(tex, r.grow(-1), false)
 		else:
-			_text(Vector2(x + 7, 102), it["name"].substr(0, 1), col, 8, true)
+			_text(Vector2(x + 8, 106), it["name"].substr(0, 1), col, 8, true)
 		var n: int = game.items_owned[id]
 		if n > 1:
-			_text(Vector2(x + 13, 109), str(n), IVORY, 7, true)
-		x += 16.0
+			_text(Vector2(x + 14, 113), str(n), IVORY, 7, true)
+		x += 18.0
 
+
+## A bar in the mockup frame (dark well, gold end caps): the fill goes inside the well.
+func _frame_bar(r: Rect2, ratio: float, col: Color) -> void:
+	view.draw_style_box(UiKit.frame("bar"), r)
+	var well := Rect2(r.position + Vector2(9, 4), r.size - Vector2(18, 8))
+	var w := floorf(well.size.x * clampf(ratio, 0.0, 1.0))
+	if w <= 0.0:
+		return
+	view.draw_rect(Rect2(well.position, Vector2(w, well.size.y)), col)
+	view.draw_rect(Rect2(well.position, Vector2(w, 1)), col.lightened(0.35))
+	view.draw_rect(Rect2(well.position + Vector2(0, well.size.y - 1), Vector2(w, 1)), col.darkened(0.3))
 
 func _panel_style() -> PixelStyle:
 	if _panel_sb == null:
@@ -503,83 +512,86 @@ func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color) -> void:
 	var ids: Array = owned.keys()
 	var x := 6.0
 	for i in GameData.MAX_SLOTS:
-		var r := Rect2(x, y, 18, 18)
+		var r := Rect2(x, y, 22, 22)
 		if i < ids.size():
 			var id := String(ids[i])
 			var evolved: bool = GameData.weapon_by_id(id).get("evolved", false) if owned == game.player.weapon_levels else false
-			_slot_frame(r, GOLD if evolved else col)
+			view.draw_style_box(UiKit.frame("slot_small", Color(1.3, 1.2, 1.0) if evolved else Color.WHITE), r)
 			var tex := UiKit.icon_tex(UiKit.option_icon({"def": {"id": id}}))
 			if tex != null:
-				view.draw_texture_rect(tex, Rect2(r.position + Vector2(1, 1), Vector2(16, 16)), false)
-			_text(Vector2(r.end.x - 1, r.end.y + 2), "E" if evolved else str(owned[ids[i]]), GOLD if evolved else IVORY, 8, true)
+				view.draw_texture_rect(tex, Rect2(r.position + Vector2(3, 3), Vector2(16, 16)), false)
+			_text(Vector2(r.end.x - 1, r.end.y + 1), "E" if evolved else str(owned[ids[i]]), GOLD if evolved else IVORY, 8, true)
 		elif i < unlocked:
-			_slot_frame(r, Color(col, 0.45), Color(0.05, 0.04, 0.12, 0.6))
+			view.draw_style_box(UiKit.frame("slot_small", Color(1, 1, 1, 0.7)), r)
 		else:
-			_slot_frame(r, Color(0.35, 0.33, 0.45, 0.6), Color(0, 0, 0, 0.45))
+			view.draw_style_box(UiKit.frame("slot_small", Color(0.55, 0.5, 0.6, 0.75)), r)
 			var lock := UiKit.icon_tex("lock")
 			if lock != null:
-				view.draw_texture_rect(lock, Rect2(r.position + Vector2(1, 1), Vector2(16, 16)), false, Color(1, 1, 1, 0.45))
-		x += 21.0
-
+				view.draw_texture_rect(lock, Rect2(r.position + Vector2(3, 3), Vector2(16, 16)), false, Color(1, 1, 1, 0.55))
+		x += 24.0
 
 func _draw_timer(vs: Vector2) -> void:
 	var cx := roundf(vs.x * 0.5)
 	var rem: float = game.time_left()
 	var txt := "%02d:%02d" % [int(rem) / 60, int(rem) % 60]
 	var col := IVORY
-	var border := UiKit.PURPLE
+	var tint := Color.WHITE
 	if game.final_swarm:
 		txt = "+%02d:%02d" % [int(game.final_swarm_t) / 60, int(game.final_swarm_t) % 60]
-		col = CRIMSON
-		border = CRIMSON
+		col = Color(1, 0.55, 0.6)
+		tint = Color(1.25, 0.75, 0.75)
 	elif game.surge_active():
-		col = Color(1, 0.6, 0.3)
-		border = col
-	# timer plate: hourglass + time in the bold font
-	var plate := Rect2(cx - 40, 4, 80, 20)
-	_plate(plate, border)
-	_icon("hourglass", Rect2(plate.position + Vector2(3, 2), Vector2(16, 16)))
+		col = Color(1, 0.7, 0.4)
+		tint = Color(1.2, 0.95, 0.75)
+	# timer plate: a short framed bar with the time in the bold font
+	var plate := Rect2(cx - 38, 3, 76, 21)
+	view.draw_style_box(UiKit.frame("bar", tint), plate)
 	var tfs := UiKit.tfs(12)
 	var tw := UiKit.BOLD_FONT.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x
-	var tp := Vector2(roundf(plate.get_center().x + 8 - tw * 0.5), plate.position.y + 15)
+	var tp := Vector2(roundf(cx - tw * 0.5), plate.position.y + 15)
 	view.draw_string_outline(UiKit.BOLD_FONT, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, 3, Color(0, 0, 0, 0.85))
 	view.draw_string(UiKit.BOLD_FONT, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, col)
 	var b = game.enemies.boss
 	if b != null and b.spawn_t <= 0.0:
-		# boss: a thick red bar + a name plate
+		# boss: a long framed red bar + the name on a cream tag
 		var bname := String(game.boss_cfg["name"])
-		var nw := font.get_string_size(bname, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(8)).x + 12.0
-		_bar(Rect2(cx - 110, 30, 220, 8), b.hp / b.max_hp, CRIMSON)
-		var nr := Rect2(roundf(cx - nw * 0.5), 42, roundf(nw), 11)
-		_plate(nr, CRIMSON, Color("3a0d18"))
-		_text(Vector2(cx, nr.position.y + 9), bname, Color(1, 0.75, 0.75), 8, true)
+		_frame_bar(Rect2(cx - 120, 26, 240, 13), b.hp / b.max_hp, CRIMSON)
+		_tag(Vector2(cx, 41), bname, Color("7a1f30"))
 	else:
-		_bar(Rect2(cx - 110, 30, 220, 3), 1.0 - rem / GameData.RUN_TIME, Color(0.6, 0.4, 0.9))
+		var pb := Rect2(cx - 120, 26, 240, 11)
+		_frame_bar(pb, 1.0 - rem / GameData.RUN_TIME, Color("9a5ad8"))
+		# Rift Surges: small orange diamonds on the bar
 		for sg in GameData.SURGES:
-			var sx: float = roundf(cx - 110 + 220 * float(sg["at"]) / GameData.RUN_TIME)
-			view.draw_rect(Rect2(sx - 1, 28, 3, 7), OUTLINE)
-			view.draw_rect(Rect2(sx, 29, 1, 5), Color(1, 0.55, 0.25))
-		# difficulty meter: a small chip with the threat name, reddening as it climbs
+			var sx: float = roundf(pb.position.x + 9 + (pb.size.x - 18) * float(sg["at"]) / GameData.RUN_TIME)
+			var sy := pb.get_center().y
+			view.draw_colored_polygon(PackedVector2Array([Vector2(sx, sy - 4), Vector2(sx + 3, sy), Vector2(sx, sy + 4), Vector2(sx - 3, sy)]), OUTLINE)
+			view.draw_colored_polygon(PackedVector2Array([Vector2(sx, sy - 3), Vector2(sx + 2, sy), Vector2(sx, sy + 3), Vector2(sx - 2, sy)]), Color(1, 0.55, 0.25))
+		# difficulty meter: "Threat: <name>" on a cream tag, the name reddening as it climbs
 		var k := clampf(float(game.threat_level()) / float(GameData.THREAT_NAMES.size() - 1), 0.0, 1.0)
-		var tcol := Color(0.75, 0.9, 0.7).lerp(Color(1, 0.6, 0.25), minf(k * 2.0, 1.0)).lerp(CRIMSON, maxf(k * 2.0 - 1.0, 0.0))
-		var line := String(game.threat_name())
+		var tcol := Color("3f5a2c").lerp(Color("9a4a14"), minf(k * 2.0, 1.0)).lerp(Color("8a1428"), maxf(k * 2.0 - 1.0, 0.0))
+		var line := "Threat: " + String(game.threat_name())
 		if game.final_swarm:
-			line = "SWARM LV %d" % game.swarm_level()
-		var lw := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(7)).x + 18.0
-		var lr := Rect2(roundf(cx - lw * 0.5), 39, roundf(lw), 11)
-		_plate(lr, Color(tcol, 0.9), Color(0.07, 0.05, 0.14, 0.8))
-		_icon("skull", Rect2(lr.position + Vector2(1, 0), Vector2(11, 11)), Color(tcol, 1.0))
-		_text(Vector2(lr.get_center().x + 5, lr.position.y + 9), line, tcol, 7, true)
+			line = "Swarm Lv %d" % game.swarm_level()
+		_tag(Vector2(cx, 39), line, tcol)
 
 
-## Kills and gold chips under the round minimap.
+## Cream label (mockup tag) centred on `c` (top edge at c.y) with ink text.
+func _tag(c: Vector2, txt: String, ink: Color) -> void:
+	var fs := UiKit.fs(8)
+	var tw := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var r := Rect2(roundf(c.x - tw * 0.5 - 10), c.y, roundf(tw + 20), 15)
+	view.draw_style_box(UiKit.frame("tag"), r)
+	view.draw_string(font, Vector2(roundf(c.x - tw * 0.5), r.position.y + 11), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, ink)
+
+## Kills and gold above the minimap (plain outlined text, as in the mockup).
 func _draw_top_right(vs: Vector2) -> void:
-	var c := _minimap_center(vs)
-	var y := roundf(c.y + MINIMAP_SIZE * 0.5 + 7)
-	var w := 44.0
-	_chip(Rect2(roundf(c.x - w - 2), y, w, 13), "skull", str(game.kills), IVORY)
-	_chip(Rect2(roundf(c.x + 2), y, w, 13), "gold", str(int(game.gold)), Color(1, 0.85, 0.3))
-
+	var mr := _minimap_rect(vs)
+	var y := mr.position.y - 3
+	var gold_txt := "%d g" % int(game.gold)
+	var gw := font.get_string_size(gold_txt, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(10)).x
+	_text(Vector2(mr.end.x - gw - 2, y), gold_txt, Color(1, 0.85, 0.35), 10, false)
+	_icon("gold", Rect2(mr.end.x - gw - 20, y - 13, 16, 16))
+	_text(Vector2(mr.position.x + 2, y), "Kills %d" % game.kills, IVORY, 10, false)
 
 func _chip(r: Rect2, icon_name: String, txt: String, col: Color) -> void:
 	_plate(r, Color(0.45, 0.4, 0.65), Color(0.07, 0.05, 0.14, 0.85))
@@ -587,45 +599,53 @@ func _chip(r: Rect2, icon_name: String, txt: String, col: Color) -> void:
 	_text(Vector2(r.position.x + 17, r.position.y + 10), txt, col, 8, false)
 
 
+func _minimap_rect(vs: Vector2) -> Rect2:
+	return Rect2(vs.x - MINIMAP_SIZE - 8, 18, MINIMAP_SIZE, MINIMAP_SIZE)
+
+
 func _minimap_center(vs: Vector2) -> Vector2:
-	return Vector2(roundf(vs.x - MINIMAP_SIZE * 0.5 - 10), MINIMAP_SIZE * 0.5 + 8)
+	return _minimap_rect(vs).get_center()
+
+
+func _map_btn_rect(vs: Vector2) -> Rect2:
+	var mr := _minimap_rect(vs)
+	return Rect2(mr.position.x, mr.end.y + 4, MINIMAP_SIZE - 28, 22)
+
+
+func _pause_btn_rect(vs: Vector2) -> Rect2:
+	var mr := _minimap_rect(vs)
+	return Rect2(mr.end.x - 24, mr.end.y + 4, 24, 22)
 
 
 func _map_btn_center(vs: Vector2) -> Vector2:
-	return (_minimap_center(vs) + Vector2.from_angle(deg_to_rad(140)) * (MINIMAP_SIZE * 0.5 + 6)).round()
+	return _map_btn_rect(vs).get_center()
 
 
 func _pause_btn_center(vs: Vector2) -> Vector2:
-	return (_minimap_center(vs) + Vector2.from_angle(deg_to_rad(-160)) * (MINIMAP_SIZE * 0.5 + 8)).round()
+	return _pause_btn_rect(vs).get_center()
 
 
 func _dash_center(vs: Vector2) -> Vector2:
 	return Vector2(vs.x - DASH_R - 22, vs.y - DASH_R - 22)
 
 
-## Round minimap: the map and fog textures drawn into a circle (a textured polygon), framed by a black,
-## gold and dark ring with four gold studs, like the academy UI's rivets.
+## Square minimap: the map and fog textures, POIs and elites, under the gold filigree frame (mockup).
 func _draw_minimap(c: Vector2, rad: float) -> void:
 	var world: World = game.world
+	var mr := _minimap_rect(view.size)
+	var inner := mr.grow(-4)
 	var ppos: Vector2 = game.player.position / GameData.TILE
 	var half := MINIMAP_TILES * 0.5
 	var center := Vector2(clamp(ppos.x, half, world.w - half), clamp(ppos.y, half, world.h - half))
 	var src := Rect2(center - Vector2(half, half), Vector2(MINIMAP_TILES, MINIMAP_TILES))
-	view.draw_circle(c, rad + 4, OUTLINE)
-	view.draw_circle(c, rad + 3, UiKit.GOLD_DIM)
-	view.draw_circle(c, rad + 2, UiKit.GOLD)
-	view.draw_circle(c, rad + 1, OUTLINE)
-	view.draw_circle(c, rad, Color("0b0818"))
-	_circle_tex(world.minimap_texture, c, rad, src, Vector2(world.w, world.h))
-	_circle_tex(game.fog.texture, c, rad, src, Vector2(world.w, world.h))
-	for i in 4:
-		var sp := (c + Vector2.from_angle(PI * 0.25 + i * PI * 0.5) * (rad + 2.5)).floor()
-		view.draw_rect(Rect2(sp - Vector2(2, 2), Vector2(4, 4)), OUTLINE)
-		view.draw_rect(Rect2(sp - Vector2(1, 1), Vector2(2, 2)), Color("fff3c2"))
-	var scale := (rad * 2.0) / MINIMAP_TILES
+	view.draw_rect(mr.grow(-2), Color("140e1a"))
+	view.draw_texture_rect_region(world.minimap_texture, inner, src)
+	if game.fog.texture != null:
+		view.draw_texture_rect_region(game.fog.texture, inner, src)
+	var scale := inner.size.x / MINIMAP_TILES
 	var to_screen := func(world_px: Vector2) -> Vector2:
-		return c + (world_px / GameData.TILE - src.get_center()) * scale
-	var inside := func(pt: Vector2) -> bool: return pt.distance_to(c) < rad - 2.0
+		return inner.get_center() + (world_px / GameData.TILE - src.get_center()) * scale
+	var inside := func(pt: Vector2) -> bool: return inner.grow(-2).has_point(pt)
 	_draw_pois(to_screen, inside, 2.0)
 	for e in game.enemies.list:
 		if e.elite or e.boss:
@@ -635,7 +655,10 @@ func _draw_minimap(c: Vector2, rad: float) -> void:
 	var pp: Vector2 = to_screen.call(game.player.position)
 	view.draw_circle(pp, 3.0, OUTLINE)
 	view.draw_circle(pp, 2.0, Color.WHITE)
-
+	# the gold filigree frame on top, at half scale (its art is drawn at the characters' pixel density)
+	view.draw_set_transform(mr.position, 0.0, Vector2(0.5, 0.5))
+	view.draw_style_box(UiKit.frame("panel_ring"), Rect2(Vector2.ZERO, mr.size * 2.0))
+	view.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 ## Draws the `src` tile rect of a whole-map texture (map size `world_size` in tiles) into a circle.
 func _circle_tex(tex: Texture2D, c: Vector2, rad: float, src: Rect2, world_size: Vector2) -> void:
@@ -692,6 +715,20 @@ func _draw_round_button(c: Vector2, r: float, icon_name: String, b: Button) -> v
 	if icon_name != "":
 		var sz := (r - 3) * 2.0
 		_icon(icon_name, Rect2(c - Vector2(sz, sz) * 0.5, Vector2(sz, sz)))
+
+
+## Purple mockup button (MAP, pause): icon + bold label; nudged down while pressed.
+func _draw_rect_button(r: Rect2, icon_name: String, label: String, b: Button) -> void:
+	var down := Vector2(0, 1) if b.is_pressed() else Vector2.ZERO
+	view.draw_style_box(UiKit.frame("button", Color(0.85, 0.85, 0.85) if b.is_pressed() else Color.WHITE), r)
+	var x := r.position.x + 5
+	if icon_name != "":
+		_icon(icon_name, Rect2(Vector2(x, r.position.y + 3) + down, Vector2(16, 16)))
+		x += 18
+	if label != "":
+		var tfs := UiKit.tfs(12)
+		view.draw_string_outline(UiKit.BOLD_FONT, Vector2(x, r.position.y + 15) + down, label, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, 3, OUTLINE)
+		view.draw_string(UiKit.BOLD_FONT, Vector2(x, r.position.y + 15) + down, label, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, Color("f0dca8"))
 
 
 func _draw_pause_glyph(c: Vector2) -> void:
@@ -790,8 +827,8 @@ func _edge_arrow(vs: Vector2, cam_center: Vector2, target: Vector2, col: Color, 
 	var k: float = min(inset.x / max(0.001, absf(rel.x)), inset.y / max(0.001, absf(rel.y)))
 	var p := half + rel * k
 	p.y = max(p.y, 72.0)  # keep arrows below the top HUD band (bars, timer, minimap)
-	if p.x > vs.x - MINIMAP_SIZE - 24 and p.y < MINIMAP_SIZE + 36:
-		p.y = MINIMAP_SIZE + 36
+	if p.x > vs.x - MINIMAP_SIZE - 24 and p.y < MINIMAP_SIZE + 56:
+		p.y = MINIMAP_SIZE + 56
 	var d := rel.normalized()
 	var n := d.orthogonal()
 	view.draw_colored_polygon(PackedVector2Array([p + d * size, p - d * size * 0.6 + n * size * 0.8, p - d * size * 0.6 - n * size * 0.8]), col)
