@@ -58,51 +58,36 @@ static func style(border: Color, margin := 8.0) -> PixelStyle:
 	var sb := PixelStyle.new()
 	sb.drop = 0
 	if border == CYAN:
-		sb.border = Color("ffd062")
-		sb.light = Color("fff3c2")
-		sb.shade = Color("a8721c")
-		sb.glow = Color(1.0, 0.85, 0.35, 0.5)
-		sb.fill = Color("4a3a9a")
-		sb.fill_dark = Color("5444aa")
+		# selected: bright gold frame with a soft glow
+		sb.border = Color("f2d27a")
+		sb.light = Color("fff0c0")
+		sb.shade = Color("9a7232")
+		sb.glow = Color(1.0, 0.85, 0.4, 0.45)
+		sb.fill = Color("3a2c48")
+		sb.fill_dark = Color("3f3050")
 	elif border == GREY:
-		sb.border = Color("4a4560")
-		sb.light = Color("625c7c")
-		sb.shade = Color("2a2638")
-		sb.fill = Color("221e33")
-		sb.fill_dark = Color("26223a")
+		sb.border = Color("4e4558")
+		sb.light = Color("6a6074")
+		sb.shade = Color("2a2430")
+		sb.fill = Color("1c1722")
+		sb.fill_dark = Color("1f1a26")
 	elif border == GOLD:
-		sb.border = Color("e2a93a")
-		sb.light = Color("ffe08a")
-		sb.shade = Color("8a5a14")
+		sb.border = Color("d0a448")
+		sb.light = Color("f2d27a")
+		sb.shade = Color("7a5a2e")
 	elif border == NAVY:
-		sb.border = Color("3e3082")
-		sb.light = Color("5040a0")
-		sb.shade = Color("181034")
-		sb.fill = Color("1b1440")
-		sb.fill_dark = Color("201848")
+		# dark inset well inside a panel
+		sb.border = Color("3a2c48")
+		sb.light = Color("4a3a5a")
+		sb.shade = Color("120c18")
+		sb.fill = Color("17111f")
+		sb.fill_dark = Color("1a1323")
 		sb.border_w = 1
 	sb.set_content_margin_all(margin)
 	return sb
 
 
-## Cozy academy look (pilot, after Little Witch in the Woods): PixelLab frames in assets/ui/frames drawn as
-## 9-slice StyleBoxTextures (edges tiled, so pixels stay whole). Text on paper is ink brown without an outline.
-const INK := Color("3a2418")
-const INK_SOFT := Color("8a5a3b")
-const ROSE := Color("a3445e")
-const LEAF := Color("4f7d4a")
 const FRAME_DIR := "res://assets/ui/frames/"
-
-
-## `name` = wood_frame | quest_note; `edge` = texture margin (corner size), `pad` = content margin.
-static func frame_style(name: String, edge: float, pad: float) -> StyleBoxTexture:
-	var sb := StyleBoxTexture.new()
-	sb.texture = load(FRAME_DIR + name + ".png")
-	sb.set_texture_margin_all(edge)
-	sb.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	sb.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
-	sb.set_content_margin_all(pad)
-	return sb
 
 
 ## Mockup look (Syifa's GPT mockups, 2 Nov): PixelLab frames in assets/ui/frames, 9-sliced with these texture
@@ -152,36 +137,46 @@ static func button_style(kind: String, state: String) -> PixelStyle:
 		return sb
 	match kind:
 		"normal":
-			sb.fill = Color("5640b0")
-			sb.fill_dark = Color("5e48bc")
-			sb.border = Color("a08cf0")
-			sb.light = Color("d6ccff")
-			sb.shade = Color("33257a")
+			# mockup purple button (MAP)
+			sb.fill = Color("523883")
+			sb.fill_dark = Color("573c8a")
+			sb.border = Color("d8b878")
+			sb.light = Color("f0dca8")
+			sb.shade = Color("3e2a66")
 		"primary":
-			sb.fill = Color("3a2412")
-			sb.fill_dark = Color("452b15")
-			sb.border = Color("f2b53a")
-			sb.light = Color("ffe08a")
-			sb.shade = Color("9a6512")
+			# dark plum with a gold frame (ENTER THE RIFT)
+			sb.fill = Color("2a1f36")
+			sb.fill_dark = Color("2e2239")
+			sb.border = Color("d0a448")
+			sb.light = Color("f2d27a")
+			sb.shade = Color("7a5a2e")
 			sb.border_w = 3
 		"accent":
-			sb.fill = Color("1f8a5a")
-			sb.fill_dark = Color("249864")
-			sb.border = Color("6dffa8")
-			sb.light = Color("c8ffe0")
-			sb.shade = Color("135a38")
+			sb.fill = Color("3e7a4c")
+			sb.fill_dark = Color("438152")
+			sb.border = Color("e2d29a")
+			sb.light = Color("fff0c0")
+			sb.shade = Color("24482c")
 		"danger":
-			sb.fill = Color("a3302a")
-			sb.fill_dark = Color("b03832")
-			sb.border = Color("ff8a6a")
-			sb.light = Color("ffd0c0")
-			sb.shade = Color("5a1612")
+			sb.fill = Color("963048")
+			sb.fill_dark = Color("9e3650")
+			sb.border = Color("e8b8a0")
+			sb.light = Color("ffe0d0")
+			sb.shade = Color("50141f")
 		"info":
-			sb.fill = Color("2a5fb0")
-			sb.fill_dark = Color("3068bc")
-			sb.border = Color("8fd0ff")
-			sb.light = Color("d8f0ff")
-			sb.shade = Color("17356a")
+			sb.fill = Color("3a5492")
+			sb.fill_dark = Color("3f5a9a")
+			sb.border = Color("c8d8f0")
+			sb.light = Color("eef4ff")
+			sb.shade = Color("1c2a52")
+		"cream":
+			# mockup cream tile (home navigation)
+			sb.fill = Color("e6cca8")
+			sb.fill_dark = Color("e9d0ad")
+			sb.border = Color("6b4c3c")
+			sb.light = Color("f6e8d2")
+			sb.shade = Color("3a2630")
+			sb.pattern = false
 	if state == "hover":
 		sb.fill = sb.fill.lightened(0.12)
 		sb.fill_dark = sb.fill_dark.lightened(0.12)
@@ -201,12 +196,12 @@ static func button(text: String, min_size: Vector2, cb: Callable, kind := "norma
 	b.add_theme_font_override("font", BOLD_FONT)
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, button_style(kind, st))
-	var txt := GOLD if kind == "primary" else IVORY
+	var txt := GOLD if kind == "primary" else (Color("3a2630") if kind == "cream" else IVORY)
 	for k in ["font_color", "font_hover_color", "font_pressed_color"]:
 		b.add_theme_color_override(k, txt)
 	b.add_theme_color_override("font_disabled_color", Color(IVORY, 0.35))
 	b.add_theme_color_override("font_outline_color", Color("05030c"))
-	b.add_theme_constant_override("outline_size", 2)
+	b.add_theme_constant_override("outline_size", 0 if kind == "cream" else 2)
 	b.pressed.connect(func(): Sfx.play("ui_confirm" if kind == "primary" else "ui_click", 0.02))
 	b.pressed.connect(cb)
 	return b
@@ -231,18 +226,22 @@ static func panel(margin := 8.0, border := PURPLE) -> Array:
 
 ## A section header: dark bar with a gold title and an optional icon.
 static func header(text: String, size := 12, icon_name := "") -> Control:
+	# mockup section title: a cream tag with an ink title (QUESTS)
 	var p := PanelContainer.new()
-	var sb := style(NAVY, 2.0)
-	sb.pattern = false
-	sb.fill = Color("120c2c")
-	sb.content_margin_left = 5
+	var sb := frame("tag").duplicate() as StyleBoxTexture
+	sb.content_margin_left = 8
+	sb.content_margin_right = 10
+	sb.content_margin_top = 2
+	sb.content_margin_bottom = 2
 	p.add_theme_stylebox_override("panel", sb)
+	p.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 4)
 	p.add_child(row)
 	if icon_name != "" and icon_tex(icon_name) != null:
 		row.add_child(icon_rect(icon_name, 16))
-	var t := title(text, size, GOLD)
+	var t := title(text, size, Color("3a2630"))
+	t.add_theme_constant_override("outline_size", 0)
 	t.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(t)
 	return p
@@ -388,8 +387,8 @@ static func rarity_style(col: Color, margin := 4.0) -> PixelStyle:
 	sb.border = col.darkened(0.15)
 	sb.light = col.lightened(0.35)
 	sb.shade = col.darkened(0.55)
-	sb.fill = Color("1c1538")
-	sb.fill_dark = Color("231a45")
+	sb.fill = Color("1d1626")
+	sb.fill_dark = Color("211a2b")
 	return sb
 
 

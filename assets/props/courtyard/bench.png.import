@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dhbhpv7a8v4gf"
-path="res://.godot/imported/wood_frame.png-7882a120adb33c9cf374f7c2a4c88c51.ctex"
+uid="uid://cpuwtxyfosayi"
+path="res://.godot/imported/bench.png-5bc0c9632f32f842b79cbc286bd9109a.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/frames/wood_frame.png"
-dest_files=["res://.godot/imported/wood_frame.png-7882a120adb33c9cf374f7c2a4c88c51.ctex"]
+source_file="res://assets/props/courtyard/bench.png"
+dest_files=["res://.godot/imported/bench.png-5bc0c9632f32f842b79cbc286bd9109a.ctex"]
 
 [params]
 

@@ -230,44 +230,38 @@ func _build_home_hud() -> void:
 	_home.add_child(who)
 	_avatar = UiKit.portrait(func(): return save["character"], 38.0)
 	who.add_child(_avatar)
+	# cream name plate (mockup): name in ink, level line below
 	var plate := PanelContainer.new()
-	var ps := UiKit.style(UiKit.PURPLE, 4.0)
-	ps.content_margin_left = 6
-	ps.content_margin_right = 8
+	var ps := UiKit.frame("tag").duplicate() as StyleBoxTexture
+	ps.content_margin_left = 10
+	ps.content_margin_right = 12
+	ps.content_margin_top = 3
+	ps.content_margin_bottom = 3
 	plate.add_theme_stylebox_override("panel", ps)
 	plate.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	who.add_child(plate)
 	var names := VBoxContainer.new()
 	names.add_theme_constant_override("separation", 0)
 	plate.add_child(names)
-	_avatar_name = UiKit.title("", 8, UiKit.GOLD)
+	_avatar_name = UiKit.title("", 8, Color("3a2630"))
+	_avatar_name.add_theme_constant_override("outline_size", 0)
 	names.add_child(_avatar_name)
-	_avatar_lv = UiKit.label("", 8, UiKit.CYAN)
+	_avatar_lv = UiKit.label("", 8, Color("6b4c3c"))
+	_avatar_lv.add_theme_constant_override("outline_size", 0)
 	names.add_child(_avatar_lv)
 
-	# left: quests
-	var qp := UiKit.panel(5.0)
+	# left: quests on a dark plum panel with gold corners and a cream QUESTS tag
+	var qp := UiKit.panel(7.0)
 	var qpanel: PanelContainer = qp[0]
-	qpanel.position = Vector2(8, 50)
+	qpanel.position = Vector2(8, 52)
 	qpanel.custom_minimum_size = Vector2(160, 0)
-	# cozy pilot: a pinned paper note (9-slice), ink text, the pin drawn on top
-	var qs := UiKit.frame_style("quest_note", 22.0, 12.0)
-	qs.content_margin_top = 14
+	var qs := UiKit.style(UiKit.PURPLE, 7.0)
+	qs.fill = Color(0.12, 0.09, 0.15, 0.92)
+	qs.fill_dark = Color(0.13, 0.1, 0.17, 0.92)
+	qs.rivets = true
 	qpanel.add_theme_stylebox_override("panel", qs)
 	_home.add_child(qpanel)
-	var pin := TextureRect.new()
-	pin.texture = load(UiKit.FRAME_DIR + "pin.png")
-	pin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pin.position = qpanel.position + Vector2(73, -3)
-	_home.add_child(pin)
-	var qh := HBoxContainer.new()
-	qh.add_theme_constant_override("separation", 3)
-	qh.add_child(UiKit.icon_rect("quest", 16))
-	var qt := UiKit.title("Notice Board", 8, UiKit.ROSE)
-	qt.remove_theme_constant_override("outline_size")
-	qt.add_theme_constant_override("outline_size", 0)
-	qt.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	qh.add_child(qt)
+	var qh := UiKit.header("QUESTS", 8, "quest")
 	qp[1].add_child(qh)
 	_quests = VBoxContainer.new()
 	_quests.add_theme_constant_override("separation", 0)
@@ -297,9 +291,13 @@ func _build_home_hud() -> void:
 		nav.add_child(_nav_button(n[0], n[1]))
 
 	# bottom-right: the Rift (gold-framed call to action next to the selected mage)
-	# cozy pilot: the call to action sits in a carved wooden frame
+	# the call to action: portrait + button on a dark plum card with gold corners (mockup)
 	var rift_box := PanelContainer.new()
-	rift_box.add_theme_stylebox_override("panel", UiKit.frame_style("wood_frame", 22.0, 11.0))
+	var rbs := UiKit.style(UiKit.PURPLE, 5.0)
+	rbs.fill = Color(0.12, 0.09, 0.15, 0.94)
+	rbs.fill_dark = Color(0.13, 0.1, 0.17, 0.94)
+	rbs.rivets = true
+	rift_box.add_theme_stylebox_override("panel", rbs)
 	rift_box.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	rift_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	rift_box.grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -338,17 +336,22 @@ func _nav_button(page: String, text: String) -> Control:
 	var col := VBoxContainer.new()
 	col.custom_minimum_size = Vector2(58, 0)
 	col.add_theme_constant_override("separation", -2)
-	var b := UiKit.icon_button(page, Vector2(42, 40), show_page.bind(page))
+	# cream tile with the icon and the name inside (mockup)
+	var b := UiKit.button("", Vector2(74, 52), show_page.bind(page), "cream")
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	var ic: Control = b.get_child(0)
+	var ic := UiKit.icon_rect(page, 32)
+	ic.custom_minimum_size = Vector2.ZERO
+	ic.position = Vector2(21, 3)
 	ic.size = Vector2(32, 32)
-	ic.position = Vector2(5, 4)
-	col.add_child(b)
-	var l := UiKit.label(text, 10, UiKit.IVORY)
-	l.add_theme_constant_override("outline_size", 3)
+	b.add_child(ic)
+	var l := UiKit.label(text, 8, Color("3a2630"))
+	l.add_theme_constant_override("outline_size", 0)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(l)
+	l.position = Vector2(0, 35)
+	l.size = Vector2(74, 12)
+	b.add_child(l)
+	col.add_child(b)
 	return col
 
 
@@ -357,9 +360,10 @@ func _resource_pills(parent: Control) -> Dictionary:
 	for k in ["gold", "materials", "aether", "shards"]:
 		var pill := PanelContainer.new()
 		var sb := UiKit.style(UiKit.PURPLE, 1.0)
-		sb.content_margin_left = 2
-		sb.content_margin_right = 6
-		sb.fill = Color("140f2a")
+		sb.content_margin_left = 3
+		sb.content_margin_right = 7
+		sb.fill = Color(0.1, 0.07, 0.13, 0.9)
+		sb.border_w = 1
 		sb.pattern = false
 		pill.add_theme_stylebox_override("panel", sb)
 		pill.tooltip_text = UiKit.resource_name(k)
@@ -533,26 +537,24 @@ func _refresh_home() -> void:
 		b.custom_minimum_size = Vector2(100, 12)
 		b.add_theme_font_size_override("font_size", UiKit.fs(8))
 		b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		var col: Color = UiKit.LEAF if q.get("ready", false) else (UiKit.ROSE if q.get("story", false) else UiKit.INK)
+		var col: Color = UiKit.GREEN if q.get("ready", false) else (Color("f2d27a") if q.get("story", false) else Color("efe2c4"))
 		for k in ["font_color", "font_hover_color", "font_pressed_color"]:
 			b.add_theme_color_override(k, col)
-		b.add_theme_constant_override("outline_size", 0)
+		b.add_theme_color_override("font_outline_color", Color(0.04, 0.02, 0.06, 0.8))
+		b.add_theme_constant_override("outline_size", 2)
 		b.pressed.connect(q["go"])
 		row.add_child(b)
 		if q.has("quest"):
 			var qd: Dictionary = q["quest"]
 			if SaveData.quest_claimed(save, qd):
-				var dl := UiKit.label("Done", 10, Color(UiKit.INK_SOFT, 0.6))
-				dl.add_theme_constant_override("outline_size", 0)
-				row.add_child(dl)
+				row.add_child(UiKit.label("Done", 10, Color(1, 1, 1, 0.4)))
 			elif SaveData.quest_done(save, qd):
 				var cb := UiKit.button("CLAIM", Vector2(46, 18), _claim.bind(qd), "accent")
 				cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 				row.add_child(cb)
 			else:
 				var p := SaveData.quest_progress(save, qd)
-				var pl := UiKit.label("%s/%s" % [_short(p[0]), _short(p[1])], 10, UiKit.INK_SOFT)
-				pl.add_theme_constant_override("outline_size", 0)
+				var pl := UiKit.label("%s/%s" % [_short(p[0]), _short(p[1])], 10, Color("d8b878"))
 				pl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 				row.add_child(pl)
 

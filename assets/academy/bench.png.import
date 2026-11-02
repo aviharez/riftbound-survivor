@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://c5yium8vfh5l2"
-path="res://.godot/imported/pin.png-ee90c5b72b1e7f0fdb76e64247067eb2.ctex"
+uid="uid://bujqugqotreuw"
+path="res://.godot/imported/bench.png-d0873400073207367f163b44672417ce.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/frames/pin.png"
-dest_files=["res://.godot/imported/pin.png-ee90c5b72b1e7f0fdb76e64247067eb2.ctex"]
+source_file="res://assets/academy/bench.png"
+dest_files=["res://.godot/imported/bench.png-d0873400073207367f163b44672417ce.ctex"]
 
 [params]
 

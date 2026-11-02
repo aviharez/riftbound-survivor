@@ -158,12 +158,17 @@ static func _hash(x: int, y: int) -> int:
 func _scatter_props(map: Dictionary) -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(map["effective_seed"]) ^ 0x51ab
-	var keep_clear: Array = [map["spawn"], map["portal"]]
-	keep_clear.append_array(map["chests"])
-	keep_clear.append_array(map["pots"])
-	for s in map["shrines"]:
-		keep_clear.append(s["cell"])
-	var clear_r := float(_cfg["clear_radius"])
+	# cells to keep free of props: run maps list their objectives; the academy passes "keep_clear" [cell, radius]
+	var keep_clear: Array = []
+	for k in ["spawn", "portal"]:
+		if map.has(k):
+			keep_clear.append([map[k], float(_cfg["clear_radius"])])
+	for k in ["chests", "pots"]:
+		for c in map.get(k, []):
+			keep_clear.append([c, float(_cfg["clear_radius"])])
+	for s in map.get("shrines", []):
+		keep_clear.append([s["cell"], float(_cfg["clear_radius"])])
+	keep_clear.append_array(map.get("keep_clear", []))
 	var pdir := String(_cfg["props_dir"])
 	var tex := {}
 	for group in ["small", "edge", "plaza"]:
@@ -189,7 +194,7 @@ func _scatter_props(map: Dictionary) -> void:
 				continue
 			var near := false
 			for k in keep_clear:
-				if Vector2(c).distance_to(Vector2(k)) < clear_r:
+				if Vector2(c).distance_to(Vector2(k[0])) < float(k[1]):
 					near = true
 					break
 			if near:

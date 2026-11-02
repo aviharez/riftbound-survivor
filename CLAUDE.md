@@ -174,6 +174,27 @@ Read it before starting any phase.**
   with `GHOST_SHADER`, `DASH_GHOST_*`), a floor dust puff (`DASH_DUST_COUNT`), 3 speed lines; direction locked at
   start (`_dash_dir`). `--shot-dash` dashes just before each autotest screenshot (the autopilot moves the hero by
   position, so afterimages in autotest shots can point the wrong way).
+- **Art overhaul after Syifa's GPT mockups (2 Nov; references: lush top-down garden ruins, cream label tags,
+  dark plum panels with gold filigree corners).** Rule: one pixel density everywhere = the characters' (64 px
+  sprite drawn ~32 world px, so art is drawn at scale 0.5; never fractional scales of pixel art).
+  Ground: `scripts/world/ground_art.gd` (GroundArt) draws PixelLab Wang tilesets (`create_topdown_tileset` mode pro,
+  32 px, view low top-down, 15 generations each, chained on the grass base tile fbf6f3d7) on a DUAL grid (map
+  cells = tile corners) with a TileMapLayer at scale 0.5, plus deterministic props (PixelLab `create_map_object`,
+  1 generation each) and `shaders/ground_art.gdshader` (colour grade + light patches). Config per `tiles` id in
+  `GameData.GROUND_ART` (courtyard done; other locations still use the baked TILESETS colours). Sheets in
+  `assets/tiles/<loc>/{cobble,hedge,rift}.png` + `tiles.json` (corners per tile, from the metadata endpoint via
+  WebFetch; the sheet image via `pixelart_workbench inspect <api image?inline=true url> --scale 1`, crop the 18 px
+  caption). The hedge set is raised (T = wall face, kept inside wall cells). Props in `assets/props/<loc>/`.
+  Academy hub (`AcademyMap`): same GroundArt with the "academy" config on a grid built by
+  `AcademyMap.ground_map()` (forest band, cobbled plaza + paths, `ACADEMY_GROUND_*`), front-view PixelLab
+  buildings in `assets/academy/<id>.png` (map objects <= 200x200 are transparent; the 256 px main hall had its
+  flat background keyed out), rubble sprites `ruins_*` + cyan hologram for ruined plots, cream name tags, the
+  selected mage idling on the plaza. UI frames: `assets/ui/frames/` (PixelLab `create_ui_asset`, palette-locked,
+  halved to game scale where drawn at 2x) via `UiKit.frame(name, tint)` 9-slice (`FRAME_MARGINS`); panel_ring
+  (filigree, transparent centre) is drawn at half scale (minimap frame, PixelStyle `rivets` corners).
+  `PixelStyle`/`UiKit.style`/`button_style` defaults are the mockup palette (plum panels, tan-gold borders,
+  purple buttons, "cream" button kind, `UiKit.header` = cream tag). Run HUD: framed bars, gold slots, square
+  minimap, purple MAP / pause buttons, cream Threat tag. Font stays Galmuri (Syifa, for now).
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.

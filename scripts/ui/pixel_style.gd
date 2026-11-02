@@ -5,15 +5,16 @@ extends StyleBox
 ## rivets in the corners (main panels). All edges are snapped to whole virtual pixels, so with the integer
 ## canvas stretch every line is a crisp block.
 
-var fill := Color("34286e")
-var fill_dark := Color("3c2f7e")    # stripe colour of the pattern (lighter or darker than fill)
-var border := Color("7b63d9")
-var light := Color("b4a2ff")        # top bevel
-var shade := Color("2a1f60")        # bottom bevel
-var outline := Color("05030c")
+# Defaults = the mockup's main panel (Syifa, 2 Nov): dark plum fill, faint stripes, tan gold border.
+var fill := Color("221a2c")
+var fill_dark := Color("261e31")    # stripe colour of the pattern (lighter or darker than fill)
+var border := Color("b08850")
+var light := Color("e2c48a")        # top bevel
+var shade := Color("5c3f1e")        # bottom bevel
+var outline := Color("120c18")
 var border_w := 2
 var pattern := true
-var rivets := false                 # gold corner studs (overlays, main page panels)
+var rivets := false                 # gold corner filigree (overlays, main page panels; panel_ring art)
 var glow := Color(0, 0, 0, 0)       # selected: an extra bright ring outside
 var drop := 2                       # flat drop shadow under buttons
 
@@ -44,10 +45,24 @@ func _draw(ci: RID, rect: Rect2) -> void:
 	# inner highlight line under the top edge
 	RenderingServer.canvas_item_add_rect(ci, Rect2(inner.position, Vector2(inner.size.x, 1)), Color(1, 1, 1, 0.08))
 	if rivets and r.size.x > 40 and r.size.y > 30:
-		for c in [b.position + Vector2(3, 3), Vector2(b.end.x - 6, b.position.y + 3), Vector2(b.position.x + 3, b.end.y - 6), b.end - Vector2(6, 6)]:
-			RenderingServer.canvas_item_add_rect(ci, Rect2(c, Vector2(3, 3)), outline)
-			RenderingServer.canvas_item_add_rect(ci, Rect2(c, Vector2(2, 2)), Color("ffd062"))
-			RenderingServer.canvas_item_add_rect(ci, Rect2(c, Vector2(1, 1)), Color("fff3c2"))
+		# the corners of the PixelLab panel frame (gold filigree), drawn at half scale (characters' density)
+		var tex := _ring_tex()
+		if tex != null:
+			var cs := Vector2(34, 34)
+			var ts := Vector2(tex.get_size())
+			var corners := [[Vector2.ZERO, b.position], [Vector2(ts.x - cs.x, 0), Vector2(b.end.x - cs.x * 0.5, b.position.y)],
+				[Vector2(0, ts.y - cs.y), Vector2(b.position.x, b.end.y - cs.y * 0.5)], [ts - cs, b.end - cs * 0.5]]
+			for c in corners:
+				RenderingServer.canvas_item_add_texture_rect_region(ci, Rect2(c[1], cs * 0.5), tex.get_rid(), Rect2(c[0], cs))
+
+
+static var _ring: Texture2D
+
+
+static func _ring_tex() -> Texture2D:
+	if _ring == null and ResourceLoader.exists("res://assets/ui/frames/panel_ring.png"):
+		_ring = load("res://assets/ui/frames/panel_ring.png")
+	return _ring
 
 
 ## A rectangle with its four corner pixels cut off.

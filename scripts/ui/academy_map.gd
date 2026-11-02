@@ -1,8 +1,11 @@
 class_name AcademyMap
 extends Control
 ## The academy hub map (home screen): a pannable world with the main hall, every building on its plot and
-## decorations. Restored buildings show their PixelLab sprite; ruined ones show rubble with a cyan hologram of
-## the building. Drag to move; tap a building to open it (signal building_tapped).
+## decorations, after Syifa's mockup (2 Nov): painted ground (GroundArt "academy": grass, cobbled plaza and
+## paths, a forest hedge around the grounds, scattered props), front-view PixelLab buildings drawn at the
+## characters' pixel density (ACADEMY_SPRITE_SCALE), cream name tags, the selected mage standing on the plaza.
+## Restored buildings show their sprite; ruined ones show rubble with a cyan hologram of the building.
+## Drag to move; tap a building to open it (signal building_tapped).
 
 signal building_tapped(id: String)
 
@@ -11,7 +14,8 @@ const TAP_SLOP := 8.0
 var shell
 var offset := Vector2.ZERO        # world position shown at the top-left of the control
 var _tex := {}
-var _grass: Texture2D
+var _ground: GroundArt
+var _ground_origin := Vector2.ZERO
 var _drag_from := Vector2.ZERO
 var _drag_start_offset := Vector2.ZERO
 var _pressed := false
@@ -26,10 +30,16 @@ func _init(s) -> void:
 	clip_contents = true
 	texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	for id in GameData.ACADEMY_PLOTS.keys() + GameData.ACADEMY_RUINS + ["main_hall", "tree", "lamp", "crystals", "fountain"]:
+	for id in GameData.ACADEMY_PLOTS.keys() + GameData.ACADEMY_RUINS + ["main_hall", "tree", "lamp", "crystals", "fountain", "bench"]:
 		var path := "res://assets/academy/%s.png" % id
 		_tex[id] = load(path) if ResourceLoader.exists(path) else null
-	_grass = _make_grass()
+	if GroundArt.has_art("academy"):
+		var m := ground_map()
+		_ground_origin = m["origin"]
+		_ground = GroundArt.new()
+		_ground.show_behind_parent = true
+		add_child(_ground)
+		_ground.setup(m, "academy")
 
 
 var _centered := false
@@ -62,6 +72,8 @@ func _process(delta: float) -> void:
 		_clamp()
 	if is_visible_in_tree():
 		queue_redraw()
+	if _ground != null:
+		_ground.position = _ground_origin - offset.round()
 
 
 func _gui_input(ev: InputEvent) -> void:
@@ -96,11 +108,72 @@ func building_at(world: Vector2) -> String:
 	var best_y := -INF
 	for id in GameData.ACADEMY_PLOTS:
 		var p: Vector2 = GameData.ACADEMY_PLOTS[id]
-		var half := 96.0 * GameData.ACADEMY_SPRITE_SCALE * 0.8
-		if Rect2(p - Vector2(half, half), Vector2(half, half) * 2).has_point(world) and p.y > best_y:
+		var r := _sprite_rect(id, p).grow(-4)
+		if r.size == Vector2.ZERO:
+			r = Rect2(p - Vector2(36, 36), Vector2(72, 72))
+		if r.has_point(world) and p.y > best_y:
 			best = id
 			best_y = p.y
 	return best
+
+
+# ------------------------------------------------------------------ ground
+
+## The academy grounds as a terrain grid for GroundArt: grass, a cobbled plaza in front of the main hall,
+## cobbled paths to every plot, a forest hedge around the grounds (and past them, so panning never shows a
+## bare edge). The grid starts ACADEMY_GROUND_MARGIN cells outside the world; returns the map dict + "origin".
+static func ground_map() -> Dictionary:
+	var T := float(GameData.TILE)
+	var mgn := GameData.ACADEMY_GROUND_MARGIN
+	var w := int(ceil(GameData.ACADEMY_WORLD.x / T)) + mgn * 2
+	var h := int(ceil(GameData.ACADEMY_WORLD.y / T)) + mgn * 2
+	var origin := -Vector2(mgn, mgn) * T
+	var grid := PackedByteArray()
+	grid.resize(w * h)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2611
+	var hub: Vector2 = GameData.ACADEMY_MAIN_HALL + Vector2(0, 40)
+	var plaza_c: Vector2 = GameData.ACADEMY_MAIN_HALL + GameData.ACADEMY_PLAZA_OFFSET
+	var segs: Array = []
+	for id in GameData.ACADEMY_PLOTS:
+		var p: Vector2 = GameData.ACADEMY_PLOTS[id] + Vector2(0, 34)
+		var mid := Vector2(p.x, hub.y) if absf(p.y - hub.y) > 60 else (hub + p) * 0.5
+		segs.append([hub, mid])
+		segs.append([mid, p])
+	var world := Rect2(Vector2.ZERO, GameData.ACADEMY_WORLD)
+	for y in h:
+		for x in w:
+			var c := origin + (Vector2(x, y) + Vector2(0.5, 0.5)) * T
+			var t := GameData.T_GRASS
+			# forest hedge: everything outside the grounds plus a ragged band inside the edge
+			var edge_d := minf(minf(c.x, world.end.x - c.x), minf(c.y, world.end.y - c.y))
+			if edge_d < GameData.ACADEMY_HEDGE_BAND + 18.0 * sin(c.x * 0.031) * cos(c.y * 0.027) + rng.randf_range(-4, 4):
+				t = GameData.T_WALL
+			else:
+				var q := (c - plaza_c) / GameData.ACADEMY_PLAZA_RADIUS
+				if q.length() < 1.0:
+					t = GameData.T_RUINS
+				else:
+					for sg in segs:
+						if _seg_dist(c, sg[0], sg[1]) < GameData.ACADEMY_PATH_HALF:
+							t = GameData.T_RUINS
+							break
+			grid[y * w + x] = t
+	# keep props off the buildings, the fountain and the decorations
+	var clear: Array = []
+	var cell := func(p: Vector2) -> Vector2i: return Vector2i(((p - origin) / T).floor())
+	clear.append([cell.call(GameData.ACADEMY_MAIN_HALL), 7.0])
+	for id in GameData.ACADEMY_PLOTS:
+		clear.append([cell.call(GameData.ACADEMY_PLOTS[id]), 5.0])
+	for d in GameData.ACADEMY_DECOR:
+		clear.append([cell.call(d[1]), 3.0])
+	return {"grid": grid, "w": w, "h": h, "effective_seed": 2611, "keep_clear": clear, "origin": origin}
+
+
+static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab := b - a
+	var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+	return p.distance_to(a + ab * t)
 
 
 # ------------------------------------------------------------------ drawing
@@ -108,158 +181,143 @@ func building_at(world: Vector2) -> String:
 func _draw() -> void:
 	var save: Dictionary = shell.save
 	draw_set_transform(-offset.round(), 0.0, Vector2.ONE)
-	var world := Rect2(Vector2.ZERO, GameData.ACADEMY_WORLD)
-	draw_rect(world.grow(400), Color(0.05, 0.12, 0.08))
-	draw_texture_rect(_grass, world, true)
-	_draw_paths()
-	# everything that stands on the ground, back to front
+	if _ground == null:
+		draw_rect(Rect2(Vector2.ZERO, GameData.ACADEMY_WORLD).grow(400), Color(0.2, 0.36, 0.16))
+	# everything that stands on the ground, back to front (by the foot of each sprite)
 	var items: Array = []
 	for d in GameData.ACADEMY_DECOR:
-		items.append({"kind": "decor", "id": d[0], "pos": d[1]})
-	items.append({"kind": "main", "id": "main_hall", "pos": GameData.ACADEMY_MAIN_HALL})
+		items.append({"kind": "decor", "id": d[0], "pos": d[1], "foot": _foot(d[0], d[1])})
+	items.append({"kind": "main", "id": "main_hall", "pos": GameData.ACADEMY_MAIN_HALL, "foot": _foot("main_hall", GameData.ACADEMY_MAIN_HALL)})
 	for id in GameData.ACADEMY_PLOTS:
-		items.append({"kind": "building", "id": id, "pos": GameData.ACADEMY_PLOTS[id]})
-	items.sort_custom(func(a, b): return a["pos"].y < b["pos"].y)
+		items.append({"kind": "building", "id": id, "pos": GameData.ACADEMY_PLOTS[id], "foot": _foot(id, GameData.ACADEMY_PLOTS[id])})
+	var hero_at: Vector2 = GameData.ACADEMY_MAIN_HALL + GameData.ACADEMY_HERO_OFFSET
+	items.append({"kind": "hero", "pos": hero_at, "foot": hero_at.y})
+	items.sort_custom(func(a, b): return a["foot"] < b["foot"])
 	for it in items:
 		match it["kind"]:
-			"decor": _draw_sprite(it["id"], it["pos"], 1.8 if it["id"] == "fountain" else 1.0)
-			"main": _draw_sprite("main_hall", it["pos"], 1.3)
+			"decor", "main": _draw_sprite(it["id"], it["pos"])
 			"building": _draw_building(save, it["id"], it["pos"])
+			"hero": _draw_hero(save, it["pos"])
 	for id in GameData.ACADEMY_PLOTS:
 		_draw_plate(save, id, GameData.ACADEMY_PLOTS[id])
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
-func _draw_sprite(id: String, pos: Vector2, scale: float, tint := Color.WHITE) -> void:
+## Where a sprite centred on `pos` touches the ground (its bottom edge), for back-to-front sorting.
+func _foot(id: String, pos: Vector2) -> float:
+	return _sprite_rect(id, pos).end.y if _tex.get(id) != null else pos.y
+
+
+func _sprite_rect(id: String, pos: Vector2) -> Rect2:
+	var tex: Texture2D = _tex.get(id)
+	if tex == null:
+		return Rect2(pos, Vector2.ZERO)
+	var s := (Vector2(tex.get_width(), tex.get_height()) * GameData.ACADEMY_SPRITE_SCALE).round()
+	return Rect2((pos - s * 0.5).round(), s)
+
+
+func _draw_sprite(id: String, pos: Vector2, tint := Color.WHITE) -> void:
 	var tex: Texture2D = _tex.get(id)
 	if tex == null:
 		return
-	var s := Vector2(tex.get_width(), tex.get_height()) * GameData.ACADEMY_SPRITE_SCALE * scale
-	draw_texture_rect(tex, Rect2(pos - s * 0.5, s), false, tint)
+	draw_texture_rect(tex, _sprite_rect(id, pos), false, tint)
+
+
+## A rubble sprite whose bottom lines up with the bottom of building `id`'s sprite.
+func _draw_rubble(id: String, pos: Vector2) -> void:
+	var ruin: String = GameData.ACADEMY_RUINS[abs(hash(id)) % GameData.ACADEMY_RUINS.size()]
+	var b := _sprite_rect(id, pos)
+	var tex: Texture2D = _tex.get(ruin)
+	if tex == null:
+		return
+	var s := (Vector2(tex.get_width(), tex.get_height()) * GameData.ACADEMY_SPRITE_SCALE).round()
+	draw_texture_rect(tex, Rect2(Vector2(roundf(pos.x - s.x * 0.5), b.end.y - s.y), s), false)
 
 
 func _draw_building(save: Dictionary, id: String, pos: Vector2) -> void:
 	var lv := SaveData.building_level(save, id)
 	if not SaveData.construction_of(save, id).is_empty():
 		# under construction: the building half-built (warm, see-through) with scaffold poles in front
-		var ruin2: String = GameData.ACADEMY_RUINS[abs(hash(id)) % GameData.ACADEMY_RUINS.size()]
 		if lv == 0:
-			_draw_sprite(ruin2, pos + Vector2(0, 6), 0.85)
-		_draw_sprite(id, pos - Vector2(0, 2), 1.0, Color(1.0, 0.85, 0.6, 0.75))
+			_draw_rubble(id, pos)
+		_draw_sprite(id, pos, Color(1.0, 0.85, 0.6, 0.75))
+		var r := _sprite_rect(id, pos)
 		var wood := Color("8a5a2c")
-		for x in [-34, -12, 12, 34]:
-			draw_rect(Rect2(pos + Vector2(x - 1, -30), Vector2(3, 56)), Color("05030c"))
-			draw_rect(Rect2(pos + Vector2(x, -29), Vector2(1, 54)), wood)
-		for y in [-18, 6]:
-			draw_rect(Rect2(pos + Vector2(-36, y - 1), Vector2(73, 3)), Color("05030c"))
-			draw_rect(Rect2(pos + Vector2(-35, y), Vector2(71, 1)), wood.lightened(0.2))
+		var xs := [r.position.x + 6, r.position.x + r.size.x * 0.36, r.position.x + r.size.x * 0.64, r.end.x - 7]
+		for x in xs:
+			draw_rect(Rect2(Vector2(roundf(x) - 1, r.position.y + r.size.y * 0.25), Vector2(3, r.size.y * 0.75)), Color("05030c"))
+			draw_rect(Rect2(Vector2(roundf(x), r.position.y + r.size.y * 0.25 + 1), Vector2(1, r.size.y * 0.75 - 2)), wood)
+		for fy in [0.45, 0.75]:
+			var y := roundf(r.position.y + r.size.y * fy)
+			draw_rect(Rect2(Vector2(r.position.x + 4, y - 1), Vector2(r.size.x - 8, 3)), Color("05030c"))
+			draw_rect(Rect2(Vector2(r.position.x + 5, y), Vector2(r.size.x - 10, 1)), wood.lightened(0.2))
 		return
 	if lv > 0:
-		_draw_sprite(id, pos, 1.0)
+		_draw_sprite(id, pos)
 		return
-	var ruin: String = GameData.ACADEMY_RUINS[abs(hash(id)) % GameData.ACADEMY_RUINS.size()]
-	_draw_sprite(ruin, pos + Vector2(0, 6), 0.85)
+	_draw_rubble(id, pos)
 	# blueprint hologram of what will stand here
 	var flick := 0.22 + 0.06 * sin(_t * 3.0 + pos.x * 0.01)
-	_draw_sprite(id, pos - Vector2(0, 4), 1.0, Color(0.45, 1.3, 1.6, flick))
+	_draw_sprite(id, pos - Vector2(0, 2), Color(0.45, 1.3, 1.6, flick))
 
 
+## The selected mage idling on the plaza (as in the mockup), drawn at the in-run size.
+func _draw_hero(save: Dictionary, pos: Vector2) -> void:
+	var id := String(save.get("character", "astra"))
+	var fr: Array = CharacterArt.frames(id, "idle", "south")
+	var tex: Texture2D = null
+	if fr.size() > 0:
+		tex = fr[int(_t * 6.0) % fr.size()]
+	else:
+		tex = CharacterArt.texture(id, "south")
+	if tex == null:
+		return
+	var s := Vector2(tex.get_width(), tex.get_height()) * 0.5
+	draw_set_transform(-offset.round() + pos + Vector2(0, -2), 0.0, Vector2(1.0, 0.45))
+	draw_circle(Vector2.ZERO, 9.0, Color(0, 0, 0, 0.25))
+	draw_set_transform(-offset.round(), 0.0, Vector2.ONE)
+	draw_texture_rect(tex, Rect2((pos - Vector2(s.x * 0.5, s.y * 0.85)).round(), s), false)
+
+
+## Cream name tag under each building (mockup), with the level in a small gold badge.
 func _draw_plate(save: Dictionary, id: String, pos: Vector2) -> void:
 	var b := GameData.building_by_id(id)
 	var lv := SaveData.building_level(save, id)
 	var font := UiKit.BOLD_FONT
 	var name: String = b["name"]
 	var fs := 12
-	var w := floorf(font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x) + 26
-	var at := (pos + Vector2(-w * 0.5, 40)).floor()
+	var tw := floorf(font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+	var w := tw + 32
+	var sr := _sprite_rect(id, pos)
+	var at := Vector2(roundf(pos.x - w * 0.5), roundf(maxf(sr.end.y, pos.y + 20) + 1))
 	var r := Rect2(at, Vector2(w, 17))
-	# pixel name plate: black outline, purple border, dark fill, level badge
-	draw_rect(r.grow(1), Color("05030c"))
-	draw_rect(r, Color("7b63d9"))
-	draw_rect(r.grow(-1), Color("1b1440"))
-	draw_rect(Rect2(r.position + Vector2(1, 1), Vector2(r.size.x - 2, 1)), Color("b4a2ff"))
-	var badge := Rect2(at + Vector2(2, 2), Vector2(14, 13))
-	draw_rect(badge, Color(0.95, 0.65, 0.15) if lv > 0 else Color(0.4, 0.2, 0.6))
-	draw_string(UiKit.TITLE_FONT, badge.position + Vector2(0, 11), str(lv), HORIZONTAL_ALIGNMENT_CENTER, badge.size.x, 12, Color(0.1, 0.05, 0) if lv > 0 else Color.WHITE)
-	draw_string_outline(font, at + Vector2(19, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color("05030c"))
-	draw_string(font, at + Vector2(19, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE)
+	draw_style_box(UiKit.frame("tag"), r)
+	var badge_c := at + Vector2(12, 8.5)
+	draw_circle(badge_c, 6.5, Color("2a1c24"))
+	draw_circle(badge_c, 5.5, Color(0.95, 0.7, 0.25) if lv > 0 else Color(0.55, 0.45, 0.62))
+	draw_string(UiKit.TITLE_FONT, Vector2(badge_c.x - 6, at.y + 13), str(lv), HORIZONTAL_ALIGNMENT_CENTER, 12, 12, Color("2a1c24") if lv > 0 else Color.WHITE)
+	draw_string(font, at + Vector2(22, 13), name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color("3a2630"))
 	var max_lv: int = b["costs"].size()
 	# construction timer bubble above the building
 	if not SaveData.construction_of(save, id).is_empty():
 		var left := SaveData.build_left(save, id, int(Time.get_unix_time_from_system()))
 		var done := left <= GameData.FREE_FINISH_SEC
 		var txt := "DONE!" if done else ExpeditionPage.time_text(left)
-		var tw := floorf(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x) + 26
+		var tw2 := floorf(font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x) + 26
 		var bob2 := roundf(sin(_t * 3.0 + pos.x) * 1.5)
-		var br := Rect2((pos + Vector2(-tw * 0.5, -62 + bob2)).floor(), Vector2(tw, 18))
-		draw_rect(br.grow(1), Color("05030c"))
-		draw_rect(br, Color("6dffa8") if done else Color("f2b53a"))
-		draw_rect(br.grow(-1), Color("1f8a5a") if done else Color("3a2412"))
+		var br := Rect2(Vector2(roundf(pos.x - tw2 * 0.5), roundf(sr.position.y - 20 + bob2)), Vector2(tw2, 19))
+		draw_style_box(UiKit.frame("button", Color(0.6, 1.2, 0.7) if done else Color.WHITE), br)
 		var hammer := UiKit.icon_tex("craft")
 		if hammer != null:
-			draw_texture_rect(hammer, Rect2(br.position + Vector2(2, 1), Vector2(16, 16)), false)
+			draw_texture_rect(hammer, Rect2(br.position + Vector2(3, 1), Vector2(16, 16)), false)
 		draw_string_outline(font, br.position + Vector2(20, 14), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 2, Color("05030c"))
 		draw_string(font, br.position + Vector2(20, 14), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE if done else Color("ffd062"))
 		return
 	# "ready" marker when the next level can be started
 	if lv < max_lv and SaveData.build_block(save, id) == "":
 		var bob := sin(_t * 4.0 + pos.x) * 2.0
-		var c := pos + Vector2(26, -44 + bob)
+		var c := Vector2(sr.end.x - 8, sr.position.y + 10 + bob)
 		draw_circle(c, 7, Color(0.1, 0.6, 0.2))
 		draw_circle(c, 6, Color(0.35, 0.95, 0.4))
 		draw_colored_polygon(PackedVector2Array([c + Vector2(0, -4), c + Vector2(4, 1), c + Vector2(1.5, 1), c + Vector2(1.5, 4),
 			c + Vector2(-1.5, 4), c + Vector2(-1.5, 1), c + Vector2(-4, 1)]), Color.WHITE)
-
-
-## Stone paths from the main hall to every plot (drawn under everything).
-func _draw_paths() -> void:
-	var hub: Vector2 = GameData.ACADEMY_MAIN_HALL + Vector2(0, 40)
-	for id in GameData.ACADEMY_PLOTS:
-		var p: Vector2 = GameData.ACADEMY_PLOTS[id] + Vector2(0, 30)
-		var mid := Vector2(p.x, hub.y) if absf(p.y - hub.y) > 60 else (hub + p) * 0.5
-		var line := PackedVector2Array([hub, mid, p])
-		for layer in [[Color(0.3, 0.25, 0.2), 18.0], [Color(0.62, 0.55, 0.44), 14.0]]:
-			draw_polyline(line, layer[0], layer[1])
-			for q in line:
-				draw_circle(q, layer[1] * 0.5, layer[0])
-		# cobbles
-		for i in line.size() - 1:
-			var a: Vector2 = line[i]
-			var bpt: Vector2 = line[i + 1]
-			var n := int(a.distance_to(bpt) / 9.0)
-			for j in n:
-				var q := a.lerp(bpt, (j + 0.5) / maxf(1.0, n))
-				var side := Vector2(0, 3) if absf(bpt.x - a.x) > absf(bpt.y - a.y) else Vector2(3, 0)
-				draw_rect(Rect2(q - side - Vector2(2, 1.5), Vector2(4, 3)), Color(0.7, 0.64, 0.52))
-				draw_rect(Rect2(q + side - Vector2(2, 1.5), Vector2(4, 3)), Color(0.55, 0.49, 0.4))
-	draw_set_transform(-offset.round() + GameData.ACADEMY_MAIN_HALL + Vector2(0, 145), 0.0, Vector2(1.0, 0.55))
-	draw_circle(Vector2.ZERO, 92, Color(0.3, 0.25, 0.2))
-	draw_circle(Vector2.ZERO, 89, Color(0.62, 0.55, 0.44))
-	draw_arc(Vector2.ZERO, 70, 0, TAU, 48, Color(0.42, 0.75, 0.95, 0.5), 2.0)
-	draw_set_transform(-offset.round(), 0.0, Vector2.ONE)
-
-
-## A 64 px tiling grass texture made once in code (deterministic noise, a few tufts and flowers).
-static func _make_grass() -> Texture2D:
-	var N := 128
-	var img := Image.create(N, N, false, Image.FORMAT_RGBA8)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 1234
-	var base := [Color(0.24, 0.45, 0.2), Color(0.27, 0.5, 0.22), Color(0.22, 0.42, 0.19), Color(0.3, 0.53, 0.24)]
-	var k := TAU / N
-	for y in N:
-		for x in N:
-			# periodic low-frequency patches so the tile repeats seamlessly
-			var n := (sin(x * k * 2.0) * cos(y * k * 3.0) + sin((x + 2 * y) * k) * 0.7 + cos((3 * x - y) * k) * 0.5) * 0.5
-			var c: Color = base[rng.randi() % 4]
-			img.set_pixel(x, y, c.lightened(n * 0.06) if n > 0 else c.darkened(-n * 0.08))
-	for i in 70:
-		var x := rng.randi() % N
-		var y := rng.randi() % (N - 2)
-		img.set_pixel(x, y, Color(0.36, 0.6, 0.27))
-		img.set_pixel(x, y + 1, Color(0.17, 0.35, 0.15))
-	for i in 6:
-		var x := rng.randi() % N
-		var y := rng.randi() % N
-		img.set_pixel(x, y, [Color(0.95, 0.9, 0.5), Color(0.9, 0.6, 0.9), Color(0.7, 0.85, 1.0)][i % 3])
-	return ImageTexture.create_from_image(img)

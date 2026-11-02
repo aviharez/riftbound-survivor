@@ -614,6 +614,14 @@ const ACADEMY_PLOTS := {
 	"duel_hall": Vector2(380, 600), "rune_workshop": Vector2(660, 610), "arcana_lab": Vector2(930, 600),
 }
 const ACADEMY_RUINS := ["ruins_walls", "ruins_beams", "ruins_tower"]
+# Painted ground of the hub (AcademyMap.ground_map): grid margin outside the world (cells), the forest band
+# along the edges (world px), the cobbled plaza (centre offset from the main hall, radii) and path half-width.
+const ACADEMY_GROUND_MARGIN := 8
+const ACADEMY_HEDGE_BAND := 34.0
+const ACADEMY_PLAZA_OFFSET := Vector2(0, 140)
+const ACADEMY_PLAZA_RADIUS := Vector2(110, 62)
+const ACADEMY_PATH_HALF := 17.0
+const ACADEMY_HERO_OFFSET := Vector2(0, 88)    # where the selected mage stands (from the main hall centre)
 const ACADEMY_DECOR := [
 	["fountain", Vector2(660, 445)], ["tree", Vector2(120, 260)], ["tree", Vector2(160, 560)], ["tree", Vector2(1200, 280)],
 	["tree", Vector2(1210, 560)], ["tree", Vector2(560, 720)], ["tree", Vector2(790, 715)], ["tree", Vector2(660, 90)],
@@ -759,6 +767,13 @@ const GROUND_ART := {
 		"plaza": [["lamp", 2], ["banner", 1.5], ["column", 1], ["barrels", 0.6], ["shrub", 1], ["flowers", 1]],
 		"small": [["flowers", 4], ["petals", 4], ["grass", 4], ["rocks", 2], ["bush", 1], ["shrub", 2], ["barrels", 0.4], ["statue", 0.3]],
 		"edge": [["lamp", 1], ["banner", 1], ["column", 1.5], ["wall", 1.5], ["shrub", 2], ["bush", 1]]},
+	# the academy hub ground (AcademyMap): same tiles, a tidier garden
+	"academy": {"dir": "res://assets/tiles/courtyard/", "props_dir": "res://assets/props/courtyard/",
+		"small_chance": 0.07, "edge_chance": 0.3, "plaza_chance": 0.1, "clear_radius": 2.0,
+		"grade": {"saturation": 0.82, "brightness": 0.95, "patch_amount": 0.1},
+		"small": [["flowers", 4], ["petals", 5], ["grass", 2], ["bush", 1], ["shrub", 2], ["rocks", 0.5]],
+		"edge": [["shrub", 3], ["bush", 2], ["flowers", 2], ["lamp", 0.5]],
+		"plaza": [["lamp", 2], ["banner", 1.5], ["flowers", 2], ["shrub", 1.5], ["bench", 1]]},
 }
 const RIFT_CRACK := Color(0.75, 0.25, 0.95)
 const TILESETS := {
