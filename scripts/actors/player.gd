@@ -34,6 +34,28 @@ var signature_rank := 0 # signature-weapon enhance rank (starter weapon and its 
 
 
 ## Applies a character's base stats and starter weapon. Call before the run starts.
+## Afterimages are drawn as flat silhouettes (sprite alpha, one colour) by a child node behind the hero.
+const GHOST_SHADER := """
+shader_type canvas_item;
+varying vec4 vcol;
+void vertex() { vcol = COLOR; }
+void fragment() { COLOR = vec4(vcol.rgb, vcol.a * texture(TEXTURE, UV).a); }
+"""
+var _ghost_node: Node2D
+
+
+func _ready() -> void:
+	_ghost_node = Node2D.new()
+	_ghost_node.show_behind_parent = true
+	var sh := Shader.new()
+	sh.code = GHOST_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	_ghost_node.material = mat
+	_ghost_node.draw.connect(_draw_ghosts)
+	add_child(_ghost_node)
+
+
 func setup_character(c: Dictionary) -> void:
 	character = c
 	for k in c["base"]:
@@ -68,7 +90,14 @@ func try_dash() -> void:
 	dash_t = DASH_TIME
 	Sfx.play("dash")
 	dash_cd = DASH_COOLDOWN
-	game.vfx.play("blink_out", position, 0.0, 0.4)
+	_dash_dir = facing.normalized() if facing != Vector2.ZERO else Vector2.RIGHT   # the dash keeps its start direction
+	_ghost_t = 0.0
+	# a puff of floor dust kicked up behind the hero (flat ellipses, normal blend: no glow)
+	var back := -_dash_dir
+	for i in GameData.DASH_DUST_COUNT:
+		var d := back.rotated(randf_range(-0.9, 0.9))
+		_dust.append({"pos": position + Vector2(0, 6) + d * randf_range(1, 5), "vel": d * randf_range(25, 55),
+			"t": 0.0, "life": randf_range(0.3, 0.45), "r": randf_range(2.5, 4.5)})
 
 
 func take_damage(amount: float) -> void:
@@ -108,13 +137,62 @@ func _process(delta: float) -> void:
 	if move_dir.length() > 0.1:
 		facing = move_dir.normalized()
 	var spd := move_speed() * (DASH_MULT if is_dashing() else 1.0)
-	var dir := facing if is_dashing() else move_dir
+	var dir := _dash_dir if is_dashing() else move_dir
 	position = game.world.move(position, dir * spd * delta, RADIUS)
 	if is_dashing():
-		game.vfx.trail(position + Vector2(0, -4), Color(character["colors"]["accent"]) * 1.8, 6.0, 0.25)
+		_ghost_t -= delta
+		if _ghost_t <= 0.0 and _last_tex != null:
+			_ghost_t = GameData.DASH_GHOST_EVERY
+			_ghosts.append({"pos": position, "tex": _last_tex, "rect": _last_rect, "t": 0.0})
 	elif move_dir.length() > 0.1:
 		_walk_trail(delta)
+	for g in _ghosts:
+		g["t"] += delta
+	_ghosts = _ghosts.filter(func(g): return g["t"] < GameData.DASH_GHOST_LIFE)
+	for d in _dust:
+		d["t"] += delta
+		d["pos"] += d["vel"] * delta
+		d["vel"] *= exp(-6.0 * delta)
+	_dust = _dust.filter(func(d): return d["t"] < d["life"])
 	queue_redraw()
+
+
+# Dash look: afterimages of the hero's own sprite in the accent colour, a dust puff, short speed lines.
+var _ghosts: Array = []     # {pos, tex, rect, t}
+var _dust: Array = []       # {pos, vel, t, life, r}
+var _ghost_t := 0.0
+var _dash_dir := Vector2.RIGHT
+var _last_tex: Texture2D
+var _last_rect := Rect2()
+
+
+## Silhouettes in the accent colour, the oldest faintest (drawn by _ghost_node with GHOST_SHADER).
+func _draw_ghosts() -> void:
+	var acc := Color(character["colors"]["accent"])
+	for g in _ghosts:
+		var k: float = g["t"] / GameData.DASH_GHOST_LIFE
+		var c := acc.lerp(Color.WHITE, 0.3)
+		var col := Color(c.r, c.g, c.b, GameData.DASH_GHOST_ALPHA * (1.0 - k))
+		var r: Rect2 = g["rect"]
+		_ghost_node.draw_texture_rect(g["tex"], Rect2(r.position + (g["pos"] - position), r.size), false, col)
+
+
+func _draw_dash_fx() -> void:
+	for d in _dust:
+		var k: float = d["t"] / d["life"]
+		var r: float = d["r"] * (1.0 + k * 1.5)
+		draw_set_transform(d["pos"] - position, 0.0, Vector2(1.0, 0.55))
+		draw_circle(Vector2.ZERO, r, Color(0.85, 0.82, 0.75, 0.45 * (1.0 - k)))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if _ghost_node != null:
+		_ghost_node.queue_redraw()
+	if is_dashing():
+		# three thin speed lines streaming behind
+		var back := -_dash_dir
+		var n := back.orthogonal()
+		for i in 3:
+			var o := n * (i - 1) * 5.0 + Vector2(0, -6)
+			draw_line(o + back * 8.0, o + back * (18.0 + 6.0 * (i % 2)), Color(1, 1, 1, 0.55), 1.0)
 
 
 var _trail_t := 0.0
@@ -140,6 +218,7 @@ var _anim_t := 0.0
 
 
 func _draw() -> void:
+	_draw_dash_fx()
 	var blink := iframes > 0.0 and int(iframes * 20.0) % 2 == 0
 	if blink:
 		return
@@ -168,6 +247,8 @@ func _draw() -> void:
 		# sprite feet sit on the last pixel row; anchor them on the shadow
 		var rect := Rect2(Vector2(-sz.x * 0.5, 7.0 - sz.y * squash + bob), Vector2(sz.x, sz.y * squash))
 		draw_texture_rect(tex, rect, false, tint)
+		_last_tex = tex
+		_last_rect = rect
 		return
 	_draw_placeholder(bob, tint)
 

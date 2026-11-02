@@ -20,6 +20,11 @@ const VFX_ADDITIVE := 0.6            # brightness of every additive layer (parti
 const VFX_HALO := 0.4                # opacity of the soft round halos (glow_tex) around shots, chests, elites
 const VFX_PARTICLE_SCALE := 1.0     # 0.5 halves particle counts
 const VFX_SHAKE := 1.0              # camera shake multiplier (0 = off)
+# Dash look: afterimages (DASH_GHOST_*: one every N s, how long each fades, start opacity) + a dust puff
+const DASH_GHOST_EVERY := 0.03
+const DASH_GHOST_LIFE := 0.3
+const DASH_GHOST_ALPHA := 0.55
+const DASH_DUST_COUNT := 6
 # Walking trail at the hero's feet (accent colour of the character)
 const WALK_TRAIL_EVERY := 0.05
 const WALK_TRAIL_SIZE := 3.5

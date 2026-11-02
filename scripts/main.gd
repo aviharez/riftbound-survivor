@@ -1042,6 +1042,10 @@ func _maybe_shot(_final: bool) -> void:
 	if _shot_path == "":
 		return
 	var times := _shot_times
+	# --shot-dash: dash a moment before every screenshot (to look at the dash effect)
+	if _shots_taken < times.size() and "--shot-dash" in OS.get_cmdline_user_args() \
+			and elapsed >= float(times[_shots_taken]) - 0.1 and player.dash_cd <= 0.0:
+		player.try_dash()
 	if _shots_taken < times.size() and elapsed >= float(times[_shots_taken]):
 		var path := _shot_path.replace(".png", "_%d.png" % _shots_taken)
 		_shots_taken += 1

@@ -17,6 +17,12 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Efek dash baru.**
+- Bulatan cahaya saat dash dan efek "blink" di awal dash diganti dengan: bayangan siluet karakter (afterimage)
+  berwarna aksen yang memudar di belakang, kepulan debu kecil di lantai saat mulai dash, dan 3 garis kecepatan.
+- Arah dash sekarang terkunci ke arah saat tombol ditekan (tidak berbelok di tengah dash).
+- [ ] Dash terasa lebih jelas & enak? Bayangannya terlalu kuat / kurang?
+
 **Elite, jejak jalan, arah musuh.**
 - Elite tidak lagi punya lingkaran/cahaya merah: sekarang mahkota emas kecil + bar HP di atas kepalanya
   (tetap lebih besar dan sedikit kemerahan). Elite "warded" punya titik biru kecil per perisai.

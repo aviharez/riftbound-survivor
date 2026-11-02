@@ -164,6 +164,10 @@ Read it before starting any phase.**
 - Enemy facing follows its own motion (`Enemy.face`); rows whose art walks left have `face_left` (sprout,
   phantom, quill_owl). Elites: gold crown + HP bar (`_draw_elite_mark`), no red ring/aura (Syifa). Hero walk
   trail: `Player._walk_trail` (`WALK_TRAIL_*`, accent colour).
+  Dash (Syifa found the glow-blob trail odd): accent-colour silhouette afterimages (`_ghosts`, drawn by a child node
+  with `GHOST_SHADER`, `DASH_GHOST_*`), a floor dust puff (`DASH_DUST_COUNT`), 3 speed lines; direction locked at
+  start (`_dash_dir`). `--shot-dash` dashes just before each autotest screenshot (the autopilot moves the hero by
+  position, so afterimages in autotest shots can point the wrong way).
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.
