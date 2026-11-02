@@ -58,7 +58,17 @@ Read it before starting any phase.**
   shaders in `shaders/`. Quality switches: `GameData.VFX_*`.
 - Art: character sprites in `assets/characters/<id>/<direction>.png` plus `walk/` (6 frames) and `idle/` (4 frames)
   strips per direction, played by `CharacterArt.frames()` in `player.gd` (see the folder README for the full
-  PixelLab workflow). Enemies/props are hand-authored grids in `scripts/meta/pixel_sprites.gd`.
+  PixelLab workflow). Props (and fallbacks) are hand-authored grids in `scripts/meta/pixel_sprites.gd`.
+  Enemies: PixelLab pixflux 48 px `assets/enemies/<id>.png` + a 9-frame loop strip `assets/enemies/anim/<id>.png`
+  (`animate_image`, 1 generation each; `python3 tools/enemy_anim.py <sheet> assets/enemies/anim --rows a,b`),
+  played at `ENEMY_ANIM_FPS`, frozen foes hold frame 0. Bosses: `walk/` strips (template `walking-6-frames`) and
+  `cast/` strips (template `fireball`, played for `BOSS_CAST_TIME` when an attack fires, wind-up frame held during
+  a dash telegraph). Boss PixelLab ids: guardian f699f0a9 (imported from the old sprites), thornmother 0f1f45ed,
+  archivist 9ee3cac7, colossus ab57a7e3, sovereign 5fc60e71. Workbench refs for character animations are
+  `character:<id>:<direction>:<animation name>`. Arcane Familiar: `assets/weapons/familiar/{idle,shoot}.png`
+  (32 px, `FAMILIAR_ANIM_FPS` / `FAMILIAR_SHOT_TIME`). `CharacterArt.strip(path)` loads any strip.
+  The repo is public: PixelLab can read our own sprites as `https://raw.githubusercontent.com/aviharez/riftbound-survivor/main/<path>`
+  (use that for reference images instead of inline base64, which gets truncated).
   `--autotest-boss` summons the boss at ~25 s (for boss screenshots).
   Claude makes character art itself with the PixelLab MCP (Syifa's account, Tier 1: 2000 generations/month,
   8 jobs at once; report credit use each phase): `create_character` mode v3, size 64, view "low top-down",

@@ -16,7 +16,7 @@ const PRISM_KINDS := ["prism_arcane", "prism_fire", "prism_ice", "prism_nature"]
 const MAX_PLAGUE_CLOUDS := 6    # Noah's Plague: live spread clouds
 const THORN_PATCH_TIME := 1.6  # riftbound/thorn-patch length (s)
 const MINE_FX_SCALE := 1.5     # rune-sigil sheet (25 px wide) drawn ~38 px wide so the rune reads
-const FAMILIAR_SCALE := 1.6   # the 14 px crystal sprite drawn ~22 px tall (hero is 33)
+const FAMILIAR_SCALE := 1.0   # 32 px PixelLab familiar (body ~24x18 px; hero is 33 tall)
 const BURST_REACH := {"solar_burst": 44.0, "frost_burst": 42.0, "void_collapse": 46.0}
 
 var game: Node
@@ -596,7 +596,8 @@ func _arcane_familiars(w: Dictionary, lv: int, delta: float) -> void:
 	var p: Player = game.player
 	var n := count_of(w, lv)
 	while _familiars.size() < n:
-		_familiars.append({"cd": 0.2 + 0.3 * _familiars.size(), "pos": p.position, "hover": 0.0, "face": 1.0})
+		_familiars.append({"cd": 0.2 + 0.3 * _familiars.size(), "pos": p.position, "hover": 0.0, "face": 1.0,
+			"shot": 0.0, "phase": randf() * 2.0})
 		game.vfx.play("blink_out", p.position + Vector2(0, -10), 0.0, 0.35, Color(0.7, 1.0, 1.0))
 	while _familiars.size() > n:
 		_familiars.pop_back()
@@ -607,6 +608,7 @@ func _arcane_familiars(w: Dictionary, lv: int, delta: float) -> void:
 		var target_pos: Vector2 = p.position + Vector2(cos(a), sin(a) * 0.6) * float(w["orbit_r"])
 		f["pos"] = f["pos"].lerp(target_pos, clampf(delta * 8.0, 0.0, 1.0))
 		f["hover"] = float(w["hover"]) + sin(_time * 3.0 + i * 1.7) * 2.0
+		f["shot"] = maxf(0.0, float(f.get("shot", 0.0)) - delta)
 		f["cd"] -= delta
 		if f["cd"] > 0.0:
 			continue
@@ -615,6 +617,7 @@ func _arcane_familiars(w: Dictionary, lv: int, delta: float) -> void:
 		var foe = game.enemies.nearest(muzzle, float(w["range"]), null)
 		var dir: Vector2 = (foe.pos - muzzle).normalized() if foe != null else p.facing
 		f["face"] = -1.0 if dir.x < 0.0 else 1.0
+		f["shot"] = GameData.FAMILIAR_SHOT_TIME   # plays the shoot animation
 		if w.get("legion", false) and i % 3 == 1:
 			for k in 3:   # fan familiar
 				game.projectiles.fire("familiar_shot", muzzle, dir.rotated((k - 1) * 0.25), level_damage(w, lv), w, 0, 0, p.area())
@@ -915,10 +918,23 @@ func _run_trait(t: Dictionary) -> void:
 func _draw() -> void:
 	if _familiars.is_empty():
 		return
-	var tex := PixelSprites.texture("familiar")
-	var sz := Vector2(tex.get_width(), tex.get_height()) * FAMILIAR_SCALE
+	# PixelLab familiar: idle loop, shoot animation after each shot (crystal grid sprite if the strips are missing)
+	var idle := CharacterArt.strip("res://assets/weapons/familiar/idle.png")
+	var shoot := CharacterArt.strip("res://assets/weapons/familiar/shoot.png")
+	var still := PixelSprites.texture("familiar")
 	for f in _familiars:
 		var pos: Vector2 = f["pos"]
+		var tex: Texture2D = still
+		var scale := 1.6
+		if not idle.is_empty():
+			scale = FAMILIAR_SCALE
+			var sh: float = f.get("shot", 0.0)
+			if sh > 0.0 and not shoot.is_empty():
+				var k := 1.0 - sh / GameData.FAMILIAR_SHOT_TIME
+				tex = shoot[mini(int(k * shoot.size()), shoot.size() - 1)]
+			else:
+				tex = idle[int((_time + float(f.get("phase", 0.0))) * GameData.FAMILIAR_ANIM_FPS) % idle.size()]
+		var sz := Vector2(tex.get_width(), tex.get_height()) * scale
 		draw_set_transform(pos, 0.0, Vector2(1.0, 0.45))
 		draw_circle(Vector2.ZERO, 7.0, Color(0, 0, 0, 0.28))
 		draw_set_transform(pos - Vector2(0, f["hover"]), 0.0, Vector2(f["face"], 1.0))

@@ -25,20 +25,24 @@ static var _anim_cache := {}
 
 
 static func frames(id: String, anim: String, dir: String) -> Array:
-	var key := id + "/" + anim + "/" + dir
-	if _anim_cache.has(key):
-		return _anim_cache[key]
+	return strip("res://assets/characters/%s/%s/%s.png" % [id, anim, dir])
+
+
+## Frames of any horizontal strip of square frames (cached), or [] when the file is missing.
+## Also used for enemy (assets/enemies/anim/) and familiar (assets/weapons/familiar/) animations.
+static func strip(path: String) -> Array:
+	if _anim_cache.has(path):
+		return _anim_cache[path]
 	var out: Array = []
-	var path := "res://assets/characters/%s/%s/%s.png" % [id, anim, dir]
 	if ResourceLoader.exists(path):
-		var strip: Texture2D = load(path)
-		var h := strip.get_height()
-		for i in strip.get_width() / h:
+		var tex: Texture2D = load(path)
+		var h := tex.get_height()
+		for i in tex.get_width() / h:
 			var at := AtlasTexture.new()
-			at.atlas = strip
+			at.atlas = tex
 			at.region = Rect2(i * h, 0, h, h)
 			out.append(at)
-	_anim_cache[key] = out
+	_anim_cache[path] = out
 	return out
 
 

@@ -38,6 +38,8 @@ class Enemy:
 	var act_t := 0.0            # dash / blink cooldown
 	var hex_t := 0.0            # Hex Mark / Gravity Lens: takes hex_amp more damage while > 0
 	var hex_amp := 0.0
+	var phase := 0.0            # animation offset, so a crowd of one type does not move in lockstep
+	var cast_t := 0.0           # boss: seconds left of its attack (cast) animation
 	# boss state machine
 	var state := "idle"
 	var state_t := 1.5
@@ -71,6 +73,7 @@ func spawn(type: String, pos: Vector2, hp_mult: float, speed_mult: float, elite 
 	e.ghost = bool(d.get("ghost", false))
 	e.def = d
 	e.act_t = randf_range(1.0, GameData.ENEMY_DASH_EVERY)
+	e.phase = randf() * 10.0
 	e.spawn_t = SPAWN_ANIM
 	if elite:
 		e.elite = true
@@ -322,11 +325,14 @@ func _boss_update(b: Enemy, delta: float) -> void:
 	var enraged := b.hp < b.max_hp * 0.5
 	var pats: Array = cfg["patterns"]
 	b.state_t -= delta
+	b.cast_t = maxf(0.0, b.cast_t - delta)
 	match b.state:
 		"idle":
 			b.pos = game.world.move(b.pos, (ppos - b.pos).normalized() * b.speed * delta, b.radius * 0.5)
 			if b.state_t <= 0.0:
 				b.pattern = (b.pattern + 1) % pats.size()
+				if String(pats[b.pattern]) != "dash":
+					b.cast_t = GameData.BOSS_CAST_TIME   # plays the cast animation (the attack fires at its start)
 				match String(pats[b.pattern]):
 					"ring":
 						_ring(b.pos, int(cfg["ring_bullets"]), float(cfg["bullet_speed"]), float(cfg["bullet_dmg"]), randf() * TAU)
@@ -450,11 +456,26 @@ func _art(id: String) -> Texture2D:
 	return _art_cache[id]
 
 
+## Frames of assets/enemies/anim/<id>.png (a strip of square frames), or [] when there is none.
+func _anim(id: String) -> Array:
+	return CharacterArt.strip("res://assets/enemies/anim/%s.png" % id)
+
+
 func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 	var name := e.type
 	if name == "bat" and int(Time.get_ticks_msec() / 120 + e.max_hp) % 2 == 0:
 		name = "bat_up"
-	var tex: Texture2D = _art(String(e.def.get("sprite", e.type)))
+	var art_id := String(e.def.get("sprite", e.type))
+	var t := Time.get_ticks_msec() * 0.001 + e.phase
+	var frames := _anim(art_id)
+	var animated := not frames.is_empty()
+	var tex: Texture2D
+	if animated:
+		# frozen foes hold their first frame; small spawned copies (inkdrop, voidmite) run faster
+		var fps: float = GameData.ENEMY_ANIM_FPS * (1.4 if e.def.get("spawn_only", false) else 1.0)
+		tex = frames[0] if e.freeze_t > 0.0 else frames[int(t * fps) % frames.size()]
+	else:
+		tex = _art(art_id)
 	var scale: float
 	if tex != null:
 		scale = (e.radius * 3.4) / float(tex.get_width())   # 48 px PixelLab sprites (a little padding round them)
@@ -466,10 +487,13 @@ func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 	# idle squash for slimes, hover bob for bats
 	var sy := 1.0
 	var lift := 0.0
-	var t := Time.get_ticks_msec() * 0.001 + e.max_hp
-	if e.type in ["slime", "inkblot", "inkdrop", "voidling", "voidmite", "sprout"]:
+	if e.freeze_t > 0.0:
+		t = e.phase
+	if animated:
+		pass   # the frames already squash / flap; flyers still hover a little below
+	elif e.type in ["slime", "inkblot", "inkdrop", "voidling", "voidmite", "sprout"]:
 		sy = 1.0 + sin(t * 9.0) * 0.08
-	elif e.type in ["moth", "quill_owl", "shardbat", "wisp", "phantom", "prism_eye", "seer", "rift_ray"]:
+	if e.type in ["moth", "quill_owl", "shardbat", "wisp", "phantom", "prism_eye", "seer", "rift_ray"]:
 		lift = -3.0 + sin(t * 6.0) * 1.5
 	elif e.type == "bat":
 		lift = -3.0 + sin(t * 7.0) * 1.5
@@ -490,18 +514,38 @@ func _draw_sprite(e: Enemy, cam: Vector2) -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 
+## Boss sprite for this moment: the cast animation while an attack plays (held on its wind-up frame while
+## a dash is telegraphed), the walk otherwise (faster while dashing), facing the player.
+func _boss_frame(b: Enemy) -> Texture2D:
+	var id := String(game.boss_cfg["sprite"])
+	var dir := CharacterArt.dir_for(game.player.position - b.pos)
+	var t := Time.get_ticks_msec() * 0.001
+	if b.cast_t > 0.0 or b.state == "telegraph":
+		var cast := CharacterArt.frames(id, "cast", dir)
+		if not cast.is_empty():
+			if b.state == "telegraph":
+				return cast[mini(2, cast.size() - 1)]   # wind-up pose
+			var k := 1.0 - b.cast_t / GameData.BOSS_CAST_TIME
+			return cast[mini(int(k * cast.size()), cast.size() - 1)]
+	var fps: float = GameData.BOSS_WALK_FPS * (2.5 if b.state == "dash" else 1.0)
+	return CharacterArt.frame_at(id, "walk", dir, t, fps)
+
+
 func _draw_boss(b: Enemy, col: Color) -> void:
 	if b.state == "telegraph":
 		draw_line(b.pos, b.pos + b.dash_dir * float(game.boss_cfg["dash_speed"]) * float(game.boss_cfg["dash_time"]), Color(2.0, 0.15, 0.2, 0.7), 4.0)
-	var tex := CharacterArt.texture(String(game.boss_cfg["sprite"]), CharacterArt.dir_for(game.player.position - b.pos))
+	var tex := _boss_frame(b)
 	if tex != null:
 		draw_texture_rect(game.vfx.glow_tex, Rect2(b.pos - Vector2(40, 40), Vector2(80, 80)), false, Color(1.2, 0.1, 0.6, 0.35))
-		var sz := Vector2(tex.get_width(), tex.get_height()) * float(game.boss_cfg["sprite_scale"])
+		var k := float(game.boss_cfg["sprite_scale"])
+		var sz := Vector2(tex.get_width(), tex.get_height()) * k
+		# cast frames are 96 px with the 64 px sprite window centred: anchor that window on the feet
+		var pad := (tex.get_height() - 64.0) * 0.5 * k
 		var feet := b.pos + Vector2(0, b.radius * 0.8)
 		draw_set_transform(feet, 0.0, Vector2(1.0, 0.35))
 		draw_circle(Vector2.ZERO, b.radius * 1.3, Color(0, 0, 0, 0.4))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		draw_texture_rect(tex, Rect2(feet + Vector2(-sz.x * 0.5, -sz.y), sz), false, Color(2.2, 1.6, 1.6) if b.flash > 0.0 else Color.WHITE)
+		draw_texture_rect(tex, Rect2(feet + Vector2(-sz.x * 0.5, pad - sz.y), sz), false, Color(2.2, 1.6, 1.6) if b.flash > 0.0 else Color.WHITE)
 		return
 	draw_circle(b.pos, b.radius, col)
 	draw_arc(b.pos, b.radius, 0, TAU, 32, Color(0.9, 0.2, 0.3), 2.0)

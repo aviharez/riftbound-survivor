@@ -17,6 +17,20 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Animasi musuh, boss, dan familiar (baru).**
+- Semua 21 musuh sekarang beranimasi (9 frame PixelLab): slime memantul, kelelawar/ngengat mengepak,
+  golem/armor berjalan, api wisp berkedip, dll. Musuh Courtyard (slime, bat, brute, caster, wraith) digambar
+  ulang dengan PixelLab supaya gayanya sama dengan musuh lokasi lain.
+- Kelima boss sekarang punya animasi jalan 8 arah dan pose serang (mengangkat tangan / melempar) setiap kali
+  menembak cincin, spiral, volley, blink, atau memanggil minion. Saat bersiap menyeruduk, boss menahan pose
+  ancang-ancang; saat menyeruduk, langkahnya lebih cepat.
+- Arcane Familiar sekarang makhluk kristal kecil bersayap (PixelLab) dengan animasi melayang dan animasi
+  menembak (mengisi tenaga lalu menembakkan bola cahaya).
+- [ ] Gerakan musuh enak dilihat? Ada yang terlalu cepat / lambat / patah-patah? Sebutkan nama musuhnya.
+- [ ] Boss: jalannya cocok? Pose serangnya terlihat?
+- [ ] Familiar: lucu? Terlihat jelas waktu menembak?
+- [ ] Musuh yang dibekukan (Glacial Burst / Absolute Zero) berhenti bergerak?
+
 **Audio (tahap 6): suara dan musik pertama.**
 - Semua suara dibuat dengan kode (sintesis, tanpa rekaman): pukulan, kritikal, musuh mati, gem, koin, level up,
   chest, shrine, evolusi, ledakan, petir, es, dash, terluka, boss mengaum, portal, menang/kalah, klik tombol,

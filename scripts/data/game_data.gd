@@ -1014,6 +1014,14 @@ const ENEMY_DASH_EVERY := 4.5      # seconds between charges
 const ENEMY_DASH_RANGE := 170.0    # only charges when the player is this close
 const ENEMY_DASH_TELEGRAPH := 0.55
 const ENEMY_DASH_TIME := 0.35
+# Animation speeds (frames per second) for the PixelLab strips: enemies (assets/enemies/anim/<id>.png),
+# bosses (assets/characters/boss_*/walk|cast/<dir>.png). BOSS_CAST_TIME = how long a boss's attack pose plays.
+const ENEMY_ANIM_FPS := 10.0
+const BOSS_WALK_FPS := 8.0
+const BOSS_CAST_TIME := 0.6
+# Arcane Familiar (assets/weapons/familiar/idle|shoot.png): idle speed and how long the shoot animation plays.
+const FAMILIAR_ANIM_FPS := 8.0
+const FAMILIAR_SHOT_TIME := 0.45
 const ENEMY_DASH_SPEED := 4.0      # x its walking speed
 const ENEMY_BLINK_EVERY := 6.0
 const ENEMY_BLINK_DIST := 110.0
