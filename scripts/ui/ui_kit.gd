@@ -85,6 +85,26 @@ static func style(border: Color, margin := 8.0) -> PixelStyle:
 	return sb
 
 
+## Cozy academy look (pilot, after Little Witch in the Woods): PixelLab frames in assets/ui/frames drawn as
+## 9-slice StyleBoxTextures (edges tiled, so pixels stay whole). Text on paper is ink brown without an outline.
+const INK := Color("3a2418")
+const INK_SOFT := Color("8a5a3b")
+const ROSE := Color("a3445e")
+const LEAF := Color("4f7d4a")
+const FRAME_DIR := "res://assets/ui/frames/"
+
+
+## `name` = wood_frame | quest_note; `edge` = texture margin (corner size), `pad` = content margin.
+static func frame_style(name: String, edge: float, pad: float) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = load(FRAME_DIR + name + ".png")
+	sb.set_texture_margin_all(edge)
+	sb.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	sb.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_TILE
+	sb.set_content_margin_all(pad)
+	return sb
+
+
 ## A dark inset row / box inside a panel; returns [panel, vbox].
 static func well(margin := 5.0) -> Array:
 	return panel(margin, NAVY)
