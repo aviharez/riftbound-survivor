@@ -17,6 +17,11 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Mirror Gate diganti Holy Nova.**
+- Tiap ~3,6 detik gelombang cahaya emas melebar dari karakter (cincin datar di lantai), memukul semua musuh yang
+  dilewatinya dan mendorong mereka mundur. Boss kena damage tapi tidak terdorong. Mulai Lv 5 ada gelombang kedua.
+- [ ] Impact-nya terasa? Dorongannya terlalu jauh / kurang? Cahayanya terlalu silau?
+
 **Animasi musuh, boss, dan familiar (baru).**
 - Semua 21 musuh sekarang beranimasi (9 frame PixelLab): slime memantul, kelelawar/ngengat mengepak,
   golem/armor berjalan, api wisp berkedip, dll. Musuh Courtyard (slime, bat, brute, caster, wraith) digambar
@@ -60,7 +65,7 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
   - **Phantom Knight**: ksatria hantu menyerbu menembus satu barisan musuh.
   - **Prism Sweep**: sinar pelangi menyapu satu lingkaran penuh di sekitarmu.
   - **Gravity Lens**: lensa di atas kerumunan; tembakanmu dibelokkan ke musuh, musuh di dalamnya kena damage lebih.
-  - **Mirror Gate**: dua portal; tembakan yang masuk portal dekat keluar dari portal jauh, lebih kuat.
+  - **Holy Nova** (menggantikan Mirror Gate): gelombang cahaya emas melebar dari pemain, memukul dan mendorong musuh.
   - **Crystal Barricade**: dinding kristal yang mendorong musuh, menahan peluru musuh, dan memantulkan tembakanmu.
 - [ ] Senjata mana yang terasa paling seru / paling lemah?
 - [ ] Efeknya terbaca top-down?

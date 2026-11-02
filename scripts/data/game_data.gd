@@ -231,10 +231,11 @@ const WEAPONS := [
 		"desc": "A lens over a crowd bends your shots onto targets and makes foes inside take more damage", "level_desc": "Bigger lens, stronger pull, a second lens at Lv 6",
 		"cd": 5.0, "dmg": 0.3, "range": 200.0, "radius": 58.0, "duration": 5.0, "bend": 7.0, "lens_amp": 0.2, "count": 1, "count_at": [6],
 		"lvl_dmg": 0.2, "lvl_cd": 0.04, "lvl_area": 0.06},
-	{"id": "gate", "name": "Mirror Gate", "weight": 4.0,
-		"desc": "Linked portals: shots entering the near gate come out of the far one aimed at a foe, stronger", "level_desc": "Bigger gates, stronger shots, longer life",
-		"cd": 6.0, "dmg": 0.5, "range": 200.0, "radius": 16.0, "duration": 6.0, "gate_amp": 0.35, "tick": 0.5, "count": 1,
-		"lvl_dmg": 0.2, "lvl_cd": 0.04, "lvl_area": 0.05},
+	# Holy Nova (doc #33) replaced Mirror Gate (2 Nov, Syifa: the portal had no impact). knock = push distance (px).
+	{"id": "nova", "name": "Holy Nova", "short": "Nov", "weight": 4.0,
+		"desc": "A golden wave bursts out from you, hitting every foe it passes and knocking them back", "level_desc": "+20% damage, wider wave, a second wave at Lv 5",
+		"cd": 3.6, "dmg": 2.2, "radius": 105.0, "wave_time": 0.42, "knock": 30.0, "wave_gap": 0.28, "count": 1, "count_at": [5],
+		"lvl_dmg": 0.2, "lvl_cd": 0.05, "lvl_area": 0.06},
 	{"id": "barricade", "name": "Crystal Barricade", "weight": 4.0,
 		"desc": "A crystal wall between you and the foes: it pushes them back, stops their bolts and bounces your shots", "level_desc": "+20% damage, longer wall, a second wall at Lv 6",
 		"cd": 5.5, "dmg": 0.8, "length": 70.0, "duration": 5.0, "tick": 0.4, "push": 80.0, "count": 1, "count_at": [6],
@@ -1014,6 +1015,7 @@ const ENEMY_DASH_EVERY := 4.5      # seconds between charges
 const ENEMY_DASH_RANGE := 170.0    # only charges when the player is this close
 const ENEMY_DASH_TELEGRAPH := 0.55
 const ENEMY_DASH_TIME := 0.35
+const ENEMY_KNOCK_DECAY := 12.0   # knockback velocity decay per second (push distance = speed / decay)
 # Animation speeds (frames per second) for the PixelLab strips: enemies (assets/enemies/anim/<id>.png),
 # bosses (assets/characters/boss_*/walk|cast/<dir>.png). BOSS_CAST_TIME = how long a boss's attack pose plays.
 const ENEMY_ANIM_FPS := 10.0

@@ -1,12 +1,12 @@
 class_name WeaponsArena
 extends Node2D
 ## The "arena" weapon set from the attack design doc: Hex Mark (#23), Glacial Burst (#24), Riftstorm (#20),
-## Phantom Knight (#17), Prism Sweep (#21), Gravity Lens (#25), Mirror Gate (#26), Crystal Barricade (#27).
-## Weapons calls `fire()` when one comes off cooldown; numbers are rows in GameData.WEAPONS. Lens, Gate and
+## Phantom Knight (#17), Prism Sweep (#21), Gravity Lens (#25), Holy Nova (#33, replaced Mirror Gate), Crystal
+## Barricade (#27). Weapons calls `fire()` when one comes off cooldown; numbers are rows in GameData.WEAPONS. Lens and
 ## Barricade also act on the player's projectiles through `on_shot()` (called by Projectiles every frame).
 ## Data-oriented like the rest: plain dictionaries in arrays, drawn by this node (+ one additive child).
 
-const IDS := ["hex", "glacial", "riftstorm", "phantom", "sweep", "lens", "gate", "barricade"]
+const IDS := ["hex", "glacial", "riftstorm", "phantom", "sweep", "lens", "nova", "barricade"]
 const STRIKE_REACH := 38.0   # meteor_strike's fire ring at scale 1 (riftbound/meteor-strike)
 
 var game: Node
@@ -15,7 +15,7 @@ var _strikes: Array = []    # Riftstorm {pos, t, delay, r, dmg, bolt}
 var _knights: Array = []    # Phantom Knight {pos, dir, t, life, speed, w, dmg, hit, trail}
 var _sweeps: Array = []     # Prism Sweep {a0, t, time, len, width, dmg, hit}
 var _lenses: Array = []     # Gravity Lens {pos, r, t, life, bend, amp, dmg, tick}
-var _gates: Array = []      # Mirror Gate {a, b, r, t, life, amp, dmg, tick}
+var _novas: Array = []      # Holy Nova waves {t, delay, time, r, dmg, knock, hit}
 var _walls: Array = []      # Crystal Barricade {a, b, n, t, life, push, dmg, tick}
 var _glow: Node2D
 var _time := 0.0
@@ -41,7 +41,7 @@ func fire(id: String, w: Dictionary, lv: int) -> void:
 		"phantom": _phantom(w, lv)
 		"sweep": _sweep(w, lv)
 		"lens": _lens(w, lv)
-		"gate": _gate(w, lv)
+		"nova": _nova(w, lv)
 		"barricade": _barricade(w, lv)
 
 
@@ -133,17 +133,13 @@ func _lens(w: Dictionary, lv: int) -> void:
 			"bend": float(w["bend"]), "amp": float(w["lens_amp"]), "dmg": weapons.level_damage(w, lv), "tick": 0.0})
 
 
-## Two linked gates: one just ahead of the hero, one over a foe. Shots entering the near gate leave the
-## far one aimed at the closest foe there, and stronger.
-func _gate(w: Dictionary, lv: int) -> void:
-	var p := _p()
-	var foes := _foes(float(w["range"]))
-	var far: Vector2 = foes[randi() % foes.size()].pos + Vector2(0, -24) if not foes.is_empty() \
-		else p.position + p.facing * float(w["range"]) * 0.7
-	_gates.clear()
-	_gates.append({"a": p.position + p.facing * 34.0, "b": far, "r": float(w["radius"]) * weapons.level_size(w, lv),
-		"t": 0.0, "life": float(w["duration"]) * (1.0 + 0.1 * (lv - 1)), "amp": float(w["gate_amp"]) * (1.0 + 0.1 * (lv - 1)),
-		"dmg": weapons.level_damage(w, lv), "tick": 0.0, "tick_t": float(w["tick"])})
+## A golden wave of light rings out from the hero (a second one follows from Lv 5): every foe the wave front
+## passes is hit once and knocked back (bosses are only hit).
+func _nova(w: Dictionary, lv: int) -> void:
+	var r: float = float(w["radius"]) * weapons.level_size(w, lv)
+	for i in weapons.count_of(w, lv):
+		_novas.append({"t": -float(w["wave_gap"]) * i, "time": float(w["wave_time"]), "r": r,
+			"dmg": weapons.level_damage(w, lv), "knock": float(w["knock"]), "hit": {}, "started": false})
 
 
 ## A crystal wall across the line between the hero and the nearest foe.
@@ -170,7 +166,7 @@ func _process(delta: float) -> void:
 	_update_knights(delta)
 	_update_sweeps(delta)
 	_update_lenses(delta)
-	_update_gates(delta)
+	_update_novas(delta)
 	_update_walls(delta)
 	queue_redraw()
 	_glow.queue_redraw()
@@ -246,15 +242,33 @@ func _update_lenses(delta: float) -> void:
 	_lenses = _lenses.filter(func(l): return l["t"] < l["life"])
 
 
-func _update_gates(delta: float) -> void:
-	for g in _gates:
-		g["t"] += delta
-		g["tick"] -= delta
-		if g["tick"] <= 0.0:
-			g["tick"] = g["tick_t"]
-			for e in game.enemies.query_radius(g["b"], g["r"] + 6.0):
-				weapons._hit(e, g["dmg"], Color(1.4, 0.8, 2.6))
-	_gates = _gates.filter(func(g): return g["t"] < g["life"])
+func _update_novas(delta: float) -> void:
+	var c: Vector2 = _p().position
+	for n in _novas:
+		n["t"] += delta
+		if n["t"] < 0.0:
+			continue
+		if not n["started"]:
+			n["started"] = true
+			Sfx.play("nova")
+			game.vfx.flash(c, Color(2.2, 1.8, 0.9), 26.0, 0.2)
+			game.screen_fx.shockwave(c, n["r"] * 1.3, 0.9, n["time"] + 0.1)
+		var front: float = n["r"] * _ease_out(clampf(n["t"] / n["time"], 0.0, 1.0))
+		var hit: Dictionary = n["hit"]
+		for e in game.enemies.query_radius(c, front + 8.0):
+			if hit.has(e) or not e.alive:
+				continue
+			hit[e] = true
+			weapons._hit(e, n["dmg"], Color(2.4, 1.9, 0.9))
+			if not e.boss:
+				var away: Vector2 = (e.pos - c).normalized() if e.pos != c else Vector2.RIGHT
+				e.knock = away * n["knock"] * GameData.ENEMY_KNOCK_DECAY
+			game.vfx.sparks(e.pos, Color(2.4, 2.0, 1.0), 3, 50.0, 0.2, 1.2)
+	_novas = _novas.filter(func(n): return n["t"] < n["time"] + 0.25)
+
+
+static func _ease_out(k: float) -> float:
+	return 1.0 - (1.0 - k) * (1.0 - k)
 
 
 func _update_walls(delta: float) -> void:
@@ -282,8 +296,7 @@ func _update_walls(delta: float) -> void:
 	_walls = _walls.filter(func(wl): return wl["t"] < wl["life"])
 
 
-## Called by Projectiles for every player shot each frame: lenses bend it onto targets, gates move it,
-## walls bounce it.
+## Called by Projectiles for every player shot each frame: lenses bend it onto targets, walls bounce it.
 func on_shot(s: Dictionary, delta: float) -> void:
 	for l in _lenses:
 		if s["pos"].distance_to(l["pos"]) <= l["r"]:
@@ -293,16 +306,6 @@ func on_shot(s: Dictionary, delta: float) -> void:
 				var cur: float = s["vel"].angle()
 				var turn := clampf(wrapf(want - cur, -PI, PI), -l["bend"] * delta, l["bend"] * delta)
 				s["vel"] = s["vel"].rotated(turn)
-	for g in _gates:
-		if not s.get("gated", false) and s["pos"].distance_to(g["a"]) <= g["r"] + 4.0:
-			s["gated"] = true
-			s["pos"] = g["b"]
-			s["dmg"] *= 1.0 + g["amp"]
-			s["life"] = maxf(s["life"], s["life0"] * 0.8)
-			var foe = game.enemies.nearest(g["b"], 220.0, null)
-			if foe != null:
-				s["vel"] = (foe.pos - g["b"]).normalized() * s["vel"].length()
-			game.vfx.sparks(g["b"], Color(1.4, 0.8, 2.6), 5, 60.0, 0.2, 1.2)
 	for wl in _walls:
 		if s.get("walled", 0.0) > _time:
 			continue
@@ -315,7 +318,7 @@ func on_shot(s: Dictionary, delta: float) -> void:
 
 
 func clear_all() -> void:
-	for a in [_strikes, _knights, _sweeps, _lenses, _gates, _walls]:
+	for a in [_strikes, _knights, _sweeps, _lenses, _novas, _walls]:
 		a.clear()
 
 
@@ -383,17 +386,22 @@ func _draw_glow() -> void:
 			_glow.draw_arc(Vector2.ZERO, rr, 0, TAU, 32, Color(0.3, 0.6, 1.3, 0.35 * k), 1.5)
 		_glow.draw_arc(Vector2.ZERO, l["r"], 0, TAU, 40, Color(0.5, 0.8, 1.6, 0.6 * k), 1.0)
 		_glow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	# Mirror Gate: a cyan and a violet ring
-	for g in _gates:
-		var k: float = clampf((g["life"] - g["t"]) / 0.5, 0.0, 1.0)
-		for pair in [[g["a"], Color(0.4, 1.4, 1.8)], [g["b"], Color(1.4, 0.5, 1.8)]]:
-			var c: Vector2 = pair[0]
-			var col: Color = pair[1]
-			_glow.draw_set_transform(c, 0.0, Vector2(0.7, 1.0))
-			_glow.draw_circle(Vector2.ZERO, g["r"], Color(col.r * 0.2, col.g * 0.2, col.b * 0.2, 0.5 * k))
-			_glow.draw_arc(Vector2.ZERO, g["r"], 0, TAU, 28, Color(col.r, col.g, col.b, 0.9 * k), 2.0)
-			_glow.draw_arc(Vector2.ZERO, g["r"] * (0.6 + 0.2 * sin(_time * 6.0)), 0, TAU, 24, Color(col.r, col.g, col.b, 0.5 * k), 1.0)
-			_glow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# Holy Nova: a flat golden floor ring (ellipse, sy 0.6) with a soft inner glow, thinning as it widens
+	for n in _novas:
+		if n["t"] < 0.0:
+			continue
+		var k: float = clampf(n["t"] / n["time"], 0.0, 1.0)
+		var fade: float = 1.0 - clampf((n["t"] - n["time"]) / 0.25, 0.0, 1.0)
+		var front: float = n["r"] * _ease_out(k)
+		_glow.draw_set_transform(_p().position, 0.0, Vector2(1.0, 0.6))
+		_glow.draw_circle(Vector2.ZERO, front, Color(0.5, 0.38, 0.1, 0.22 * (1.0 - k) * fade))
+		_glow.draw_arc(Vector2.ZERO, front, 0, TAU, 48, Color(1.0, 0.75, 0.25, 0.55 * fade), 7.0 * (1.0 - 0.6 * k))
+		_glow.draw_arc(Vector2.ZERO, front, 0, TAU, 48, Color(1.9, 1.6, 0.8, 0.9 * fade), 2.0)
+		_glow.draw_arc(Vector2.ZERO, front * 0.8, 0, TAU, 40, Color(1.2, 1.0, 0.5, 0.35 * fade), 1.0)
+		for i in 12:
+			var a: float = TAU * i / 12.0 + _time * 0.8
+			_glow.draw_circle(Vector2.from_angle(a) * front, 2.0, Color(2.0, 1.8, 1.0, 0.8 * fade))
+		_glow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# Hex marks: violet runes circling under marked foes
 	for e in game.enemies.list:
 		if e.hex_t > 0.0 and e.alive:

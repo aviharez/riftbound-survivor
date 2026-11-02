@@ -17,7 +17,8 @@ Read it before starting any phase.**
   plus 6 alpha weapons: Crescent Slash, Rune Chakram (out-and-return), Arcane Familiar (summon), Aether Beam,
   Venom Bloom (poison cloud), Arcane Mine (trap), plus the arena set of 8 in `scripts/actors/weapons_arena.gd`
   (`Weapons.arena`): Hex Mark (marked foes take `hex_amp` more damage, `Enemy.hex_t`), Glacial Burst, Riftstorm,
-  Phantom Knight, Prism Sweep, Gravity Lens / Mirror Gate / Crystal Barricade (they also bend / teleport / bounce
+  Phantom Knight, Prism Sweep, Holy Nova (golden wave + knockback via `Enemy.knock`; it replaced Mirror Gate on
+  2 Nov because Syifa felt the portal had no impact), Gravity Lens / Crystal Barricade (they also bend / bounce
   player shots via `WeaponsArena.on_shot`, called from Projectiles). Optional `short` in a weapon row = 3-letter HUD label.
   `--weapons=meteor,void` gives extra weapons (evolved ids such as `solar` come evolved) and `--swarm-at=30` starts
   the Final Swarm early in an autotest run; `--ready-evolve` puts owned weapons at the evolve level with their tome
@@ -62,8 +63,9 @@ Read it before starting any phase.**
   Enemies: PixelLab pixflux 48 px `assets/enemies/<id>.png` + a 9-frame loop strip `assets/enemies/anim/<id>.png`
   (`animate_image`, 1 generation each; `python3 tools/enemy_anim.py <sheet> assets/enemies/anim --rows a,b`),
   played at `ENEMY_ANIM_FPS`, frozen foes hold frame 0. Bosses: `walk/` strips (template `walking-6-frames`) and
-  `cast/` strips (template `fireball`, played for `BOSS_CAST_TIME` when an attack fires, wind-up frame held during
-  a dash telegraph). Boss PixelLab ids: guardian f699f0a9 (imported from the old sprites), thornmother 0f1f45ed,
+  `cast/` strips (v3 custom "attack" animation per boss, 8 frames, saved as 96 px frames with the 64 px window at
+  16,16 by `tools/boss_attack.py`; the `fireball` template looked broken on bulky bosses), played for
+  `BOSS_CAST_TIME` when an attack fires, wind-up frame held during a dash telegraph. Boss PixelLab ids: guardian f699f0a9 (imported from the old sprites), thornmother 0f1f45ed,
   archivist 9ee3cac7, colossus ab57a7e3, sovereign 5fc60e71. Workbench refs for character animations are
   `character:<id>:<direction>:<animation name>`. Arcane Familiar: `assets/weapons/familiar/{idle,shoot}.png`
   (32 px, `FAMILIAR_ANIM_FPS` / `FAMILIAR_SHOT_TIME`). `CharacterArt.strip(path)` loads any strip.

@@ -165,6 +165,11 @@ def sfx_all():
     growl = osc(70 + 12 * np.sin(2 * np.pi * 7 * t), 0.9, "saw") + 0.5 * lowpass(noise(0.9, 10), 600)
     s["boss_roar"] = normalise(lowpass(growl, 900) * env(len(t), 0.08, 0.3, 0.6, 0.4, 0.15), 0.9)
     s["shoot"] = normalise(osc(sweep(1200, 500, 0.07), 0.07, "pulse25") * exp_decay(int(SR * 0.07), 0.025), 0.35)
+    # Holy Nova: a soft low thump under a bright rising major chord with a shimmer tail
+    n = noise(0.7, 14)
+    s["nova"] = normalise(0.7 * osc(sweep(140, 60, 0.7), 0.7) * exp_decay(int(SR * 0.7), 0.08)
+                          + mix(*[osc(note_hz(m), 0.7, "sine") * env(int(SR * 0.7), 0.02, 0.2, 0.3, 0.3, 0.1) for m in (76, 80, 83, 88)])
+                          + 0.25 * highpass(n, 5000) * exp_decay(len(n), 0.2), 0.6)
     s["freeze"] = normalise(mix(*[osc(note_hz(m), 0.4, "sine") * exp_decay(int(SR * 0.4), 0.12) for m in (88, 91, 95)]) + 0.3 * highpass(noise(0.4, 11), 4000) * exp_decay(int(SR * 0.4), 0.08), 0.5)
     # pickups and rewards
     s["gem"] = normalise(seq(tone(84, 0.05, "sine", decay=0.04), tone(91, 0.08, "sine", decay=0.05)), 0.35)

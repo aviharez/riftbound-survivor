@@ -40,6 +40,7 @@ class Enemy:
 	var hex_amp := 0.0
 	var phase := 0.0            # animation offset, so a crowd of one type does not move in lockstep
 	var cast_t := 0.0           # boss: seconds left of its attack (cast) animation
+	var knock := Vector2.ZERO   # knockback velocity (Holy Nova), decays by ENEMY_KNOCK_DECAY
 	# boss state machine
 	var state := "idle"
 	var state_t := 1.5
@@ -227,6 +228,11 @@ func _process(delta: float) -> void:
 		if e.spawn_t > 0.0:
 			e.spawn_t -= delta
 			continue
+		if e.knock != Vector2.ZERO:
+			e.pos = game.world.move(e.pos, e.knock * delta, e.radius * 0.6)
+			e.knock *= exp(-GameData.ENEMY_KNOCK_DECAY * delta)
+			if e.knock.length_squared() < 4.0:
+				e.knock = Vector2.ZERO
 		if e.freeze_t > 0.0:
 			e.freeze_t -= delta
 			continue
