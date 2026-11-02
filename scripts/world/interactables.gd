@@ -7,7 +7,7 @@ const CHEST_RADIUS := 14.0
 const CHEST_HOLD := 0.4
 const SHRINE_RADIUS := 20.0
 const PORTAL_RADIUS := 24.0
-const POT_RADIUS := 8.0
+const POT_RADIUS := 11.0   # touch distance (the pot sprite is ~22 px)
 const EXIT_RADIUS := 14.0
 
 var game: Node
@@ -18,6 +18,7 @@ var portal := {}          # {pos, discovered, state, charge, t}
 var exit_portal := {}     # {pos, active}
 var _font: Font
 var _time := 0.0
+var _pot_tex: Texture2D = load("res://assets/props/pot.png") if ResourceLoader.exists("res://assets/props/pot.png") else null
 
 
 func setup(m: Dictionary, world: World) -> void:
@@ -175,9 +176,7 @@ func _draw() -> void:
 	for p in pots:
 		if p["broken"] or not near.call(p["pos"]):
 			continue
-		var q: Vector2 = p["pos"]
-		draw_rect(Rect2(q.x - 3, q.y - 3, 6, 6), Color(0.65, 0.42, 0.25))
-		draw_rect(Rect2(q.x - 2, q.y - 5, 4, 2), Color(0.5, 0.32, 0.2))
+		_draw_pot(p["pos"])
 
 	for s in shrines:
 		if near.call(s["pos"]):
@@ -196,6 +195,27 @@ func _draw() -> void:
 		draw_circle(e, 12.0, Color(0.3, 0.9, 1.0, 0.25 + 0.2 * pulse))
 		draw_arc(e, 12.0, 0, TAU, 32, Color(0.6, 1.0, 1.0), 2.0)
 		_label(e + Vector2(0, -18), "EXIT", Color(0.7, 1.0, 1.0))
+
+
+## Gold pot (PixelLab sprite, assets/props/pot.png) on a soft shadow, with a gold glint that twinkles now
+## and then so it stands out from the floor.
+func _draw_pot(q: Vector2) -> void:
+	if _pot_tex == null:
+		draw_rect(Rect2(q.x - 3, q.y - 3, 6, 6), Color(0.65, 0.42, 0.25))
+		return
+	var sz := GameData.POT_SPRITE_SIZE
+	draw_set_transform(q + Vector2(0, sz * 0.32), 0.0, Vector2(1.0, 0.4))
+	draw_circle(Vector2.ZERO, sz * 0.32, Color(0, 0, 0, 0.3))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	draw_texture_rect(_pot_tex, Rect2(q - Vector2(sz, sz) * 0.5 - Vector2(0, sz * 0.12), Vector2(sz, sz)), false)
+	# a four-point gold twinkle over the coins, each pot on its own beat
+	var ph := fmod(_time * 0.7 + (q.x * 0.013 + q.y * 0.007), 1.0)
+	if ph < 0.18:
+		var k := sin(ph / 0.18 * PI)
+		var c := q + Vector2(sz * 0.12, -sz * 0.36)
+		var col := Color(1.0, 0.95, 0.6, k)
+		draw_rect(Rect2(c - Vector2(0.5, 3.0 * k), Vector2(1, 6.0 * k)), col)
+		draw_rect(Rect2(c - Vector2(3.0 * k, 0.5), Vector2(6.0 * k, 1)), col)
 
 
 func _draw_chest(c: Dictionary) -> void:

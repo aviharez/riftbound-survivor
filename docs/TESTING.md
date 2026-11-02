@@ -17,6 +17,20 @@ Build baru terpasang di atas build lama dan save akademi tetap ada.
 
 ## Yang baru di build ini (fokus tes)
 
+**Cahaya dikurangi + HUD in-game baru + pot gold baru.**
+- Glow (bloom) dimatikan, dan semua efek cahaya (tembakan, partikel, aura elite/chest/boss) diredupkan sekitar
+  separuhnya. Efek tetap berwarna, tapi tidak menyilaukan lagi.
+- HUD in-game pakai gaya pixel yang sama dengan akademi: panel ungu untuk potret + HP (ikon hati) + EXP,
+  badge level emas, timer dalam plat dengan jam pasir, chip ancaman (Calm, dst.), item pakai ikon (bukan huruf).
+- Minimap sekarang bulat dengan bingkai emas; tombol peta & pause jadi tombol bulat kecil di samping minimap;
+  kills & gold jadi chip di bawah minimap.
+- Tombol DASH bulat dengan ikon sepatu bersayap, cincin emas berdenyut saat siap, dan bayangan gelap yang
+  menyusut selama cooldown (dengan angka detik). Joystick punya tampilan sendiri (bayangan samar kiri bawah).
+- Pot gold sekarang guci tanah liat berisi koin emas (PixelLab), lebih besar, dengan kilau emas sesekali.
+- [ ] Masih terlalu terang / sekarang terlalu redup? Sebut efek mana.
+- [ ] HUD enak dilihat & tidak menutupi area main? Tombol dash nyaman ditekan?
+- [ ] Pot gold sekarang gampang terlihat?
+
 **Mirror Gate diganti Holy Nova.**
 - Tiap ~3,6 detik gelombang cahaya emas melebar dari karakter (cincin datar di lantai), memukul semua musuh yang
   dilewatinya dan mendorong mereka mundur. Boss kena damage tapi tidak terdorong. Mulai Lv 5 ada gelombang kedua.

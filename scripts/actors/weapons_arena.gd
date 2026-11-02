@@ -27,6 +27,7 @@ func _ready() -> void:
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_glow.material = mat
+	_glow.modulate = Vfx.additive_tint()
 	_glow.draw.connect(_draw_glow)
 	add_child(_glow)
 	var path := "res://assets/enemies/armor.png"

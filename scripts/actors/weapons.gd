@@ -49,6 +49,7 @@ func _ready() -> void:
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_trail.material = mat
+	_trail.modulate = Vfx.additive_tint()
 	_trail.draw.connect(_draw_additive)
 	add_child(_trail)
 

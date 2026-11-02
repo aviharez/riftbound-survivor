@@ -10,11 +10,14 @@ const RUN_TIME := 600.0            # 10:00 countdown
 const MAX_ENEMIES := 220
 
 # --- VFX quality (lower these if a phone struggles) ---
-const VFX_GLOW := true              # HDR bloom
+# Syifa (2 Nov): too much light made the game uncomfortable, so bloom is off and every additive layer is dimmed.
+const VFX_GLOW := false             # HDR bloom (screen-wide glow)
 const VFX_GLOW_INTENSITY := 0.9
 const VFX_GLOW_THRESHOLD := 1.0      # only light brighter than this blooms
-const VFX_LIGHT_BOOST := 1.7         # sprite-effect light layers are multiplied by this into HDR
-const VFX_PROJECTILE_LIGHT := 1.6    # light layer of player shots
+const VFX_LIGHT_BOOST := 0.55        # sprite-effect light layers (was 1.7 with bloom)
+const VFX_PROJECTILE_LIGHT := 0.5    # light layer of player shots (was 1.6)
+const VFX_ADDITIVE := 0.6            # brightness of every additive layer (particles, trails, beams, auras)
+const VFX_HALO := 0.4                # opacity of the soft round halos (glow_tex) around shots, chests, elites
 const VFX_PARTICLE_SCALE := 1.0     # 0.5 halves particle counts
 const VFX_SHAKE := 1.0              # camera shake multiplier (0 = off)
 const FOG_REVEAL_TILES := 11.0
@@ -39,6 +42,7 @@ const SHRINE_MAX_PER_TYPE := 6
 const SHRINE_GUARANTEED := ["ley", "ley", "ley", "well", "well", "trial", "moon"]
 const POT_COUNT := 120
 const POT_SPACING := 3
+const POT_SPRITE_SIZE := 22.0   # drawn size of the 32 px PixelLab gold pot (assets/props/pot.png)
 
 # --- Timeline (seconds elapsed) ---
 const ELITE_START := 60.0

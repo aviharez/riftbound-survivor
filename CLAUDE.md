@@ -153,6 +153,14 @@ Read it before starting any phase.**
   music cross-fade, on/off in `user://settings.cfg`); call it through the static `Sfx.play(name)` /
   `Sfx.music(name)` so scripts still parse where autoloads are missing (test scripts, --check-only).
   Installing the Audio as Code package was refused in the workspace, so music is made by the same script.
+- Light (Syifa, 2 Nov: too much glow was uncomfortable): bloom is off (`VFX_GLOW = false`), light layers use
+  `VFX_LIGHT_BOOST` / `VFX_PROJECTILE_LIGHT` (~0.5), every additive node is dimmed by `Vfx.additive_tint()`
+  (`VFX_ADDITIVE`) and soft halos by `VFX_HALO`. Keep new effects calm: no new full-white blooms.
+- In-run HUD (`scripts/ui/hud.gd`, immediate-mode drawing on `view`): purple PixelStyle plate (portrait, HP with the
+  `hp` icon, EXP), slot rows, item icons (`assets/ui/icons/<item id>.png`), timer plate (`hourglass`), threat chip,
+  round minimap (`_circle_tex` = textured polygon) with gold ring, round map / pause buttons, kills / gold chips,
+  round dash button (`dash` icon, cooldown wedge), joystick ghost. Round controls are transparent Buttons
+  (`_make_round_button`) under the drawing. Gold pots: PixelLab `assets/props/pot.png` at `POT_SPRITE_SIZE` with a twinkle.
 - Enemies, bullets, projectiles and pickups are data-oriented (arrays drawn by one node). Do not add a node per enemy.
 - Map generation must stay deterministic for a given seed (`tests/test_mapgen.gd` checks this).
 - Keep code compatible with Godot 4.4+ unless a newer feature is clearly worth it.

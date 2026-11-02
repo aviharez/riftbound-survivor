@@ -43,6 +43,7 @@ func _ready() -> void:
 	var mat := CanvasItemMaterial.new()
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_light.material = mat
+	_light.modulate = Vfx.additive_tint()
 	_light.draw.connect(func(): _draw_layer(_light, "light"))
 	add_child(_light)
 

@@ -8,9 +8,13 @@ const GOLD := Color(0.86, 0.7, 0.32)
 const IVORY := Color(0.96, 0.94, 0.86)
 const CYAN := Color(0.4, 0.9, 1.0)
 const CRIMSON := Color(0.95, 0.25, 0.4)
-const MINIMAP_SIZE := 108.0
-const MINIMAP_TILES := 54.0
+const MINIMAP_SIZE := 96.0      # diameter of the round minimap
+const MINIMAP_TILES := 46.0
 const JOY_RADIUS := 34.0
+const DASH_R := 26.0            # round dash button radius
+const SMALL_R := 12.0           # round map / pause buttons
+const OUTLINE := Color("05030c")
+const PLATE := Color("221a40")  # dark plate fill (UiKit.NAVY)
 
 var game: Node
 var view: Control
@@ -39,6 +43,7 @@ var _result_title: Label
 var _dash_btn: Button
 var _map_btn: Button
 var _pause_btn: Button
+var _panel_sb: PixelStyle
 
 
 func _ready() -> void:
@@ -51,9 +56,10 @@ func _ready() -> void:
 	view.draw.connect(_draw_view)
 	add_child(view)
 
-	_dash_btn = _make_button("DASH", Vector2(64, 64), _on_dash)
-	_map_btn = _make_button("MAP", Vector2(48, 24), toggle_map)
-	_pause_btn = _make_button("II", Vector2(24, 24), toggle_pause)
+	# round buttons: invisible Buttons take the touches, _draw_view paints them
+	_dash_btn = _make_round_button(DASH_R, _on_dash)
+	_map_btn = _make_round_button(SMALL_R, toggle_map)
+	_pause_btn = _make_round_button(SMALL_R, toggle_pause)
 	_build_choice_panel()
 	_build_pause_panel()
 	_build_result_panel()
@@ -61,12 +67,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	var vs := view.size
-	_dash_btn.position = Vector2(vs.x - 84, vs.y - 84)
-	_map_btn.position = Vector2(vs.x - MINIMAP_SIZE - 10, MINIMAP_SIZE + 34)
-	_pause_btn.position = Vector2(vs.x - 34, MINIMAP_SIZE + 34)
-	var cd: float = game.player.dash_cd
-	_dash_btn.text = "DASH" if cd <= 0.0 else "%.1f" % cd
-	_dash_btn.disabled = cd > 0.0
+	_dash_btn.position = _dash_center(vs) - Vector2(DASH_R, DASH_R)
+	_map_btn.position = _map_btn_center(vs) - Vector2(SMALL_R, SMALL_R)
+	_pause_btn.position = _pause_btn_center(vs) - Vector2(SMALL_R, SMALL_R)
+	_dash_btn.disabled = game.player.dash_cd > 0.0
 	_banner["t"] = max(0.0, _banner["t"] - delta)
 	for t in _toasts:
 		t["t"] -= delta
@@ -393,58 +397,99 @@ func _draw_view() -> void:
 	var vs := view.size
 	_draw_player_panel()
 	_draw_timer(vs)
+	_draw_minimap(_minimap_center(vs), MINIMAP_SIZE * 0.5)
 	_draw_top_right(vs)
-	_draw_minimap(Rect2(vs.x - MINIMAP_SIZE - 10, 28, MINIMAP_SIZE, MINIMAP_SIZE))
 	_draw_edge_arrows(vs)
-	if _joy_index != -1:
-		view.draw_circle(_joy_center, JOY_RADIUS, Color(1, 1, 1, 0.12))
-		view.draw_arc(_joy_center, JOY_RADIUS, 0, TAU, 32, Color(1, 1, 1, 0.35), 1.5)
-		view.draw_circle(_joy_knob, 12, Color(1, 1, 1, 0.4))
-	elif not game.run_over:
-		_text(Vector2(70, vs.y - 30), "drag here to move", Color(1, 1, 1, 0.25), 8, true)
+	if not game.run_over:
+		_draw_joystick(vs)
+		_draw_dash(vs)
+		_draw_round_button(_map_btn_center(vs), SMALL_R, "map", _map_btn)
+		_draw_round_button(_pause_btn_center(vs), SMALL_R, "", _pause_btn)
+		_draw_pause_glyph(_pause_btn_center(vs))
 	var y := vs.y - 110
 	for t in _toasts:
 		_text(Vector2(vs.x * 0.5, y), t["text"], Color(t["color"], min(1.0, t["t"])), 10, true)
 		y -= 14
 	if _banner["t"] > 0.0:
 		var a: float = min(1.0, _banner["t"])
-		view.draw_rect(Rect2(vs.x * 0.5 - 150, 52, 300, 22), Color(0, 0, 0, 0.5 * a))
-		_text(Vector2(vs.x * 0.5, 67), _banner["text"], Color(_banner["color"], a), 12, true)
+		var bw: float = maxf(180.0, font.get_string_size(_banner["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(12)).x + 40.0)
+		var br := Rect2(vs.x * 0.5 - bw * 0.5, 56, bw, 20)
+		_plate(br, Color(_banner["color"], 0.9 * a), Color(0.07, 0.05, 0.14, 0.85 * a))
+		_text(Vector2(vs.x * 0.5, br.position.y + 14), _banner["text"], Color(_banner["color"], a), 12, true)
 	if map_open:
 		_draw_full_map(vs)
 
 
 func _draw_player_panel() -> void:
 	var p: Player = game.player
-	view.draw_rect(Rect2(6, 6, 30, 30), NAVY)
+	# purple plate behind portrait and bars (the academy UI's panel style)
+	view.draw_style_box(_panel_style(), Rect2(3, 3, 172, 40))
+	# portrait in a gold frame
+	var pr := Rect2(8, 7, 32, 32)
+	_slot_frame(pr, UiKit.GOLD, Color("140f2a"))
 	var face := CharacterArt.portrait(p.character["id"])
 	if face != null:
 		var w := float(face.get_width())
 		var cs := w * 0.5   # head-and-shoulders crop, proportional to the sprite size
-		view.draw_texture_rect_region(face, Rect2(7, 7, 28, 28), Rect2(w * 0.5 - cs * 0.5, 0, cs, cs))
+		view.draw_texture_rect_region(face, pr.grow(-1), Rect2(w * 0.5 - cs * 0.5, 0, cs, cs))
 	else:
-		view.draw_circle(Vector2(21, 22), 8, Color(0.98, 0.86, 0.78))
-		view.draw_rect(Rect2(12, 11, 18, 6), Color(p.character["colors"]["hair"]))
-	view.draw_rect(Rect2(5, 5, 32, 32), Color("05030c"), false, 1.0)
-	view.draw_rect(Rect2(6, 6, 30, 30), GOLD, false, 1.0)
-	_text(Vector2(21, 46), "Lv %d" % game.level, IVORY, 8, true)
-	_bar(Rect2(40, 8, 120, 8), p.hp / p.stats["max_hp"], Color(0.9, 0.25, 0.3))
-	_text(Vector2(100, 15), "%d / %d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
-	_bar(Rect2(40, 19, 120, 4), game.xp / game.xp_next, CYAN)
-	# weapon row (y 26) and tome row (y 45): pixel icon slots, filled / empty / locked (opens via academy buildings)
-	_slot_row(26.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35))
-	_slot_row(45.0, p.tomes, game.tome_slots, CYAN)
-	# owned items (y 64)
-	var x := 40.0
+		view.draw_circle(pr.get_center(), 8, Color(0.98, 0.86, 0.78))
+	# level badge on the portrait's lower edge
+	var lv := "Lv%d" % game.level
+	var lw := font.get_string_size(lv, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(8)).x + 6.0
+	var lr := Rect2(roundf(pr.get_center().x - lw * 0.5), pr.end.y - 5, roundf(lw), 10)
+	_plate(lr, UiKit.GOLD, Color("3a2a10"))
+	_text(Vector2(lr.get_center().x, lr.position.y + 8), lv, UiKit.GOLD, 8, true)
+	# HP: heart icon + red bar with the numbers inside
+	_icon("hp", Rect2(44, 7, 16, 16))
+	_bar(Rect2(62, 10, 106, 10), p.hp / p.stats["max_hp"], Color(0.92, 0.26, 0.32))
+	_text(Vector2(115, 18), "%d/%d" % [ceili(p.hp), int(p.stats["max_hp"])], IVORY, 7, true)
+	# EXP: star + cyan bar
+	UiKit.draw_icon(view, "exp", Vector2(52, 31), 5.0)
+	_bar(Rect2(62, 28, 106, 5), game.xp / game.xp_next, UiKit.CYAN)
+	# weapon row and tome row: pixel icon slots, filled / empty / locked (opens via academy buildings)
+	_slot_row(48.0, p.weapon_levels, game.weapon_slots, Color(1.0, 0.75, 0.35))
+	_slot_row(69.0, p.tomes, game.tome_slots, UiKit.CYAN)
+	# owned items: small icon slots in their rarity colour, with a count when stacked
+	var x := 6.0
 	for id in game.items_owned:
 		var it: Dictionary = game.item_by_id(id)
 		var col: Color = GameData.RARITY_COLORS[int(it["rarity"])]
-		_slot_frame(Rect2(x, 64, 12, 12), col)
-		_text(Vector2(x + 6, 73), it["name"].substr(0, 1), col, 8, true)
+		var r := Rect2(x, 92, 14, 14)
+		_slot_frame(r, col)
+		var tex := UiKit.icon_tex(String(id))
+		if tex != null:
+			view.draw_texture_rect(tex, r.grow(-1), false)
+		else:
+			_text(Vector2(x + 7, 102), it["name"].substr(0, 1), col, 8, true)
 		var n: int = game.items_owned[id]
 		if n > 1:
-			_text(Vector2(x + 11, 79), str(n), IVORY, 8, true)
-		x += 14.0
+			_text(Vector2(x + 13, 109), str(n), IVORY, 7, true)
+		x += 16.0
+
+
+func _panel_style() -> PixelStyle:
+	if _panel_sb == null:
+		_panel_sb = UiKit.style(UiKit.PURPLE, 0.0)
+		_panel_sb.drop = 0
+		_panel_sb.fill = Color(0.2, 0.15, 0.42, 0.88)
+		_panel_sb.fill_dark = Color(0.24, 0.18, 0.5, 0.88)
+	return _panel_sb
+
+
+## Small dark plate: black outline (notched corners), 1 px coloured border, fill.
+func _plate(r: Rect2, border: Color, fill := PLATE) -> void:
+	r = Rect2(r.position.floor(), r.size.floor())
+	view.draw_rect(Rect2(r.position + Vector2(1, -1), Vector2(r.size.x - 2, r.size.y + 2)), Color(OUTLINE, border.a))
+	view.draw_rect(Rect2(r.position + Vector2(-1, 1), Vector2(r.size.x + 2, r.size.y - 2)), Color(OUTLINE, border.a))
+	view.draw_rect(r, border)
+	view.draw_rect(r.grow(-1), fill)
+
+
+func _icon(name: String, r: Rect2, mod := Color.WHITE) -> void:
+	var tex := UiKit.icon_tex(name)
+	if tex != null:
+		view.draw_texture_rect(tex, r, false, mod)
 
 
 ## Pixel slot frame: black outline, coloured 1 px border, dark fill.
@@ -456,7 +501,7 @@ func _slot_frame(r: Rect2, col: Color, fill := Color("140f2a")) -> void:
 
 func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color) -> void:
 	var ids: Array = owned.keys()
-	var x := 40.0
+	var x := 6.0
 	for i in GameData.MAX_SLOTS:
 		var r := Rect2(x, y, 18, 18)
 		if i < ids.size():
@@ -478,53 +523,109 @@ func _slot_row(y: float, owned: Dictionary, unlocked: int, col: Color) -> void:
 
 
 func _draw_timer(vs: Vector2) -> void:
-	var cx := vs.x * 0.5
+	var cx := roundf(vs.x * 0.5)
 	var rem: float = game.time_left()
 	var txt := "%02d:%02d" % [int(rem) / 60, int(rem) % 60]
 	var col := IVORY
+	var border := UiKit.PURPLE
 	if game.final_swarm:
-		txt = "FINAL SWARM +%02d:%02d" % [int(game.final_swarm_t) / 60, int(game.final_swarm_t) % 60]
+		txt = "+%02d:%02d" % [int(game.final_swarm_t) / 60, int(game.final_swarm_t) % 60]
 		col = CRIMSON
+		border = CRIMSON
 	elif game.surge_active():
 		col = Color(1, 0.6, 0.3)
-	_text(Vector2(cx, 20), txt, col, 14, true)
+		border = col
+	# timer plate: hourglass + time in the bold font
+	var plate := Rect2(cx - 40, 4, 80, 20)
+	_plate(plate, border)
+	_icon("hourglass", Rect2(plate.position + Vector2(3, 2), Vector2(16, 16)))
+	var tfs := UiKit.tfs(12)
+	var tw := UiKit.BOLD_FONT.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs).x
+	var tp := Vector2(roundf(plate.get_center().x + 8 - tw * 0.5), plate.position.y + 15)
+	view.draw_string_outline(UiKit.BOLD_FONT, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, 3, Color(0, 0, 0, 0.85))
+	view.draw_string(UiKit.BOLD_FONT, tp, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, tfs, col)
 	var b = game.enemies.boss
 	if b != null and b.spawn_t <= 0.0:
-		_bar(Rect2(cx - 120, 26, 240, 6), b.hp / b.max_hp, CRIMSON)
-		_text(Vector2(cx, 44), game.boss_cfg["name"], Color(1, 0.6, 0.6), 8, true)
+		# boss: a thick red bar + a name plate
+		var bname := String(game.boss_cfg["name"])
+		var nw := font.get_string_size(bname, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(8)).x + 12.0
+		_bar(Rect2(cx - 110, 30, 220, 8), b.hp / b.max_hp, CRIMSON)
+		var nr := Rect2(roundf(cx - nw * 0.5), 42, roundf(nw), 11)
+		_plate(nr, CRIMSON, Color("3a0d18"))
+		_text(Vector2(cx, nr.position.y + 9), bname, Color(1, 0.75, 0.75), 8, true)
 	else:
-		_bar(Rect2(cx - 120, 26, 240, 3), 1.0 - rem / GameData.RUN_TIME, Color(0.6, 0.4, 0.9))
-		for s in GameData.SURGES:
-			var sx: float = cx - 120 + 240 * float(s["at"]) / GameData.RUN_TIME
-			view.draw_rect(Rect2(sx - 1, 24, 2, 7), Color(1, 0.55, 0.25))
-		# difficulty meter: threat name, reddening as it climbs; the swarm level during the Final Swarm
+		_bar(Rect2(cx - 110, 30, 220, 3), 1.0 - rem / GameData.RUN_TIME, Color(0.6, 0.4, 0.9))
+		for sg in GameData.SURGES:
+			var sx: float = roundf(cx - 110 + 220 * float(sg["at"]) / GameData.RUN_TIME)
+			view.draw_rect(Rect2(sx - 1, 28, 3, 7), OUTLINE)
+			view.draw_rect(Rect2(sx, 29, 1, 5), Color(1, 0.55, 0.25))
+		# difficulty meter: a small chip with the threat name, reddening as it climbs
 		var k := clampf(float(game.threat_level()) / float(GameData.THREAT_NAMES.size() - 1), 0.0, 1.0)
 		var tcol := Color(0.75, 0.9, 0.7).lerp(Color(1, 0.6, 0.25), minf(k * 2.0, 1.0)).lerp(CRIMSON, maxf(k * 2.0 - 1.0, 0.0))
-		var line := "Threat: %s" % game.threat_name()
+		var line := String(game.threat_name())
 		if game.final_swarm:
-			line = "SWARM LV %d  ·  %s" % [game.swarm_level(), game.threat_name()]
-		_text(Vector2(cx, 40), line, tcol, 7, true)
+			line = "SWARM LV %d" % game.swarm_level()
+		var lw := font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, UiKit.fs(7)).x + 18.0
+		var lr := Rect2(roundf(cx - lw * 0.5), 39, roundf(lw), 11)
+		_plate(lr, Color(tcol, 0.9), Color(0.07, 0.05, 0.14, 0.8))
+		_icon("skull", Rect2(lr.position + Vector2(1, 0), Vector2(11, 11)), Color(tcol, 1.0))
+		_text(Vector2(lr.get_center().x + 5, lr.position.y + 9), line, tcol, 7, true)
 
 
+## Kills and gold chips under the round minimap.
 func _draw_top_right(vs: Vector2) -> void:
-	var x := vs.x - MINIMAP_SIZE - 10
-	_text(Vector2(x, 20), "Kills %d" % game.kills, IVORY, 9, false)
-	_text(Vector2(x + 62, 20), "%d g" % game.gold, Color(1, 0.85, 0.3), 9, false)
+	var c := _minimap_center(vs)
+	var y := roundf(c.y + MINIMAP_SIZE * 0.5 + 7)
+	var w := 44.0
+	_chip(Rect2(roundf(c.x - w - 2), y, w, 13), "skull", str(game.kills), IVORY)
+	_chip(Rect2(roundf(c.x + 2), y, w, 13), "gold", str(int(game.gold)), Color(1, 0.85, 0.3))
 
 
-func _draw_minimap(r: Rect2) -> void:
+func _chip(r: Rect2, icon_name: String, txt: String, col: Color) -> void:
+	_plate(r, Color(0.45, 0.4, 0.65), Color(0.07, 0.05, 0.14, 0.85))
+	_icon(icon_name, Rect2(r.position + Vector2(1, -1), Vector2(14, 14)))
+	_text(Vector2(r.position.x + 17, r.position.y + 10), txt, col, 8, false)
+
+
+func _minimap_center(vs: Vector2) -> Vector2:
+	return Vector2(roundf(vs.x - MINIMAP_SIZE * 0.5 - 10), MINIMAP_SIZE * 0.5 + 8)
+
+
+func _map_btn_center(vs: Vector2) -> Vector2:
+	return (_minimap_center(vs) + Vector2.from_angle(deg_to_rad(140)) * (MINIMAP_SIZE * 0.5 + 6)).round()
+
+
+func _pause_btn_center(vs: Vector2) -> Vector2:
+	return (_minimap_center(vs) + Vector2.from_angle(deg_to_rad(-160)) * (MINIMAP_SIZE * 0.5 + 8)).round()
+
+
+func _dash_center(vs: Vector2) -> Vector2:
+	return Vector2(vs.x - DASH_R - 22, vs.y - DASH_R - 22)
+
+
+## Round minimap: the map and fog textures drawn into a circle (a textured polygon), framed by a black,
+## gold and dark ring with four gold studs, like the academy UI's rivets.
+func _draw_minimap(c: Vector2, rad: float) -> void:
 	var world: World = game.world
 	var ppos: Vector2 = game.player.position / GameData.TILE
 	var half := MINIMAP_TILES * 0.5
 	var center := Vector2(clamp(ppos.x, half, world.w - half), clamp(ppos.y, half, world.h - half))
 	var src := Rect2(center - Vector2(half, half), Vector2(MINIMAP_TILES, MINIMAP_TILES))
-	view.draw_rect(r.grow(2), NAVY)
-	view.draw_texture_rect_region(world.minimap_texture, r, src)
-	view.draw_texture_rect_region(game.fog.texture, r, src)
-	view.draw_rect(r.grow(1), GOLD, false, 1.0)
+	view.draw_circle(c, rad + 4, OUTLINE)
+	view.draw_circle(c, rad + 3, UiKit.GOLD_DIM)
+	view.draw_circle(c, rad + 2, UiKit.GOLD)
+	view.draw_circle(c, rad + 1, OUTLINE)
+	view.draw_circle(c, rad, Color("0b0818"))
+	_circle_tex(world.minimap_texture, c, rad, src, Vector2(world.w, world.h))
+	_circle_tex(game.fog.texture, c, rad, src, Vector2(world.w, world.h))
+	for i in 4:
+		var sp := (c + Vector2.from_angle(PI * 0.25 + i * PI * 0.5) * (rad + 2.5)).floor()
+		view.draw_rect(Rect2(sp - Vector2(2, 2), Vector2(4, 4)), OUTLINE)
+		view.draw_rect(Rect2(sp - Vector2(1, 1), Vector2(2, 2)), Color("fff3c2"))
+	var scale := (rad * 2.0) / MINIMAP_TILES
 	var to_screen := func(world_px: Vector2) -> Vector2:
-		return r.position + (world_px / GameData.TILE - src.position) * (r.size.x / MINIMAP_TILES)
-	var inside := func(p: Vector2) -> bool: return r.grow(-2).has_point(p)
+		return c + (world_px / GameData.TILE - src.get_center()) * scale
+	var inside := func(pt: Vector2) -> bool: return pt.distance_to(c) < rad - 2.0
 	_draw_pois(to_screen, inside, 2.0)
 	for e in game.enemies.list:
 		if e.elite or e.boss:
@@ -532,7 +633,89 @@ func _draw_minimap(r: Rect2) -> void:
 			if inside.call(sp):
 				view.draw_circle(sp, 2.5 if e.boss else 1.8, Color(1, 0.5, 0.1) if e.elite else CRIMSON)
 	var pp: Vector2 = to_screen.call(game.player.position)
-	view.draw_circle(pp, 2.5, Color.WHITE)
+	view.draw_circle(pp, 3.0, OUTLINE)
+	view.draw_circle(pp, 2.0, Color.WHITE)
+
+
+## Draws the `src` tile rect of a whole-map texture (map size `world_size` in tiles) into a circle.
+func _circle_tex(tex: Texture2D, c: Vector2, rad: float, src: Rect2, world_size: Vector2) -> void:
+	if tex == null:
+		return
+	const N := 40
+	var pts := PackedVector2Array()
+	var uvs := PackedVector2Array()
+	for i in N:
+		var d := Vector2.from_angle(TAU * i / N)
+		pts.append(c + d * rad)
+		uvs.append((src.get_center() + d * src.size.x * 0.5) / world_size)
+	view.draw_polygon(pts, PackedColorArray([Color.WHITE]), uvs, tex)
+
+
+## Round dash button: gold ring, purple face, winged-boot icon; a dark wedge shrinks as the cooldown runs out.
+func _draw_dash(vs: Vector2) -> void:
+	var c := _dash_center(vs)
+	var cd: float = game.player.dash_cd
+	var ready := cd <= 0.0
+	var pressed := _dash_btn.is_pressed()
+	var r := DASH_R
+	if ready:
+		# soft pulse ring while ready
+		var k := 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.005)
+		view.draw_arc(c, r + 4 + k * 2.0, 0, TAU, 40, Color(UiKit.GOLD, 0.25 + 0.25 * k), 1.5)
+	view.draw_circle(c + Vector2(0, 2), r + 2, Color(0, 0, 0, 0.45))
+	view.draw_circle(c, r + 2, OUTLINE)
+	view.draw_circle(c, r + 1, UiKit.GOLD if ready else UiKit.GREY)
+	view.draw_circle(c, r - 1, OUTLINE)
+	var face := Color("5b45b8") if ready else Color("3a2f6a")
+	if pressed:
+		face = face.darkened(0.25)
+	view.draw_circle(c, r - 2, face)
+	view.draw_circle(c + Vector2(0, -r * 0.35), r * 0.55, Color(1, 1, 1, 0.08))   # top highlight
+	var isz := 32.0
+	_icon("dash", Rect2(c - Vector2(isz, isz) * 0.5 + Vector2(0, 1 if pressed else 0), Vector2(isz, isz)), Color.WHITE if ready else Color(1, 1, 1, 0.45))
+	if not ready:
+		var frac := clampf(cd / Player.DASH_COOLDOWN, 0.0, 1.0)
+		var pts := PackedVector2Array([c])
+		var steps := 24
+		for i in steps + 1:
+			pts.append(c + Vector2.from_angle(-PI * 0.5 + TAU * frac * i / steps) * (r - 2))
+		view.draw_colored_polygon(pts, Color(0.02, 0.01, 0.06, 0.55))
+		_text(c + Vector2(0, 4), "%.1f" % cd, IVORY, 10, true)
+
+
+func _draw_round_button(c: Vector2, r: float, icon_name: String, b: Button) -> void:
+	view.draw_circle(c + Vector2(0, 2), r + 1, Color(0, 0, 0, 0.45))
+	view.draw_circle(c, r + 1, OUTLINE)
+	view.draw_circle(c, r, UiKit.GOLD)
+	view.draw_circle(c, r - 2, OUTLINE)
+	view.draw_circle(c, r - 3, Color("3d2f80").darkened(0.25 if b.is_pressed() else 0.0))
+	if icon_name != "":
+		var sz := (r - 3) * 2.0
+		_icon(icon_name, Rect2(c - Vector2(sz, sz) * 0.5, Vector2(sz, sz)))
+
+
+func _draw_pause_glyph(c: Vector2) -> void:
+	for dx in [-4.0, 1.0]:
+		view.draw_rect(Rect2(c + Vector2(dx - 1, -6), Vector2(5, 12)), OUTLINE)
+		view.draw_rect(Rect2(c + Vector2(dx, -5), Vector2(3, 10)), IVORY)
+
+
+## Virtual joystick: a faint ghost base bottom-left until touched, then a pixel ring + knob under the thumb.
+func _draw_joystick(vs: Vector2) -> void:
+	var active := _joy_index != -1
+	var c := _joy_center if active else Vector2(64, vs.y - 64)
+	var knob := _joy_knob if active else c
+	var a := 1.0 if active else 0.35
+	view.draw_circle(c, JOY_RADIUS, Color(0.05, 0.03, 0.12, 0.35 * a))
+	view.draw_arc(c, JOY_RADIUS + 1, 0, TAU, 40, Color(OUTLINE, 0.6 * a), 2.0)
+	view.draw_arc(c, JOY_RADIUS, 0, TAU, 40, Color(UiKit.PURPLE, 0.8 * a), 1.0)
+	for i in 4:
+		var d := Vector2.from_angle(i * PI * 0.5)
+		var tip := c + d * (JOY_RADIUS - 5)
+		view.draw_colored_polygon(PackedVector2Array([tip + d * 3, tip - d + d.orthogonal() * 3, tip - d - d.orthogonal() * 3]), Color(UiKit.PURPLE, 0.6 * a))
+	view.draw_circle(knob, 13, Color(OUTLINE, 0.8 * a))
+	view.draw_circle(knob, 12, Color(Color("6b55d0"), 0.85 * a))
+	view.draw_circle(knob + Vector2(0, -3), 7, Color(1, 1, 1, 0.12 * a))
 
 
 func _draw_pois(to_screen: Callable, inside: Callable, s: float) -> void:
@@ -607,8 +790,8 @@ func _edge_arrow(vs: Vector2, cam_center: Vector2, target: Vector2, col: Color, 
 	var k: float = min(inset.x / max(0.001, absf(rel.x)), inset.y / max(0.001, absf(rel.y)))
 	var p := half + rel * k
 	p.y = max(p.y, 72.0)  # keep arrows below the top HUD band (bars, timer, minimap)
-	if p.x > vs.x - MINIMAP_SIZE - 20 and p.y < MINIMAP_SIZE + 64:
-		p.y = MINIMAP_SIZE + 64
+	if p.x > vs.x - MINIMAP_SIZE - 24 and p.y < MINIMAP_SIZE + 36:
+		p.y = MINIMAP_SIZE + 36
 	var d := rel.normalized()
 	var n := d.orthogonal()
 	view.draw_colored_polygon(PackedVector2Array([p + d * size, p - d * size * 0.6 + n * size * 0.8, p - d * size * 0.6 - n * size * 0.8]), col)
@@ -651,6 +834,20 @@ func _make_button(text: String, size: Vector2, cb: Callable) -> Button:
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, UiKit.button_style("normal", st))
 	b.add_theme_font_override("font", UiKit.BOLD_FONT)
+	b.pressed.connect(cb)
+	add_child(b)
+	return b
+
+
+## A transparent Button over a round control drawn by _draw_view (it only takes the touch).
+func _make_round_button(r: float, cb: Callable) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(r, r) * 2.0
+	b.size = Vector2(r, r) * 2.0
+	b.focus_mode = Control.FOCUS_NONE
+	b.flat = true
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	b.pressed.connect(cb)
 	add_child(b)
 	return b

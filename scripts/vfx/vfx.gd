@@ -28,15 +28,23 @@ func _ready() -> void:
 	mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	material = mat
 	glow_tex = make_glow_texture()
+	modulate = additive_tint()
 	_quality = GameData.VFX_PARTICLE_SCALE
 
 
+## Tint for the additive layers (VFX_ADDITIVE dims them all; `modulate` also reaches colours above 1.0).
+static func additive_tint() -> Color:
+	var k: float = GameData.VFX_ADDITIVE
+	return Color(k, k, k, 1.0)
+
+
 static func make_glow_texture() -> Texture2D:
+	var h: float = GameData.VFX_HALO
 	var g := Gradient.new()
-	g.set_color(0, Color(1, 1, 1, 1))
+	g.set_color(0, Color(1, 1, 1, h))
 	g.set_color(1, Color(1, 1, 1, 0))
-	g.add_point(0.25, Color(1, 1, 1, 0.55))
-	g.add_point(0.6, Color(1, 1, 1, 0.12))
+	g.add_point(0.25, Color(1, 1, 1, 0.55 * h))
+	g.add_point(0.6, Color(1, 1, 1, 0.12 * h))
 	var t := GradientTexture2D.new()
 	t.gradient = g
 	t.fill = GradientTexture2D.FILL_RADIAL
