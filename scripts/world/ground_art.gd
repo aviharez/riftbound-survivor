@@ -5,7 +5,8 @@ extends Node2D
 ## Everything is drawn at the characters' pixel density: 32 px art per 16 px map tile (scale 0.5).
 ##
 ## Tilesets (assets/tiles/<loc>/<set>.png + tiles.json with each tile's corners L/U/T):
-##   hedge  = grass -> raised wall terrain (T = the wall's front face), used where a wall touches the tile
+##   hedge  = grass -> wall terrain (a hedge, or raised high ground), used where a wall touches the tile; a
+##            25-tile raised set has T corners (the wall's front face), a 16-tile set only L/U
 ##   rift   = grass -> rift corruption
 ##   cobble = grass -> paving (T_RUINS)
 ## A tile whose corners mix three terrains uses the highest one in that order; the others count as grass.
@@ -22,6 +23,7 @@ var _lookup := {}                  # set name -> {corner key -> Array[Vector2i]}
 var _source := {}                  # set name -> TileSet source id
 var _sets := {}                    # set name -> Array of {pos: Vector2i, c: String}
 var _layer: TileMapLayer
+var _hedge_faces := false          # the hedge set has front-face (T) tiles
 
 
 static func has_art(loc_tiles: String) -> bool:
@@ -67,6 +69,8 @@ func _build_tileset() -> void:
 			table[key].append(pos)
 			list.append({"pos": pos, "c": key})
 		_source[set_name] = ts.add_source(src)
+		if set_name == "hedge":
+			_hedge_faces = list.any(func(t): return "T" in String(t["c"]))
 		_lookup[set_name] = table
 		_sets[set_name] = list
 	_layer = TileMapLayer.new()
@@ -90,6 +94,8 @@ func _cell(x: int, y: int) -> int:
 func _hedge_corner(x: int, y: int) -> String:
 	if _cell(x, y) != GameData.T_WALL:
 		return "L"
+	if not _hedge_faces:
+		return "U"
 	return "U" if _cell(x, y + 1) == GameData.T_WALL else "T"
 
 
