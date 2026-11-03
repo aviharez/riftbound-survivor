@@ -27,7 +27,7 @@ var _hedge_faces := false          # the hedge set has front-face (T) tiles
 
 
 static func has_art(loc_tiles: String) -> bool:
-	return GameData.GROUND_ART.has(loc_tiles) and ResourceLoader.exists(String(GameData.GROUND_ART[loc_tiles]["dir"]) + "cobble.png")
+	return GameData.GROUND_ART.has(loc_tiles) and FileAccess.file_exists(String(GameData.GROUND_ART[loc_tiles]["dir"]) + "tiles.json")
 
 
 func setup(map: Dictionary, loc_tiles: String) -> void:
@@ -53,9 +53,11 @@ func _build_tileset() -> void:
 	var meta: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(dir + "tiles.json"))
 	var ts := TileSet.new()
 	ts.tile_size = Vector2i(ART_PX, ART_PX)
-	for set_name in ["cobble", "hedge", "rift"]:
+	# sets present in tiles.json; each sheet is <file or set name>.png. Without cobble / rift, paved and
+	# rift cells are drawn as plain ground.
+	for set_name in meta["sets"]:
 		var src := TileSetAtlasSource.new()
-		src.texture = load(dir + set_name + ".png")
+		src.texture = load(dir + String(meta.get("files", {}).get(set_name, set_name)) + ".png")
 		src.texture_region_size = Vector2i(ART_PX, ART_PX)
 		var table := {}
 		var list: Array = []
@@ -81,6 +83,10 @@ func _build_tileset() -> void:
 	_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_layer.use_parent_material = true
 	add_child(_layer)
+
+
+func has_set(set_name: String) -> bool:
+	return _lookup.has(set_name)
 
 
 func _cell(x: int, y: int) -> int:
@@ -116,11 +122,13 @@ func _paint() -> void:
 				key = ""
 				for c in cs:
 					key += "U" if c == up else "L"
+				if not _lookup.has(set_name):
+					key = "LLLL"
 			var h := _hash(i, j)
 			if key == "LLLL":
 				# plain grass: any set's grass tile, for variety (they share one base tile)
 				var pick: Array = []
-				for s in ["cobble", "rift", "hedge"]:
+				for s in _lookup:
 					for p in _lookup[s].get("LLLL", []):
 						pick.append([s, p])
 				var g: Array = pick[h % pick.size()]

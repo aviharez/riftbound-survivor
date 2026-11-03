@@ -181,7 +181,11 @@ Read it before starting any phase.**
   32 px, view low top-down, 15 generations each, chained on the grass base tile fbf6f3d7) on a DUAL grid (map
   cells = tile corners) with a TileMapLayer at scale 0.5, plus deterministic props (PixelLab `create_map_object`,
   1 generation each) and `shaders/ground_art.gdshader` (colour grade + light patches). Config per `tiles` id in
-  `GameData.GROUND_ART` (courtyard done; other locations still use the baked TILESETS colours). Sheets in
+  `GameData.GROUND_ART` (courtyard done; other locations still use the baked TILESETS colours). The Ruined
+  Courtyard uses Syifa's own tileset (PixelLab 78471731: sage grass -> dark ruined high ground = the walls, a 16-tile
+  set without face tiles) in `assets/tiles/ruined_courtyard/` (+ flagstone / rift sets chained on her grass base
+  66b14333; tiles.json `files` maps set -> sheet). Only generate art Syifa asked for (she was upset when Claude
+  generated extra sets on its own, 3 Nov). Sheets in
   `assets/tiles/<loc>/{cobble,hedge,rift}.png` + `tiles.json` (corners per tile, from the metadata endpoint via
   WebFetch; the sheet image via `pixelart_workbench inspect <api image?inline=true url> --scale 1`, crop the 18 px
   caption). The hedge set is raised (T = wall face, kept inside wall cells). Props in `assets/props/<loc>/`.

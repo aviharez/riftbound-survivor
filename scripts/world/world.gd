@@ -50,6 +50,14 @@ func setup(m: Dictionary, tiles_id := "courtyard") -> void:
 		art = GroundArt.new()
 		add_child(art)
 		art.setup(m, tiles_id)
+		# the minimap follows the painted ground: paved / rift cells without their own tiles read as plain ground
+		var plain := Color(tiles["floor"]).lightened(0.05)
+		for y in h:
+			for x in w:
+				var t := grid[y * w + x]
+				if (t == GameData.T_RUINS and not art.has_set("cobble")) or (t == GameData.T_RIFT and not art.has_set("rift")):
+					minimap_image.set_pixel(x, y, plain)
+		minimap_texture.update(minimap_image)
 	_flow.resize(_flow_size * _flow_size)
 	queue_redraw()
 

@@ -761,9 +761,10 @@ const LOCATIONS := [
 # small_chance per cell, "edge" props (tall) only on ground cells right below a wall, with edge_chance.
 # No prop within clear_radius cells of the spawn, portal, chests, shrines and pots.
 const GROUND_ART := {
-	"courtyard": {"dir": "res://assets/tiles/courtyard/", "props_dir": "res://assets/props/courtyard/",
+	# Ruined Courtyard: Syifa's tileset (grass + dark ruined high ground as the walls) + flagstone and rift sets on its grass
+	"courtyard": {"dir": "res://assets/tiles/ruined_courtyard/", "props_dir": "res://assets/props/courtyard/",
 		"small_chance": 0.1, "edge_chance": 0.2, "plaza_chance": 0.12, "clear_radius": 2.5,
-		"grade": {"saturation": 0.78, "brightness": 0.92, "patch_amount": 0.13},
+		"grade": {"saturation": 1.0, "brightness": 1.0, "warm": Vector3(1, 1, 1), "patch_amount": 0.06},
 		"plaza": [["lamp", 2], ["banner", 1.5], ["column", 1], ["barrels", 0.6], ["shrub", 1], ["flowers", 1]],
 		"small": [["flowers", 4], ["petals", 4], ["grass", 4], ["rocks", 2], ["bush", 1], ["shrub", 2], ["barrels", 0.4], ["statue", 0.3]],
 		"edge": [["lamp", 1], ["banner", 1], ["column", 1.5], ["wall", 1.5], ["shrub", 2], ["bush", 1]]},
